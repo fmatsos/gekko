@@ -8,7 +8,7 @@
 //! an accelerator.
 //!
 //! Docker IS its own registry, so the Docker family persists nothing. A
-//! process has no registry: once `npu serve` returns, the only thing that
+//! process has no registry: once `gko serve` returns, the only thing that
 //! remembers the pid is the record [`crate::runtime::state`] wrote. Every
 //! function here therefore starts from that record, and the single most
 //! dangerous question in the file — "is the process behind this pid still
@@ -30,7 +30,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use super::state;
 
 /// This family's name: the `type` value a `[runtime]` table declares, and
-/// what the `RUNTIME` column of `npu status` shows.
+/// what the `RUNTIME` column of `gko status` shows.
 pub const NAME: &str = "process";
 
 /// Interval between two readiness attempts while `serve` waits for the
@@ -77,7 +77,7 @@ const UNREACHABLE: &str = "unreachable";
 
 /// What it reports for a record another backend FILE wrote: the state
 /// directory is machine-global, backend identifiers are not, so this row
-/// describes somebody else's server and npu will not touch it.
+/// describes somebody else's server and gko will not touch it.
 const FOREIGN: &str = "foreign state";
 
 /// The `INSTANCE` column's value when there is no pid to show.
@@ -104,7 +104,7 @@ pub enum Signal {
 /// The EXECUTABLE is absent for a stronger reason, and the reason is
 /// empirical: `exec` replaces a task's image without changing its birth, so
 /// a server reached through a wrapper script, a virtualenv shim or any
-/// launcher that ends on `exec` runs under the pid `npu` spawned while
+/// launcher that ends on `exec` runs under the pid `gko` spawned while
 /// reporting a completely different executable. Comparing it made every such
 /// runtime permanently "stale", which `stop` reports as a success while
 /// leaving the server running and deleting the only record of it. Birth time
@@ -212,18 +212,18 @@ pub fn signal(pid: u32, signal: Signal) -> bool {
     matches!(process.kill_with(signal), Some(true))
 }
 
-/// Where a backend's state record says its runtime is, from `npu`'s point of
+/// Where a backend's state record says its runtime is, from `gko`'s point of
 /// view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Presence {
     /// No record at all: this backend was never served, or was stopped.
     NotStarted,
-    /// The recorded process is there and is the one `npu` started.
+    /// The recorded process is there and is the one `gko` started.
     Alive(state::State),
     /// The recorded pid no longer exists: the server exited on its own.
     Exited(state::State),
     /// The pid exists but was born at another moment, so it is NOT the
-    /// process `npu` started: it was recycled. The record is stale, and the
+    /// process `gko` started: it was recycled. The record is stale, and the
     /// pid it holds belongs to somebody else — to report and forget, never
     /// to signal.
     Reused(state::State),
@@ -231,14 +231,14 @@ pub enum Presence {
     ///
     /// The state directory is machine-global while backend identifiers are
     /// per-scope, so two projects each declaring `llamacpp` in their own
-    /// `./.npu` would land on one record. What keeps them apart is the file
+    /// `./.gko` would land on one record. What keeps them apart is the file
     /// NAME, which carries a digest of the backend file (see
     /// `state::SOURCE_DIGEST_HEX`): the digest ISOLATES.
     ///
     /// This variant is what catches the case the digest cannot. Eight hex
     /// characters are 32 bits, so two distinct source paths CAN meet on one
     /// name, and a record found there is then another project's: its pid is
-    /// a genuine npu-started process with a matching birth, which
+    /// a genuine gko-started process with a matching birth, which
     /// [`verdict`] is structurally unable to see anything wrong with. The
     /// origin comparison is the COLLISION GUARD — on the one code path
     /// where being wrong is a SIGTERM, then a SIGKILL, against an unrelated
@@ -264,7 +264,7 @@ impl Presence {
 /// Decides whether `facts` describe the very process `state` was written
 /// for.
 ///
-/// **This is the function that keeps `npu stop` from killing an innocent
+/// **This is the function that keeps `gko stop` from killing an innocent
 /// process.** Two conditions, both required:
 ///
 /// 1. the pid exists at all (`facts` is `Some`);
@@ -356,7 +356,7 @@ fn foreign(
         &backend.id,
         format!(
             "backend \"{}\" ({}): its state record {record} describes process {}, served from \
-             {} — npu will not act on another configuration's runtime; stop it where it was \
+             {} — gko will not act on another configuration's runtime; stop it where it was \
              started, or rename this backend",
             backend.id,
             backend.source.display(),
@@ -371,7 +371,7 @@ fn foreign(
 /// directory and the identifier is validated once, by [`state::state_path`].
 ///
 /// Derived from the record and not from the identifier alone, which is the
-/// half of the isolation `npu logs` needs: the record's name carries a
+/// half of the isolation `gko logs` needs: the record's name carries a
 /// digest of the backend FILE, so a second project asking for the logs of
 /// its own `llamacpp` is answered "nothing was served" rather than handed
 /// the first project's output.
@@ -517,7 +517,7 @@ fn rendered_env(
     Ok(process.env.keys().cloned().zip(values).collect())
 }
 
-/// Starts `backend`'s server and returns its pid — which IS `npu serve`'s
+/// Starts `backend`'s server and returns its pid — which IS `gko serve`'s
 /// result, hence what the caller writes to stdout.
 ///
 /// The order of the steps below is part of the contract, because it is the
@@ -559,8 +559,8 @@ pub fn serve(
             return Err(crate::Error::Backend(crate::error::BackendError::at(
                 &backend.id,
                 format!(
-                    "backend \"{}\" is already served by process {} — `npu status` to see it, \
-                     `npu stop {}` to end it",
+                    "backend \"{}\" is already served by process {} — `gko status` to see it, \
+                     `gko stop {}` to end it",
                     backend.id, state.pid, model.id
                 ),
             )));
@@ -581,7 +581,7 @@ pub fn serve(
     //    another process can take the port. The alternative is binding the
     //    socket here and handing it to the child, which needs `unsafe`
     //    fd inheritance. The Docker side accepts the same race, and this is
-    //    exactly why `port = "auto"` is refused for this family: npu has no
+    //    exactly why `port = "auto"` is refused for this family: gko has no
     //    way to ask a process which port it ended up on.
     if let Some(crate::config::Port::Fixed(port)) = &backend.port
         && !super::port_is_free(*port)
@@ -631,7 +631,7 @@ pub fn serve(
         .map_err(|err| {
             // Nothing was spawned, so this run produced no log — and step 4
             // just emptied the previous one. Removing it puts the state back
-            // to "nothing was ever served", which is what `npu logs` then
+            // to "nothing was ever served", which is what `gko logs` then
             // says; leaving a zero-byte file behind would make it exit `0`
             // printing nothing, indistinguishable from a silent server.
             drop(std::fs::remove_file(&log));
@@ -645,7 +645,7 @@ pub fn serve(
             ))
         })?;
 
-    // 6. The record is written BEFORE the readiness wait: a `npu serve`
+    // 6. The record is written BEFORE the readiness wait: a `gko serve`
     //    interrupted halfway must still leave something that knows which
     //    pid to stop.
     let pid = child.id();
@@ -656,7 +656,7 @@ pub fn serve(
             host,
             &executable,
             &log,
-            "the spawned process could not be inspected, so npu cannot record an identity for \
+            "the spawned process could not be inspected, so gko cannot record an identity for \
              it and would never be able to tell it apart from a reused pid",
         ));
     };
@@ -812,15 +812,15 @@ fn abandon(
 /// [`stop`]: ask first, insist second.
 ///
 /// Watches the CHILD (`try_wait`) rather than the process table, because
-/// this is one process `npu` owns: a reaped child leaves no trace to poll
+/// this is one process `gko` owns: a reaped child leaves no trace to poll
 /// for, and a zombie would still be listed as a live pid.
 ///
 /// Only `Ok(Some(status))` means "already gone". An `Err` from `try_wait` —
 /// `ECHILD`, which a parent that set `SIGCHLD` to `SIG_IGN` before `exec`ing
-/// `npu` produces for every wait — says the WAIT CHANNEL is unusable, not
+/// `gko` produces for every wait — says the WAIT CHANNEL is unusable, not
 /// that the process is. Reading it as "gone" skipped both the signal and the
 /// kill while the caller went on to delete the state record, leaking one
-/// running server per `serve` under such a parent; `npu` is explicitly meant
+/// running server per `serve` under such a parent; `gko` is explicitly meant
 /// to be driven by other programs, so that parent is not hypothetical.
 fn terminate_child(child: &mut Child, host: &Host<'_>) {
     if !matches!(child.try_wait(), Ok(Some(_)))
@@ -872,7 +872,7 @@ fn exits_within(child: &mut Child, budget: Duration) -> bool {
     }
 }
 
-/// Waits up to `budget` for a process `npu` does NOT own to stop being the
+/// Waits up to `budget` for a process `gko` does NOT own to stop being the
 /// one described by `state`.
 ///
 /// Watches the identity, not the pid: a pid that reappears as somebody
@@ -898,7 +898,7 @@ fn ceases_within(state: &state::State, host: &Host<'_>, budget: Duration) -> boo
 /// The identifier, and not the pid [`serve`] returned: by the time `stop`
 /// answers, that pid names nothing, and a command that printed a pid when it
 /// killed one and something else when there was nothing to kill would force
-/// its caller to branch on which. The pid while it exists is `npu status`'s
+/// its caller to branch on which. The pid while it exists is `gko status`'s
 /// INSTANCE column.
 ///
 /// Escalates: `SIGTERM`, a bounded wait, then `SIGKILL`. A signal reported
@@ -906,7 +906,7 @@ fn ceases_within(state: &state::State, host: &Host<'_>, budget: Duration) -> boo
 /// any other and falls through to the kill; treating it as a success would
 /// leave a running server behind a cleared record.
 ///
-/// Idempotent, like `npu stop` on the Docker side: nothing to stop is a
+/// Idempotent, like `gko stop` on the Docker side: nothing to stop is a
 /// success. A stale record is forgotten, never signalled — the pid it holds
 /// may belong to anybody by now.
 ///
@@ -939,7 +939,7 @@ pub fn stop(backend: &crate::config::Backend, host: &Host<'_>) -> crate::Result<
                         format!(
                             "backend \"{}\": process {} survived both signals — its state is \
                              kept, since forgetting a running server would leave it unreachable \
-                             to npu",
+                             to gko",
                             backend.id, state.pid
                         ),
                     )));
@@ -953,7 +953,7 @@ pub fn stop(backend: &crate::config::Backend, host: &Host<'_>) -> crate::Result<
     Ok(backend.id.clone())
 }
 
-/// What `npu status` shows for `backend`: the `INSTANCE` column (the pid,
+/// What `gko status` shows for `backend`: the `INSTANCE` column (the pid,
 /// for this family), the `URL` column and the `STATE` column.
 ///
 /// The three come from ONE source. A backend that has been served answers
@@ -1046,7 +1046,7 @@ pub fn logs(
             return Err(crate::Error::Backend(crate::error::BackendError::at(
                 &backend.id,
                 format!(
-                    "backend \"{}\": no log to read at {} — nothing was served from this npu",
+                    "backend \"{}\": no log to read at {} — nothing was served from this gko",
                     backend.id,
                     path.display()
                 ),
@@ -1146,7 +1146,7 @@ mod tests {
     /// The backend FILE every fixture of this module pretends to come from.
     /// `record` and `backend` share it, so a record is OURS unless a test
     /// deliberately moves one of the two (cf. the `Foreign` tests).
-    const SOURCE: &str = "/projA/.npu/backends/qwen-fast.toml";
+    const SOURCE: &str = "/projA/.gko/backends/qwen-fast.toml";
 
     fn record(backend: &str, pid: u32) -> state::State {
         state::State {
@@ -1242,15 +1242,15 @@ mod tests {
 
     /// The blocker this variant exists for: the state directory is
     /// machine-global while backend identifiers are per-scope, so two
-    /// projects each declaring `qwen-fast` in their own `./.npu` land on the
-    /// same record. The pid is a genuine npu-started process with a matching
+    /// projects each declaring `qwen-fast` in their own `./.gko` land on the
+    /// same record. The pid is a genuine gko-started process with a matching
     /// birth — `verdict` sees nothing wrong with it — and it belongs to the
     /// other project.
     #[test]
     fn a_live_record_written_by_another_backend_file_is_foreign() {
         let env = state_env("foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
 
         let host = Host {
@@ -1272,7 +1272,7 @@ mod tests {
     fn a_dead_record_written_by_another_backend_file_has_merely_exited() {
         let env = state_env("foreign-dead");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
 
         let host = Host {
@@ -1287,14 +1287,14 @@ mod tests {
         assert!(matches!(presence, Presence::Exited(_)), "{presence:?}");
     }
 
-    /// The kill the whole check exists to prevent: another project's `npu
+    /// The kill the whole check exists to prevent: another project's `gko
     /// stop` must signal NOTHING, and must not delete the record either —
     /// that record is the only thing that can still find that server.
     #[test]
     fn stopping_a_foreign_record_signals_nothing_and_keeps_it() {
         let env = state_env("stop-foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let sent: std::sync::Mutex<Vec<Signal>> = std::sync::Mutex::new(Vec::new());
         let host = Host {
@@ -1325,7 +1325,7 @@ mod tests {
     fn the_foreign_refusal_names_both_backend_files() {
         let env = state_env("foreign-named");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let host = Host {
             env: &|_| None,
@@ -1339,7 +1339,7 @@ mod tests {
         let message = err.to_string();
         assert!(message.contains(SOURCE), "{message}");
         assert!(
-            message.contains("/projB/.npu/backends/qwen-fast.toml"),
+            message.contains("/projB/.gko/backends/qwen-fast.toml"),
             "{message}"
         );
         assert!(message.contains("qwen-fast"), "{message}");
@@ -1352,7 +1352,7 @@ mod tests {
     fn serving_over_a_foreign_record_is_refused() {
         let env = state_env("serve-foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let host = Host {
             env: &|_| None,
@@ -1384,7 +1384,7 @@ mod tests {
     fn a_foreign_record_is_reported_as_such() {
         let env = state_env("report-foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let host = Host {
             env: &|_| None,
@@ -1503,7 +1503,7 @@ mod tests {
     #[test]
     fn the_command_itself_is_rendered_before_it_is_looked_up() {
         let host = Host {
-            env: &|name: &str| (name == "NPU_TEST_BIN").then(|| "npu-rendered-command".to_string()),
+            env: &|name: &str| (name == "GKO_TEST_BIN").then(|| "gko-rendered-command".to_string()),
             state: state_env("render-command"),
             inspect: &|_| None,
             signal: &|_, _| false,
@@ -1512,14 +1512,14 @@ mod tests {
 
         let err = serve(
             &backend("qwen-fast"),
-            &process("{{ env.NPU_TEST_BIN }}", &[]),
+            &process("{{ env.GKO_TEST_BIN }}", &[]),
             &model("m", "qwen3"),
             &host,
         )
         .expect_err("no such command exists");
 
         let message = err.to_string();
-        assert!(message.contains("npu-rendered-command"), "{message}");
+        assert!(message.contains("gko-rendered-command"), "{message}");
     }
 
     /// The rejection has to name BOTH, or its reader cannot tell which
@@ -1571,10 +1571,10 @@ mod tests {
                 "--model",
                 "{{ args.model }}",
                 "--home",
-                "{{ env.NPU_TEST_HOME }}",
+                "{{ env.GKO_TEST_HOME }}",
             ],
         );
-        let env = |name: &str| (name == "NPU_TEST_HOME").then(|| "/tmp/models".to_string());
+        let env = |name: &str| (name == "GKO_TEST_HOME").then(|| "/tmp/models".to_string());
 
         let rendered = render_all(process.arguments.iter(), &model("m", "qwen3"), &env)
             .expect("both placeholders resolve");
@@ -1592,12 +1592,12 @@ mod tests {
     /// empty string silently handed to a server.
     #[test]
     fn an_undefined_environment_variable_is_rejected_by_name() {
-        let process = process("server", &["{{ env.NPU_TEST_ABSENT }}"]);
+        let process = process("server", &["{{ env.GKO_TEST_ABSENT }}"]);
         let err = render_all(process.arguments.iter(), &model("m", "qwen3"), &|_| None)
             .expect_err("an undefined variable must fail");
 
         assert_eq!(err.exit_code(), 2);
-        assert!(err.to_string().contains("NPU_TEST_ABSENT"), "{err}");
+        assert!(err.to_string().contains("GKO_TEST_ABSENT"), "{err}");
     }
 
     #[test]
@@ -1605,13 +1605,13 @@ mod tests {
         let mut process = process("server", &[]);
         process
             .env
-            .insert("NPU_MODEL".to_string(), "{{ args.model }}".to_string());
+            .insert("GKO_MODEL".to_string(), "{{ args.model }}".to_string());
 
         let rendered = rendered_env(&process, &model("m", "qwen3"), &|_| None).expect("it renders");
 
         assert_eq!(
             rendered,
-            vec![("NPU_MODEL".to_string(), "qwen3".to_string())]
+            vec![("GKO_MODEL".to_string(), "qwen3".to_string())]
         );
     }
 
@@ -1843,7 +1843,7 @@ mod tests {
     }
 
     /// A process that survives everything keeps its record: forgetting it
-    /// would orphan a running server npu could never reach again.
+    /// would orphan a running server gko could never reach again.
     #[test]
     fn a_process_surviving_both_signals_keeps_its_record_and_fails() {
         let env = state_env("stop-immortal");
@@ -2019,7 +2019,7 @@ mod tests {
     }
 
     /// The READ half of the isolation, and the defect the digest exists
-    /// for: `npu logs` must never hand a second project the first one's
+    /// for: `gko logs` must never hand a second project the first one's
     /// output. Same identifier, two backend FILES, two logs.
     #[test]
     fn two_projects_declaring_the_same_backend_have_different_logs() {
@@ -2031,7 +2031,7 @@ mod tests {
             probe: &|_| Ok(()),
         };
         let mut other = backend("qwen-fast");
-        other.source = PathBuf::from("/projB/.npu/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
 
         let ours = log_path(&backend("qwen-fast"), &host).expect("a valid identifier");
         let theirs = log_path(&other, &host).expect("a valid identifier");

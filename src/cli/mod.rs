@@ -156,7 +156,7 @@ fn build_clap_node(name: &str, node: &CommandNode<'_>) -> clap::Command {
 }
 
 /// The `--verbose <LEVEL>` argument, declared once on the root and marked
-/// `global`, so it is accepted after any subcommand (`npu classify
+/// `global`, so it is accepted after any subcommand (`gko classify
 /// --verbose info`) without being redeclared on each of them.
 ///
 /// The accepted values come from `log::Level::NAMES`: the CLI cannot offer a
@@ -210,7 +210,7 @@ fn config_dir_arg() -> clap::Arg {
         .value_name("DIR")
         .help(
             "Use this directory as the project scope instead of walking up from the current \
-             one [env: NPU_CONFIG_DIR]",
+             one [env: GKO_CONFIG_DIR]",
         )
 }
 
@@ -221,10 +221,10 @@ fn config_dir_arg() -> clap::Arg {
 /// usable with an empty `specs` (degraded mode, cf. `crate::run`).
 pub(crate) fn build_cli(specs: &[crate::command::CommandSpec]) -> clap::Command {
     let tree = build_command_tree(specs);
-    // `bin_name` pinned: clap would otherwise print `argv[0]` (`npu.exe` on
-    // Windows) in usage lines, which `help` and the docs spell `npu`.
-    let mut root = clap::Command::new("npu")
-        .bin_name("npu")
+    // `bin_name` pinned: clap would otherwise print `argv[0]` (`gko.exe` on
+    // Windows) in usage lines, which `help` and the docs spell `gko`.
+    let mut root = clap::Command::new("gko")
+        .bin_name("gko")
         .styles(crate::style::clap_styles())
         .arg_required_else_help(true)
         .arg(verbose_arg())
@@ -243,10 +243,10 @@ pub(crate) fn build_cli(specs: &[crate::command::CommandSpec]) -> clap::Command 
 /// `{subcommands}` list — hidden, not removed, they parse exactly as
 /// before — and rendered by hand in the template, in `clap`'s own palette
 /// (`style.rs`), which `clap` strips when stdout is not a terminal. The `help`
-/// subcommand `clap` would generate is disabled: `npu help` is a built-in
+/// subcommand `clap` would generate is disabled: `gko help` is a built-in
 /// of ours, listed with the others (cf. [`builtins::help`]).
 pub(crate) fn sectioned_help(cli: clap::Command, load_failed: bool) -> clap::Command {
-    let names: Vec<String> = builtins::add_builtins(clap::Command::new("npu"))
+    let names: Vec<String> = builtins::add_builtins(clap::Command::new("gko"))
         .get_subcommands()
         .map(|sub| sub.get_name().to_string())
         .collect();
@@ -260,7 +260,7 @@ pub(crate) fn sectioned_help(cli: clap::Command, load_failed: bool) -> clap::Com
     let commands = if configured > 0 {
         "{subcommands}".to_string()
     } else if load_failed {
-        "  none: the configuration failed to load; run \"npu doctor\"".to_string()
+        "  none: the configuration failed to load; run \"gko doctor\"".to_string()
     } else {
         "  none configured yet".to_string()
     };
@@ -415,16 +415,16 @@ mod tests {
         let cli = build_cli(&[spec_with_args(&["typed"], InputMode::Stdin, args)]);
         assert!(
             cli.clone()
-                .try_get_matches_from(["npu", "typed", "--language", "fr", "--count", "2"])
+                .try_get_matches_from(["gko", "typed", "--language", "fr", "--count", "2"])
                 .is_ok()
         );
         assert!(
             cli.clone()
-                .try_get_matches_from(["npu", "typed", "--language", "de"])
+                .try_get_matches_from(["gko", "typed", "--language", "de"])
                 .is_err()
         );
         assert!(
-            cli.try_get_matches_from(["npu", "typed", "--language", "fr", "--count", "4"])
+            cli.try_get_matches_from(["gko", "typed", "--language", "fr", "--count", "4"])
                 .is_err()
         );
     }
@@ -434,7 +434,7 @@ mod tests {
         let cli = sectioned_help(builtins::add_builtins(build_cli(&[])), false);
         assert!(
             cli.try_get_matches_from(
-                std::iter::once("npu").chain(POST_UPDATE_CHECK.iter().copied())
+                std::iter::once("gko").chain(POST_UPDATE_CHECK.iter().copied())
             )
             .is_ok()
         );
@@ -499,7 +499,7 @@ mod tests {
         let specs = vec![spec(&["git", "review"], InputMode::Stdin)];
         let cli = build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "git", "review"])
+            .try_get_matches_from(["gko", "git", "review"])
             .expect("the command line must be accepted");
 
         let (path, leaf) = selected_path(&matches);
@@ -517,8 +517,8 @@ mod tests {
         // `arg_required_else_help` normally prevents reaching this point
         // without a subcommand in real usage, but `selected_path` must
         // stay correct if it is called anyway on empty root `ArgMatches`.
-        let matches = clap::Command::new("npu")
-            .try_get_matches_from(["npu"])
+        let matches = clap::Command::new("gko")
+            .try_get_matches_from(["gko"])
             .expect("no subcommand required on this test instance");
 
         let (path, _leaf) = selected_path(&matches);
@@ -557,7 +557,7 @@ mod tests {
     fn intermediate_node_without_its_own_spec_is_invocable_alone() {
         // An intermediate node (here `git`, which has no CommandSpec of its
         // own) must remain usable alone: `arg_required_else_help` rather
-        // than a silent failure if `npu git` is invoked without a
+        // than a silent failure if `gko git` is invoked without a
         // subcommand.
         let specs = vec![spec(&["git", "review"], InputMode::Stdin)];
         let cli = build_cli(&specs);
@@ -660,7 +660,7 @@ mod tests {
         let specs = vec![spec_with_args(&["translate"], InputMode::Stdin, args)];
         let cli = build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "translate", "--language", "french"])
+            .try_get_matches_from(["gko", "translate", "--language", "french"])
             .expect("the command line must be accepted");
         let (_, leaf) = selected_path(&matches);
 
@@ -679,7 +679,7 @@ mod tests {
         let specs = vec![spec_with_args(&["x"], InputMode::Stdin, args)];
         let cli = build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted without the non-required argument");
         let (_, leaf) = selected_path(&matches);
 
@@ -699,7 +699,7 @@ mod tests {
         let specs = vec![spec_with_args(&["translate"], InputMode::Stdin, args)];
         let cli = build_cli(&specs);
 
-        let result = cli.try_get_matches_from(["npu", "translate"]);
+        let result = cli.try_get_matches_from(["gko", "translate"]);
 
         assert!(
             result.is_err(),

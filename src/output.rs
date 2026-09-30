@@ -260,7 +260,7 @@ fn finalize_text(max_lines: Option<usize>, raw: &str) -> crate::Result<String> {
 /// the schema if there is one (failure => `Error::Output` listing EVERY
 /// violation, never just the first). The value returned on stdout is the
 /// COMPACT serialization of the parsed value, so stdout stays valid JSON
-/// regardless of the wrapping the model put around it (e.g. `npu classify |
+/// regardless of the wrapping the model put around it (e.g. `gko classify |
 /// jq .`).
 fn finalize_json(schema: Option<&Path>, raw: &str, command_file: &Path) -> crate::Result<String> {
     let candidate = strip_fences(raw);
@@ -279,7 +279,7 @@ fn finalize_json(schema: Option<&Path>, raw: &str, command_file: &Path) -> crate
         // commands in the same scope: a broken schema belonging to a
         // command that nobody invokes
         // must not make the CLI unusable. Exhaustively checking all schemas
-        // is `npu doctor`'s job, not this module's. The EXISTENCE of the
+        // is `gko doctor`'s job, not this module's. The EXISTENCE of the
         // schema is lazy in the
         // same way as its compilation (cf. `command::resolve_schema_path`'s
         // doc): it is HERE, and only here, that `compile_schema` can
@@ -436,7 +436,7 @@ mod tests {
     /// only to CITE it in the error message, never to open it).
     fn test_command_file() -> std::path::PathBuf {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(".npu")
+            .join(".gko")
             .join("commands")
             .join("test-command-placeholder.md")
     }

@@ -8,8 +8,8 @@
 - [Prompt templating](#prompt-templating)
 - [What is validated, and when](#what-is-validated-and-when)
 
-`npu config schema command` prints the JSON Schema of the frontmatter; see
-[`npu config schema`](cli.md#npu-config-schema).
+`gko config schema command` prints the JSON Schema of the frontmatter; see
+[`gko config schema`](cli.md#gko-config-schema).
 
 ---
 
@@ -19,18 +19,18 @@ The path under `commands/` *is* the command name. There is no registration step.
 
 | File | Command |
 | --- | --- |
-| `commands/classify.md` | `npu classify` |
-| `commands/commit-message.md` | `npu commit-message` |
-| `commands/git/review.md` | `npu git review` |
-| `commands/ticket/classify.md` | `npu ticket classify` |
+| `commands/classify.md` | `gko classify` |
+| `commands/commit-message.md` | `gko commit-message` |
+| `commands/git/review.md` | `gko git review` |
+| `commands/ticket/classify.md` | `gko ticket classify` |
 
 Intermediate levels are created automatically, and commands sharing a prefix merge under the same
-parent. Running an intermediate level on its own (`npu git`) is a usage error: the CLI parser
+parent. Running an intermediate level on its own (`gko git`) is a usage error: the CLI parser
 prints that level's help **on stderr** and exits with `2`.
 
 ```console
-$ npu git
-Usage: npu git [OPTIONS] [COMMAND]
+$ gko git
+Usage: gko git [OPTIONS] [COMMAND]
 
 Commands:
   review  Review a diff
@@ -78,7 +78,7 @@ Preserve meaning and tone.
 ```
 
 ```sh
-cat README.md | npu translate --language french
+cat README.md | gko translate --language french
 ```
 
 ---
@@ -87,7 +87,7 @@ cat README.md | npu translate --language french
 
 | Key | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `description` | string | `""` | shown in `npu --help` |
+| `description` | string | `""` | shown in `gko --help` |
 | `model` | string | **required** | must match a model `id` |
 | `[input] mode` | string | `"stdin"` | see [Input modes](#input-modes) |
 | `[args.<name>]` | table | none | see [CLI arguments](#cli-arguments) |
@@ -101,7 +101,7 @@ cat README.md | npu translate --language french
 > [!IMPORTANT]
 > Unknown keys are **rejected**, not ignored — at the top level, under `[input]`, under
 > `[args.*]` and under `[output]`. A typo like `moed = "file"` would otherwise fall back to the
-> default silently, so `npu summarize README.md` would read stdin instead of your file without a
+> default silently, so `gko summarize README.md` would read stdin instead of your file without a
 > word of warning.
 
 ---
@@ -128,12 +128,12 @@ it only goes to a model whose operation speaks `transcriptions` (see
 an MCP tool. It shares the 64 MiB input cap.
 
 ```sh
-npu transcribe memo.wav
+gko transcribe memo.wav
 ```
 
 ```sh
-cat ticket.md | npu classify      # stdin
-npu classify ticket.md            # file
+cat ticket.md | gko classify      # stdin
+gko classify ticket.md            # file
 ```
 
 ---
@@ -219,11 +219,11 @@ The rules are those of [`[schemas]`](output.md#schemas-in-the-prompt):
 - An id the table does not declare is rejected at load time.
 - The file is read only when the command runs, before its input is read. Missing, unreadable or
   not UTF-8, it is a configuration error (exit `2`) naming the command file and the partial.
-  `npu doctor` checks every declared partial in advance.
+  `gko doctor` checks every declared partial in advance.
 - A partial is inserted **verbatim** and may not contain a closed placeholder itself: one level,
   no recursion. A partial containing `{{ input }}` is rejected, naming the partial file.
 
-`npu describe` lists a command's partials with their resolved paths, and `--dry-run` shows the
+`gko describe` lists a command's partials with their resolved paths, and `--dry-run` shows the
 rendered request with the partials inserted.
 
 ### Two deliberate constraints
@@ -242,7 +242,7 @@ rendered request with the partials inserted.
 > rendered without it, so declaring it optional is a contradiction in the file. It is rejected at
 > load rather than silently promoted — honouring configuration differently from how it is
 > declared is exactly what this project avoids. Rejecting it at load also lets
-> [`npu describe`](cli.md) and [`npu doctor`](cli.md) see the file is broken *without running it*.
+> [`gko describe`](cli.md) and [`gko doctor`](cli.md) see the file is broken *without running it*.
 >
 > This constraint will stop making sense the day default values exist. It reflects the current
 > state, not a permanent truth.
@@ -287,7 +287,7 @@ placeholders — before the input is read.
 `system` cannot be blank (empty after trimming), and every example needs both non-empty `user`
 and `assistant` fields: a key present but pointless is read and rejected, not silently ignored.
 
-`npu describe` reports the raw `system` template (never resolved — `describe` documents the file,
+`gko describe` reports the raw `system` template (never resolved — `describe` documents the file,
 it does not run it) and the **count** of declared examples, never their content.
 
 ---
@@ -301,7 +301,7 @@ resolve command → collect arguments → check placeholders resolve
                 → read input → render prompt → call backend → apply output contract
 ```
 
-This ordering matters in a pipeline. Without it, `git diff | npu commit-message` would drain the
+This ordering matters in a pipeline. Without it, `git diff | gko commit-message` would drain the
 whole diff before failing on an unset environment variable — work lost, and a non-replayable
 input lost for good.
 

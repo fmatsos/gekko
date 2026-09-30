@@ -777,7 +777,7 @@ mod tests {
         let env = |_: &str| None;
 
         let err = preflight(
-            "{{ env.NPU_ABSENT }}: {{ input }}",
+            "{{ env.GKO_ABSENT }}: {{ input }}",
             &args,
             &env,
             &BTreeMap::new(),

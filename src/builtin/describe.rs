@@ -1,4 +1,4 @@
-//! `npu describe`: the JSON description of a built-in or a configured
+//! `gko describe`: the JSON description of a built-in or a configured
 //! command, consumed by calling agents rather than read by a human.
 
 use serde::Serialize;

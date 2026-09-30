@@ -395,7 +395,7 @@ fn transcription_prompt(messages: &[Message]) -> Option<&str> {
 fn multipart_body(model: &str, prompt: Option<&str>, upload: Upload<'_>) -> (String, Vec<u8>) {
     use sha2::Digest as _;
     let digest = sha2::Sha256::digest(upload.data);
-    let boundary: String = std::iter::once("npu-".to_string())
+    let boundary: String = std::iter::once("gko-".to_string())
         .chain(digest.iter().take(16).map(|byte| format!("{byte:02x}")))
         .collect();
     // A `"` or a line break would end the header early: the name is only a
@@ -864,7 +864,7 @@ mod tests {
     }
 
     /// A command declaring neither `system` nor `examples`
-    /// must produce a request body BYTE-IDENTICAL to what `npu` sent
+    /// must produce a request body BYTE-IDENTICAL to what `gko` sent
     /// before `system` and `examples` existed — a single-element `messages` array holding only
     /// the rendered body as a `user` message.
     #[test]

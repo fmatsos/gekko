@@ -6,7 +6,7 @@
 - [2. Choosing quantization parameters](#2-choosing-quantization-parameters)
 - [3. Serving the export with OVMS on the NPU](#3-serving-the-export-with-ovms-on-the-npu)
 - [4. Persisting the compilation cache](#4-persisting-the-compilation-cache)
-- [5. Wiring it into `npu`](#5-wiring-it-into-npu)
+- [5. Wiring it into `gko`](#5-wiring-it-into-gko)
 - [6. The GPU twin and the NPU fallback](#6-the-gpu-twin-and-the-npu-fallback)
 - [Troubleshooting](#troubleshooting)
 
@@ -14,17 +14,17 @@
 
 ## Overview
 
-`npu` drives any OpenAI-compatible backend; it knows nothing about OpenVINO, NPUs or
-quantization. This guide covers the part outside `npu`'s scope: producing a model export that
+`gko` drives any OpenAI-compatible backend; it knows nothing about OpenVINO, NPUs or
+quantization. This guide covers the part outside `gko`'s scope: producing a model export that
 compiles and runs correctly on an Intel NPU through
 [OpenVINO Model Server](https://github.com/openvinotoolkit/model_server) (OVMS), using
 [`optimum-intel`](https://github.com/huggingface/optimum-intel)'s `optimum-cli`.
 
 The pipeline has three independent stages, and a problem in any of them looks like a problem in
-the next one — worth isolating before assuming `npu` or OVMS is at fault:
+the next one — worth isolating before assuming `gko` or OVMS is at fault:
 
 ```text
-optimum-cli export  →  OVMS serves the export  →  npu sends chat requests to OVMS
+optimum-cli export  →  OVMS serves the export  →  gko sends chat requests to OVMS
      (export bug)          (deployment bug)              (client bug)
 ```
 
@@ -98,7 +98,7 @@ chose; export your own when the NPU needs specific settings, which it usually do
 >
 > This is not a hypothetical: exporting `Qwen2.5-Coder-3B-Instruct` with `--group-size -1` produced
 > a model that answered every prompt with `"2\n2\n2\n..."`, confirmed to be the model itself —
-> not `npu`, not OVMS — by running the export directly through `optimum-intel` on CPU, bypassing
+> not `gko`, not OVMS — by running the export directly through `optimum-intel` on CPU, bypassing
 > both. Re-exporting with `--group-size 128` (same `--sym --ratio 1.0` otherwise) fixed it.
 
 ### Verifying an export before deploying it
@@ -126,7 +126,7 @@ print(tok.decode(out[0], skip_special_tokens=True))
 ```
 
 Coherent output here means the export is sound; anything wrong afterwards is in the OVMS
-deployment or the `npu` backend configuration, not the model.
+deployment or the `gko` backend configuration, not the model.
 
 ---
 
@@ -173,7 +173,7 @@ docker run -d --name ovms -p 8000:8000 \
 
 | Flag | Why |
 | --- | --- |
-| `--model_name` + `--model_path` | the documented way to serve an already-prepared local directory. **Not `--source_model`**: on a directory exported locally by `optimum-cli` (no git metadata), it fails every time with `Unable to open file: .../graph.pbtxt` even when that file is present and readable — reproduced directly against OVMS, independently of `npu` |
+| `--model_name` + `--model_path` | the documented way to serve an already-prepared local directory. **Not `--source_model`**: on a directory exported locally by `optimum-cli` (no git metadata), it fails every time with `Unable to open file: .../graph.pbtxt` even when that file is present and readable — reproduced directly against OVMS, independently of `gko` |
 | no `--target_device` | deliberate: step 3a already baked it into `graph.pbtxt`. Passing it here is not how this serve path picks a device |
 | `--device /dev/accel` | exposes the NPU device node inside the container |
 | `--device /dev/dri` + `--group-add <render-gid>` | needed alongside `/dev/accel` on most setups for the accelerator to actually be detected — omitting them shows `Available devices: CPU` in the logs, not an error |
@@ -205,9 +205,9 @@ rm -f ~/models/.ov_cache/*.blob ~/models/.ov_cache/*.cl_cache
 
 ---
 
-## 5. Wiring it into `npu`
+## 5. Wiring it into `gko`
 
-None of the above is `npu`-specific — it is plain OVMS and Docker configuration, declared in a
+None of the above is `gko`-specific — it is plain OVMS and Docker configuration, declared in a
 backend's `[docker]` table exactly as documented in
 [Starting a backend with Docker](configuration.md#starting-a-backend-with-docker):
 
@@ -231,8 +231,8 @@ args = [
 ```
 
 `{{ args.model }}` resolves to the model's `model` field — the export directory name under
-`/models` — so `npu backend serve <model-id>` starts OVMS pointed at the right export without any
-NPU-specific logic in `npu` itself. A slow accelerator can also need more time than the client's
+`/models` — so `gko backend serve <model-id>` starts OVMS pointed at the right export without any
+NPU-specific logic in `gko` itself. A slow accelerator can also need more time than the client's
 default request timeout; see `[timeouts]` in
 [Configuration](configuration.md#timeouts-optional).
 
@@ -242,7 +242,7 @@ default request timeout; see `[timeouts]` in
 
 An NPU-compiled graph has a **static maximum prompt length**. A prompt past it is refused in
 milliseconds with `400 ... Input length exceeds the maximum allowed length` — a clean, exact
-signal, which is what `npu`'s
+signal, which is what `gko`'s
 [`fallback`](configuration.md#fallback-optional) key acts on: it retries the same prompt once on
 another model. Pointing that at a GPU-served twin makes the ceiling disappear from the user's
 point of view.
@@ -264,12 +264,12 @@ docker run --rm --user "$(id -u):$(id -g)" -v ~/models:/models:rw \
     --task text_generation --target_device GPU
 ```
 
-Serving it needs a **second backend**: its own port, and its own container, since `npu` names a
-container `npu-<backend-id>`. Compared with the NPU backend, drop `--device /dev/accel` — the GPU
+Serving it needs a **second backend**: its own port, and its own container, since `gko` names a
+container `gko-<backend-id>`. Compared with the NPU backend, drop `--device /dev/accel` — the GPU
 only needs `/dev/dri` and the render group — and give it a different port through the
 [`port`](configuration.md#port-optional) key, which is read as `{{ backend.port }}` in both
 `base_url` and `-p` so the two cannot diverge. `port = "auto"` lets Docker allocate one,
-which is usually what you want here: nothing outside `npu` connects to the twin, and `npu backend status`
+which is usually what you want here: nothing outside `gko` connects to the twin, and `gko backend status`
 prints the resolved URL. It does make Docker a prerequisite for running commands on that backend,
 not just for its lifecycle. The two models then read:
 
@@ -294,7 +294,7 @@ Two consequences of the symlinks, both silent:
   message: `Number of prompt tokens: N exceeds model max length: M`. Only the first message is
   recoverable by a fallback.
 
-The `npu-export` skill performs this whole section automatically.
+The `gko-export` skill performs this whole section automatically.
 
 ---
 
@@ -303,17 +303,17 @@ The `npu-export` skill performs this whole section automatically.
 | Symptom | Likely stage | Check |
 | --- | --- | --- |
 | Coherent-looking startup, but every response is repetitive garbage | export | run the CPU verification in [§2](#verifying-an-export-before-deploying-it); if it reproduces there, the export is broken, not the deployment |
-| `curl` straight to OVMS reproduces the same garbage as through `npu` | not `npu` | the client did its job faithfully; look at the export and the OVMS logs, not `backend.rs` |
+| `curl` straight to OVMS reproduces the same garbage as through `gko` | not `gko` | the client did its job faithfully; look at the export and the OVMS logs, not `backend.rs` |
 | OVMS logs show `Available devices: CPU` | deployment | `--device`/`--group-add`/`--user` are missing or wrong; the NPU was never reached |
 | `Cache directory /cache is not writable` | deployment | the container's `--user` cannot write the bind-mounted cache directory |
-| `Unable to open file: .../graph.pbtxt` right after `npu backend serve` starts | deployment | either [§3a](#3a-bake-the-device-into-the-export) was skipped, or the backend serves with `--source_model`, which fails this way on a local export whatever the file's state — use `--model_name`/`--model_path`. The same message when running `--configure` itself means it ran as the image's own user (uid 5000) and cannot *create* the file: re-run it with `--user "$(id -u):$(id -g)"` |
+| `Unable to open file: .../graph.pbtxt` right after `gko backend serve` starts | deployment | either [§3a](#3a-bake-the-device-into-the-export) was skipped, or the backend serves with `--source_model`, which fails this way on a local export whatever the file's state — use `--model_name`/`--model_path`. The same message when running `--configure` itself means it ran as the image's own user (uid 5000) and cannot *create* the file: re-run it with `--user "$(id -u):$(id -g)"` |
 | `400 ... Input length exceeds the maximum allowed length` | deployment | the prompt is past the NPU graph's static shape. Recoverable: declare a `fallback` onto a GPU twin, [§6](#6-the-gpu-twin-and-the-npu-fallback) |
 | `400 ... Number of prompt tokens: N exceeds model max length: M` | not the device | the model's own context window, shared by every device and by the GPU twin. A fallback cannot help; shorten the input or use a longer-context model |
-| a JSON answer cut mid-way (exit `4`, `EOF while parsing`), `prompt_tokens + completion_tokens` stopping at 1152 | deployment | the NPU graph still has OVMS's default static context (1024 prompt + 128 answer tokens). Size it from the model and the host with `npu backend tune`, which writes `MAX_PROMPT_LEN`/`MIN_RESPONSE_LEN` at the root of `plugin_config` in `graph.pbtxt` and aligns `max_tokens`; re-run it after any re-export or `--configure` |
+| a JSON answer cut mid-way (exit `4`, `EOF while parsing`), `prompt_tokens + completion_tokens` stopping at 1152 | deployment | the NPU graph still has OVMS's default static context (1024 prompt + 128 answer tokens). Size it from the model and the host with `gko backend tune`, which writes `MAX_PROMPT_LEN`/`MIN_RESPONSE_LEN` at the root of `plugin_config` in `graph.pbtxt` and aligns `max_tokens`; re-run it after any re-export or `--configure` |
 | The NPU model answers on the CPU/GPU instead, or vice versa | deployment | `graph.pbtxt`'s `device:` field is what OVMS obeys; `grep device ~/models/<export>/graph.pbtxt` and re-run `--configure` with the right `--target_device` |
 | Compilation takes minutes instead of seconds | export | the export is asymmetric (`--sym` missing) or the OVMS/image version changed and invalidated the cache |
 | Fast on one machine, minutes on another for the "same" model | deployment | a floating image tag (`:latest-gpu`) resolved to a different OpenVINO version; pin the tag |
 
-Each row is independently verifiable — reproduce with `curl` to rule `npu` in or out, reproduce on
+Each row is independently verifiable — reproduce with `curl` to rule `gko` in or out, reproduce on
 CPU with `optimum-intel` to rule the export in or out, and check the OVMS container logs before
 assuming either.

@@ -538,11 +538,11 @@ mod tests {
     #[test]
     fn error_format_from_args_reads_the_value() {
         assert_eq!(
-            error_format_from_args(["npu", "--error-format", "json", "x"]),
+            error_format_from_args(["gko", "--error-format", "json", "x"]),
             ErrorFormat::Json
         );
         assert_eq!(
-            error_format_from_args(["npu", "--error-format=json", "x"]),
+            error_format_from_args(["gko", "--error-format=json", "x"]),
             ErrorFormat::Json
         );
     }
@@ -552,11 +552,11 @@ mod tests {
     #[test]
     fn error_format_from_args_stops_at_a_double_dash() {
         assert_eq!(
-            error_format_from_args(["npu", "--", "--error-format", "json"]),
+            error_format_from_args(["gko", "--", "--error-format", "json"]),
             ErrorFormat::Text
         );
         assert_eq!(
-            error_format_from_args(["npu", "--error-format", "json", "--", "x"]),
+            error_format_from_args(["gko", "--error-format", "json", "--", "x"]),
             ErrorFormat::Json,
             "a value read BEFORE the -- is still honoured"
         );
@@ -564,18 +564,18 @@ mod tests {
 
     #[test]
     fn error_format_from_args_defaults_to_text() {
-        assert_eq!(error_format_from_args(["npu", "x"]), ErrorFormat::Text);
+        assert_eq!(error_format_from_args(["gko", "x"]), ErrorFormat::Text);
         assert_eq!(
-            error_format_from_args(["npu", "--error-format", "not-a-format"]),
+            error_format_from_args(["gko", "--error-format", "not-a-format"]),
             ErrorFormat::Text
         );
     }
 
     #[test]
     fn render_clap_usage_error_json_is_one_line_valid_json_naming_the_kind() {
-        let cli = clap::Command::new("npu").subcommand(clap::Command::new("x"));
+        let cli = clap::Command::new("gko").subcommand(clap::Command::new("x"));
         let err = cli
-            .try_get_matches_from(["npu", "does-not-exist"])
+            .try_get_matches_from(["gko", "does-not-exist"])
             .expect_err("an unknown subcommand must be a clap usage error");
 
         let rendered = render_clap_usage_error(&err, ErrorFormat::Json);
@@ -588,9 +588,9 @@ mod tests {
 
     #[test]
     fn render_clap_usage_error_text_is_clap_s_own_rendering() {
-        let cli = clap::Command::new("npu").subcommand(clap::Command::new("x"));
+        let cli = clap::Command::new("gko").subcommand(clap::Command::new("x"));
         let err = cli
-            .try_get_matches_from(["npu", "does-not-exist"])
+            .try_get_matches_from(["gko", "does-not-exist"])
             .expect_err("an unknown subcommand must be a clap usage error");
 
         let rendered = render_clap_usage_error(&err, ErrorFormat::Text);

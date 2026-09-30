@@ -152,7 +152,7 @@
       "type": "object"
     }
   },
-  "description": "Structural schema: `npu config check` is authoritative.",
+  "description": "Structural schema: `gko config check` is authoritative.",
   "properties": {
     "args": {
       "additionalProperties": {
@@ -199,6 +199,6 @@
   "required": [
     "model"
   ],
-  "title": "npu command frontmatter",
+  "title": "gko command frontmatter",
   "type": "object"
 }

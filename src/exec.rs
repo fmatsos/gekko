@@ -183,7 +183,7 @@ fn would_stream(spec: &crate::command::CommandSpec, stdout_is_terminal: bool) ->
         && !matches!(spec.input, crate::command::InputMode::Binary)
 }
 
-/// `npu <command> --dry-run`'s whole job: build the exact request `chat`
+/// `gko <command> --dry-run`'s whole job: build the exact request `chat`
 /// would send to the PRIMARY model (never the fallback — a dry run shows
 /// what would be tried first), through the same [`crate::backend::build_request`]
 /// constructor `chat` itself uses, then print it as JSON and return without
@@ -373,7 +373,7 @@ const BINARY_ONLY_FOR_TRANSCRIPTIONS: &str =
 /// Rejects a command whose keys the protocol of `model`'s operation cannot
 /// honour, naming the command file and the model. Checked when the command
 /// runs, not when it is loaded: `--model` can swap in a model of another
-/// protocol. `npu doctor` runs the same check on every command.
+/// protocol. `gko doctor` runs the same check on every command.
 pub(crate) fn check_protocol(
     spec: &crate::command::CommandSpec,
     model: &crate::config::Model,
@@ -667,7 +667,7 @@ pub(crate) fn execute_mcp_command(
 /// `{{ input }}` is worth: `prompt::preflight` therefore checks it BEFORE
 /// `input::resolve`, which is the only step of this pipeline liable to
 /// consume a non-replayable input (a pipe, a one-shot command).
-/// Without this order, `git diff | npu ...` would
+/// Without this order, `git diff | gko ...` would
 /// read and discard the whole diff before failing on a missing optional
 /// argument or an undefined environment variable — a silent loss, and on a
 /// non-replayable stream an irreversible one, of the work already produced
@@ -1020,7 +1020,7 @@ mod tests {
 
     /// Same idiom as [`stub_backend`], but hands the raw request body it
     /// received back to the caller through the returned channel, so a test
-    /// can assert on the exact `messages` array `npu` sent.
+    /// can assert on the exact `messages` array `gko` sent.
     fn stub_backend_capturing_body(
         body: &'static str,
     ) -> (
@@ -1748,7 +1748,7 @@ mod tests {
             description: "desc x".to_string(),
             model: "qwen-fast".to_string(),
             input: crate::command::InputMode::Stdin,
-            prompt: "{{ env.NPU_TEST_UNSET }} {{ input }}".to_string(),
+            prompt: "{{ env.GKO_TEST_UNSET }} {{ input }}".to_string(),
             args: std::collections::BTreeMap::new(),
             output: crate::output::OutputSpec::default(),
             schemas: std::collections::BTreeMap::new(),
@@ -1760,7 +1760,7 @@ mod tests {
         }];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
 
@@ -1781,7 +1781,7 @@ mod tests {
         .expect_err("a prompt referencing an undefined environment variable must be rejected");
 
         assert!(matches!(err, Error::Config(_)));
-        assert!(err.to_string().contains("NPU_TEST_UNSET"));
+        assert!(err.to_string().contains("GKO_TEST_UNSET"));
     }
 
     /// Same invariant as above, but for a backend `[headers]` value
@@ -1794,7 +1794,7 @@ mod tests {
         let mut backend = backend_at("b", "http://127.0.0.1:9".to_string());
         backend.headers.insert(
             "Authorization".to_string(),
-            "Bearer {{ env.NPU_TEST_UNSET_HEADER_VAR }}".to_string(),
+            "Bearer {{ env.GKO_TEST_UNSET_HEADER_VAR }}".to_string(),
         );
         let mut config = config::Config::default();
         config.backends.insert("b".to_string(), backend);
@@ -1819,7 +1819,7 @@ mod tests {
         }];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
 
@@ -1840,7 +1840,7 @@ mod tests {
         .expect_err("a header referencing an undefined environment variable must be rejected");
 
         assert!(matches!(err, Error::Config(_)));
-        assert!(err.to_string().contains("NPU_TEST_UNSET_HEADER_VAR"));
+        assert!(err.to_string().contains("GKO_TEST_UNSET_HEADER_VAR"));
     }
 
     /// Spec: `chat_with_fallback` streaming a couple of deltas (so `emitted`
@@ -1947,7 +1947,7 @@ mod tests {
         }];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
 
@@ -2011,7 +2011,7 @@ mod tests {
         }];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
 
@@ -2073,14 +2073,14 @@ mod tests {
             output: crate::output::OutputSpec::default(),
             schemas: std::collections::BTreeMap::new(),
             partials: std::collections::BTreeMap::new(),
-            system: Some("{{ env.NPU_TEST_UNSET_SYSTEM_VAR }}".to_string()),
+            system: Some("{{ env.GKO_TEST_UNSET_SYSTEM_VAR }}".to_string()),
             examples: Vec::new(),
             generation: None,
             file: std::path::PathBuf::new(),
         }];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
 
@@ -2101,7 +2101,7 @@ mod tests {
         .expect_err("a system referencing an undefined environment variable must be rejected");
 
         assert!(matches!(err, Error::Config(_)));
-        assert!(err.to_string().contains("NPU_TEST_UNSET_SYSTEM_VAR"));
+        assert!(err.to_string().contains("GKO_TEST_UNSET_SYSTEM_VAR"));
     }
 
     /// `strip_reasoning = true` must disable streaming even when
@@ -2146,7 +2146,7 @@ mod tests {
         }];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
 
@@ -2240,7 +2240,7 @@ mod tests {
         )];
         let cli = crate::cli::build_cli(&specs);
         let matches = cli
-            .try_get_matches_from(["npu", "x"])
+            .try_get_matches_from(["gko", "x"])
             .expect("the command line must be accepted");
         let (_, leaf_matches) = crate::cli::selected_path(&matches);
         let read_input =
@@ -2305,7 +2305,7 @@ mod tests {
             )];
             let cli = crate::cli::build_cli(&specs);
             let matches = cli
-                .try_get_matches_from(["npu", "x"])
+                .try_get_matches_from(["gko", "x"])
                 .expect("the command line must be accepted");
             let (_, leaf_matches) = crate::cli::selected_path(&matches);
             let read_input = |_: &crate::command::InputMode, _: Option<&std::path::Path>| {

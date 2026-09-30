@@ -1,6 +1,6 @@
 //! Self-update support backed by GitHub Release assets.
 //!
-//! Every release publishes `npu-update.json` plus one uncompressed executable
+//! Every release publishes `gko-update.json` plus one uncompressed executable
 //! per supported platform. The manifest is the stable contract between old
 //! binaries and future releases: it identifies the release, maps the running
 //! platform to an asset, and authenticates the downloaded bytes with SHA-256.
@@ -19,7 +19,7 @@ use sha2::{Digest, Sha256};
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const MANIFEST_URL: &str =
-    "https://github.com/fmatsos/npu/releases/latest/download/npu-update.json";
+    "https://github.com/fmatsos/npu/releases/latest/download/gko-update.json";
 const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/fmatsos/npu/releases/download";
 const MANIFEST_LIMIT: u64 = 1024 * 1024;
 const BINARY_LIMIT: u64 = 100 * 1024 * 1024;
@@ -44,7 +44,7 @@ struct Asset {
     sha256: String,
 }
 
-/// Result printed by `npu update` on stdout.
+/// Result printed by `gko update` on stdout.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Outcome {
     /// The running binary is the same version as, or newer than, the release.
@@ -57,13 +57,13 @@ impl std::fmt::Display for Outcome {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Outcome::UpToDate { current, latest } if current == latest => {
-                write!(f, "npu {current} is already up to date")
+                write!(f, "gko {current} is already up to date")
             }
             Outcome::UpToDate { current, latest } => {
-                write!(f, "npu {current} is newer than latest release {latest}")
+                write!(f, "gko {current} is newer than latest release {latest}")
             }
             Outcome::Updated { previous, current } => {
-                write!(f, "updated npu from {previous} to {current}")
+                write!(f, "updated gko from {previous} to {current}")
             }
         }
     }
@@ -137,7 +137,7 @@ fn parse_version(value: &str, source: &str) -> crate::Result<Version> {
 }
 
 fn validate_asset(asset: &Asset) -> crate::Result<()> {
-    if !asset.name.starts_with("npu-")
+    if !asset.name.starts_with("gko-")
         || asset.name.contains('/')
         || asset.name.contains('\\')
         || asset.name.contains("..")
@@ -185,7 +185,7 @@ fn download(agent: &ureq::Agent, url: &str, limit: u64) -> crate::Result<Vec<u8>
 
     let mut response = agent
         .get(url)
-        .header("User-Agent", concat!("npu/", env!("CARGO_PKG_VERSION")))
+        .header("User-Agent", concat!("gko/", env!("CARGO_PKG_VERSION")))
         .call()
         .map_err(|err| crate::Error::Update(format!("downloading {url} failed: {err}")))?;
 
@@ -295,9 +295,9 @@ mod tests {
 
     #[test]
     fn update_downloads_verifies_and_replaces_the_platform_asset() {
-        let binary = b"new npu binary";
+        let binary = b"new gko binary";
         let manifest = format!(
-            r#"{{"schema_version":1,"version":"0.2.0","assets":{{"x86_64-unknown-linux-gnu":{{"name":"npu-x86_64-unknown-linux-gnu","sha256":"{}"}}}}}}"#,
+            r#"{{"schema_version":1,"version":"0.2.0","assets":{{"x86_64-unknown-linux-gnu":{{"name":"gko-x86_64-unknown-linux-gnu","sha256":"{}"}}}}}}"#,
             sha256_hex(binary)
         );
         let requested = RefCell::new(Vec::new());
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(
             requested.borrow()[1],
             (
-                "https://github.com/fmatsos/npu/releases/download/v0.2.0/npu-x86_64-unknown-linux-gnu"
+                "https://github.com/fmatsos/npu/releases/download/v0.2.0/gko-x86_64-unknown-linux-gnu"
                     .to_string(),
                 BINARY_LIMIT,
             )
@@ -359,7 +359,7 @@ mod tests {
         )
         .expect("an up-to-date binary should succeed");
 
-        assert_eq!(outcome.to_string(), "npu 0.1.0 is already up to date");
+        assert_eq!(outcome.to_string(), "gko 0.1.0 is already up to date");
         assert_eq!(calls.into_inner(), 1);
     }
 
@@ -377,12 +377,12 @@ mod tests {
         )
         .expect("an unknown manifest field should not fail the update");
 
-        assert_eq!(outcome.to_string(), "npu 0.1.0 is already up to date");
+        assert_eq!(outcome.to_string(), "gko 0.1.0 is already up to date");
     }
 
     #[test]
     fn checksum_mismatch_is_rejected_before_replacement() {
-        let manifest = br#"{"schema_version":1,"version":"0.2.0","assets":{"x86_64-unknown-linux-gnu":{"name":"npu-x86_64-unknown-linux-gnu","sha256":"0000000000000000000000000000000000000000000000000000000000000000"}}}"#;
+        let manifest = br#"{"schema_version":1,"version":"0.2.0","assets":{"x86_64-unknown-linux-gnu":{"name":"gko-x86_64-unknown-linux-gnu","sha256":"0000000000000000000000000000000000000000000000000000000000000000"}}}"#;
         let replaced = RefCell::new(false);
 
         let err = update_with(
@@ -422,7 +422,7 @@ mod tests {
     #[test]
     fn unsafe_asset_name_is_rejected() {
         let asset = Asset {
-            name: "../../npu".to_string(),
+            name: "../../gko".to_string(),
             sha256: "0".repeat(64),
         };
         let err = validate_asset(&asset).expect_err("path traversal must be rejected");

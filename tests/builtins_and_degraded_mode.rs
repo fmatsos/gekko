@@ -1,8 +1,8 @@
 //! End-to-end verification of the built-ins and the degraded mode — the
 //! REAL binary
-//! (`env!("CARGO_BIN_EXE_npu")`), never a function called directly in this
+//! (`env!("CARGO_BIN_EXE_gko")`), never a function called directly in this
 //! test process, with temporary scopes mounted via `$XDG_CONFIG_HOME` (same
-//! idiom as `run_npu_xdg`/`fixture_cwd_without_local_scope` in
+//! idiom as `run_gko_xdg`/`fixture_cwd_without_local_scope` in
 //! `tests/output_contract_e2e.rs`).
 //!
 //! Two scenario families:
@@ -24,10 +24,10 @@
 //! `builtin::tests::tcp_probe_fails_against_a_closed_port`), never a
 //! hardcoded port number.
 //!
-//! `HOME` is redirected to a temporary directory without `.config/npu` for
+//! `HOME` is redirected to a temporary directory without `.config/gko` for
 //! each invocation, `$XDG_CONFIG_HOME` points to the temporary scope written
 //! by the test: only that scope root is taken into account by
-//! `scope::roots()`, never the real `$HOME` nor an `/etc/npu` that might
+//! `scope::roots()`, never the real `$HOME` nor an `/etc/gko` that might
 //! otherwise exist on the machine. `Command::env`/`env_remove` only touch
 //! the CHILD PROCESS's environment: no test mutates the real environment
 //! variables (`std::env::set_var` is `unsafe` in edition 2024, forbidden by
@@ -62,12 +62,12 @@ fn write(dir: &Path, rel: &str, contents: &str) {
     std::fs::write(path, contents).expect("writing the fixture");
 }
 
-/// Runs the REAL `npu` binary with `$XDG_CONFIG_HOME` pointed at
-/// `xdg_config_home` and `cwd` (deliberately without a local `.npu`) as the
-/// current directory — same idiom as `run_npu_xdg` in
+/// Runs the REAL `gko` binary with `$XDG_CONFIG_HOME` pointed at
+/// `xdg_config_home` and `cwd` (deliberately without a local `.gko`) as the
+/// current directory — same idiom as `run_gko_xdg` in
 /// `tests/output_contract_e2e.rs`.
-fn run_npu(cwd: &Path, xdg_config_home: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_npu"))
+fn run_gko(cwd: &Path, xdg_config_home: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd)
@@ -78,9 +78,9 @@ fn run_npu(cwd: &Path, xdg_config_home: &Path, args: &[&str]) -> Output {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary")
+        .expect("launching the gko binary")
         .wait_with_output()
-        .expect("waiting for the npu process to finish")
+        .expect("waiting for the gko process to finish")
 }
 
 fn stdout_of(output: &Output) -> String {
@@ -91,26 +91,26 @@ fn stderr_of(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-/// Writes a `$XDG_CONFIG_HOME/npu` scope whose `backends/ovms.toml` is
+/// Writes a `$XDG_CONFIG_HOME/gko` scope whose `backends/ovms.toml` is
 /// unreadable TOML (a PARSING failure, therefore fatal even when masked:
 /// unlike a command, a broken backend has no knowable identity before it
 /// is parsed).
 fn write_broken_scope(xdg_root: &Path) {
     write(
         xdg_root,
-        "npu/backends/ovms.toml",
+        "gko/backends/ovms.toml",
         "this is not valid TOML { { {\n",
     );
 }
 
-/// Writes a HEALTHY `$XDG_CONFIG_HOME/npu` scope: an `ovms` backend pointing
+/// Writes a HEALTHY `$XDG_CONFIG_HOME/gko` scope: an `ovms` backend pointing
 /// at `base_url`, a `qwen-fast` model, and the `commit-message` command
 /// (text format, no schema — `doctor`'s check (e) must not produce anything
 /// for it).
 fn write_healthy_scope(xdg_root: &Path, base_url: &str) {
     write(
         xdg_root,
-        "npu/backends/ovms.toml",
+        "gko/backends/ovms.toml",
         &format!(
             r#"
             id = "ovms"
@@ -125,7 +125,7 @@ fn write_healthy_scope(xdg_root: &Path, base_url: &str) {
     );
     write(
         xdg_root,
-        "npu/models/qwen-fast.toml",
+        "gko/models/qwen-fast.toml",
         r#"
         id = "qwen-fast"
         backend = "ovms"
@@ -135,7 +135,7 @@ fn write_healthy_scope(xdg_root: &Path, base_url: &str) {
     );
     write(
         xdg_root,
-        "npu/commands/commit-message.md",
+        "gko/commands/commit-message.md",
         "---\ndescription = \"Generate a commit message\"\nmodel = \"qwen-fast\"\n---\n\
          {{ input }}\n",
     );
@@ -152,11 +152,11 @@ fn broken_config_help_still_works_and_lists_builtins_with_stderr_signal() {
     let cwd = fixture_dir("broken-help-cwd");
     write_broken_scope(&xdg);
 
-    let output = run_npu(&cwd, &xdg, &["--help"]);
+    let output = run_gko(&cwd, &xdg, &["--help"]);
 
     assert!(
         output.status.success(),
-        "PROOF (a): npu --help must succeed (exit 0) despite a broken configuration, \
+        "PROOF (a): gko --help must succeed (exit 0) despite a broken configuration, \
          got code {:?}; stderr: {}",
         output.status.code(),
         stderr_of(&output)
@@ -189,7 +189,7 @@ fn broken_config_help_still_works_and_lists_builtins_with_stderr_signal() {
     let stderr = stderr_of(&output);
     assert!(
         stderr.contains("doctor"),
-        "PROOF (a): stderr must point to \"npu doctor\", got: {stderr}"
+        "PROOF (a): stderr must point to \"gko doctor\", got: {stderr}"
     );
 }
 
@@ -201,16 +201,16 @@ fn broken_config_version_still_prints_the_release_version() {
     let cwd = fixture_dir("broken-version-cwd");
     write_broken_scope(&xdg);
 
-    let output = run_npu(&cwd, &xdg, &["--version"]);
+    let output = run_gko(&cwd, &xdg, &["--version"]);
 
     assert!(
         output.status.success(),
-        "npu --version must succeed despite a broken configuration; stderr: {}",
+        "gko --version must succeed despite a broken configuration; stderr: {}",
         stderr_of(&output)
     );
     assert_eq!(
         stdout_of(&output),
-        format!("npu {}\n", env!("CARGO_PKG_VERSION"))
+        format!("gko {}\n", env!("CARGO_PKG_VERSION"))
     );
     // `--version` never reads the configuration: warning about it would be noise.
     assert!(stderr_of(&output).is_empty(), "got: {}", stderr_of(&output));
@@ -225,7 +225,7 @@ fn broken_config_schema_still_prints_every_schema_as_json() {
     write_broken_scope(&xdg);
 
     for kind in ["backend", "model", "command", "test"] {
-        let output = run_npu(&cwd, &xdg, &["config", "schema", kind]);
+        let output = run_gko(&cwd, &xdg, &["config", "schema", kind]);
         assert_eq!(
             output.status.code(),
             Some(0),
@@ -237,12 +237,12 @@ fn broken_config_schema_still_prints_every_schema_as_json() {
         assert!(schema.get("properties").is_some(), "{kind}: got {schema}");
     }
 
-    let output = run_npu(&cwd, &xdg, &["config", "schema", "nope"]);
+    let output = run_gko(&cwd, &xdg, &["config", "schema", "nope"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
 }
 
-/// (b) Same broken configuration: `npu doctor` exits with code 2 and its
+/// (b) Same broken configuration: `gko doctor` exits with code 2 and its
 /// report, on STDOUT, describes the load error.
 #[test]
 fn broken_config_doctor_reports_load_error_on_stdout_with_exit_code_two() {
@@ -250,12 +250,12 @@ fn broken_config_doctor_reports_load_error_on_stdout_with_exit_code_two() {
     let cwd = fixture_dir("broken-doctor-cwd");
     write_broken_scope(&xdg);
 
-    let output = run_npu(&cwd, &xdg, &["doctor"]);
+    let output = run_gko(&cwd, &xdg, &["doctor"]);
 
     assert_eq!(
         output.status.code(),
         Some(2),
-        "PROOF (b): npu doctor must exit with code 2 on a broken configuration, stderr: {}",
+        "PROOF (b): gko doctor must exit with code 2 on a broken configuration, stderr: {}",
         stderr_of(&output)
     );
     let stdout = stdout_of(&output);
@@ -289,7 +289,7 @@ fn broken_config_any_other_invocation_exits_with_code_two() {
 
     // Mechanism 1: rejected by `clap` itself (no business command in the
     // tree in degraded mode), not a propagation of `loaded?`.
-    let business = run_npu(&cwd, &xdg, &["commit-message"]);
+    let business = run_gko(&cwd, &xdg, &["commit-message"]);
     assert_eq!(
         business.status.code(),
         Some(2),
@@ -307,31 +307,31 @@ fn broken_config_any_other_invocation_exits_with_code_two() {
     // stderr must carry the PRESERVED load error, not a generic message,
     // otherwise this test would not distinguish this path from mechanism 1
     // above.
-    let models = run_npu(&cwd, &xdg, &["config", "models"]);
+    let models = run_gko(&cwd, &xdg, &["config", "models"]);
     assert_eq!(
         models.status.code(),
         Some(2),
-        "PROOF (c): npu models must propagate the load error (via loaded?), code 2, stderr: {}",
+        "PROOF (c): gko models must propagate the load error (via loaded?), code 2, stderr: {}",
         stderr_of(&models)
     );
     assert!(
         stderr_of(&models).contains("ovms.toml"),
-        "PROOF (c): stderr of npu models must name the offending configuration file (proof \
+        "PROOF (c): stderr of gko models must name the offending configuration file (proof \
          that it is indeed the PRESERVED load error being propagated), got: {}",
         stderr_of(&models)
     );
 
     // Same proof as `models`, for `describe`.
-    let describe = run_npu(&cwd, &xdg, &["describe", "commit-message"]);
+    let describe = run_gko(&cwd, &xdg, &["describe", "commit-message"]);
     assert_eq!(
         describe.status.code(),
         Some(2),
-        "PROOF (c): npu describe must propagate the load error (via loaded?), code 2, stderr: {}",
+        "PROOF (c): gko describe must propagate the load error (via loaded?), code 2, stderr: {}",
         stderr_of(&describe)
     );
     assert!(
         stderr_of(&describe).contains("ovms.toml"),
-        "PROOF (c): stderr of npu describe must name the offending configuration file, got: {}",
+        "PROOF (c): stderr of gko describe must name the offending configuration file, got: {}",
         stderr_of(&describe)
     );
 }
@@ -351,7 +351,7 @@ fn closed_port_base_url() -> String {
     format!("http://{addr}")
 }
 
-/// (d) HEALTHY configuration but dead backend (closed port): `npu doctor`
+/// (d) HEALTHY configuration but dead backend (closed port): `gko doctor`
 /// exits with code 3 (never 2: the configuration itself is valid), and the
 /// report shows the configuration checks succeeding and reachability
 /// failing.
@@ -361,18 +361,18 @@ fn healthy_config_with_dead_backend_doctor_exits_three_with_reachability_failure
     let cwd = fixture_dir("healthy-dead-backend-cwd");
     write_healthy_scope(&xdg, &closed_port_base_url());
 
-    let output = run_npu(&cwd, &xdg, &["doctor"]);
+    let output = run_gko(&cwd, &xdg, &["doctor"]);
 
     assert_eq!(
         output.status.code(),
         Some(3),
-        "PROOF (d): npu doctor must exit with code 3 (unreachable backend, valid config), \
+        "PROOF (d): gko doctor must exit with code 3 (unreachable backend, valid config), \
          stderr: {}",
         stderr_of(&output)
     );
 }
 
-/// (e) Healthy configuration, `npu models`: exit 0, stdout contains
+/// (e) Healthy configuration, `gko models`: exit 0, stdout contains
 /// `qwen-fast`, `ovms` and `chat` (NAME/BACKEND/OPERATION columns).
 #[test]
 fn healthy_config_models_lists_configured_model_with_its_backend_and_operation() {
@@ -382,11 +382,11 @@ fn healthy_config_models_lists_configured_model_with_its_backend_and_operation()
     // does not resolve to a real service is enough.
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["config", "models"]);
+    let output = run_gko(&cwd, &xdg, &["config", "models"]);
 
     assert!(
         output.status.success(),
-        "PROOF (e): npu models must succeed (exit 0), stderr: {}",
+        "PROOF (e): gko models must succeed (exit 0), stderr: {}",
         stderr_of(&output)
     );
     let stdout = stdout_of(&output);
@@ -395,7 +395,7 @@ fn healthy_config_models_lists_configured_model_with_its_backend_and_operation()
     assert!(stdout.contains("chat"), "got: {stdout}");
 }
 
-/// (f) Healthy configuration, `npu describe commit-message`: exit 0, stdout
+/// (f) Healthy configuration, `gko describe commit-message`: exit 0, stdout
 /// is parsable JSON describing the command.
 #[test]
 fn healthy_config_describe_produces_parsable_json_for_a_known_command() {
@@ -403,11 +403,11 @@ fn healthy_config_describe_produces_parsable_json_for_a_known_command() {
     let cwd = fixture_dir("healthy-describe-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["describe", "commit-message"]);
+    let output = run_gko(&cwd, &xdg, &["describe", "commit-message"]);
 
     assert!(
         output.status.success(),
-        "PROOF (f): npu describe commit-message must succeed (exit 0), stderr: {}",
+        "PROOF (f): gko describe commit-message must succeed (exit 0), stderr: {}",
         stderr_of(&output)
     );
     let stdout = stdout_of(&output);
@@ -424,17 +424,17 @@ fn healthy_config_describe_produces_parsable_json_for_a_known_command() {
     assert!(file.ends_with("commit-message.md"), "got: {file}");
     assert_eq!(
         value["source"]["scope"].as_str(),
-        Some(xdg.join("npu").display().to_string().as_str())
+        Some(xdg.join("gko").display().to_string().as_str())
     );
 }
 
-// -- (g)/(h): `npu serve` -----------------------------------------------------
+// -- (g)/(h): `gko serve` -----------------------------------------------------
 //
 // None of these scenarios requires Docker: both go through a configuration
 // error, detected before any process is spawned. What is proven here is the
 // exit code and the PURITY of stdout, never the wording of a message.
 
-/// (g) `npu serve` on an unknown model: configuration error (exit 2), and
+/// (g) `gko serve` on an unknown model: configuration error (exit 2), and
 /// stdout stays empty — the container identifier is the only thing this
 /// command ever writes there.
 #[test]
@@ -443,7 +443,7 @@ fn healthy_config_serve_unknown_model_exits_two_with_empty_stdout() {
     let cwd = fixture_dir("serve-unknown-model-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["backend", "serve", "absent"]);
+    let output = run_gko(&cwd, &xdg, &["backend", "serve", "absent"]);
 
     assert_eq!(
         output.status.code(),
@@ -462,7 +462,7 @@ fn healthy_config_serve_unknown_model_exits_two_with_empty_stdout() {
     );
 }
 
-/// (h) `npu serve` on a model whose backend declares no `[docker]` table:
+/// (h) `gko serve` on a model whose backend declares no `[docker]` table:
 /// configuration error (exit 2), stdout empty, and the message names the
 /// backend that cannot be started. The scope written by
 /// `write_healthy_scope` deliberately has no `[docker]` table.
@@ -472,7 +472,7 @@ fn healthy_config_serve_backend_without_docker_exits_two_with_empty_stdout() {
     let cwd = fixture_dir("serve-no-docker-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["backend", "serve", "qwen-fast"]);
+    let output = run_gko(&cwd, &xdg, &["backend", "serve", "qwen-fast"]);
 
     assert_eq!(
         output.status.code(),
@@ -493,7 +493,7 @@ fn healthy_config_serve_backend_without_docker_exits_two_with_empty_stdout() {
 
 // -- (i)/(j)/(k): lifecycle and verbosity -------------------------------------
 
-/// (i) `npu stop` on a model whose backend declares no `[docker]` table:
+/// (i) `gko stop` on a model whose backend declares no `[docker]` table:
 /// configuration error (exit 2), stdout empty. Like (h), nothing is spawned.
 #[test]
 fn healthy_config_stop_backend_without_docker_exits_two_with_empty_stdout() {
@@ -501,19 +501,19 @@ fn healthy_config_stop_backend_without_docker_exits_two_with_empty_stdout() {
     let cwd = fixture_dir("stop-no-docker-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["backend", "stop", "qwen-fast"]);
+    let output = run_gko(&cwd, &xdg, &["backend", "stop", "qwen-fast"]);
 
     assert_eq!(
         output.status.code(),
         Some(2),
-        "PROOF (i): npu only manages the containers it starts, stderr: {}",
+        "PROOF (i): gko only manages the containers it starts, stderr: {}",
         stderr_of(&output)
     );
     assert!(output.stdout.is_empty(), "PROOF (i): stdout must be empty");
     assert!(stderr_of(&output).contains("ovms"));
 }
 
-/// (j) `npu status` on a configuration without a single containerized
+/// (j) `gko status` on a configuration without a single containerized
 /// backend: exit 0 and a header on stdout — never an empty output, which
 /// would be indistinguishable from a command that did nothing. No container
 /// runtime is contacted, since there is no backend to ask about.
@@ -523,11 +523,11 @@ fn healthy_config_status_without_containerized_backend_still_prints_its_header()
     let cwd = fixture_dir("status-empty-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["backend", "status"]);
+    let output = run_gko(&cwd, &xdg, &["backend", "status"]);
 
     assert!(
         output.status.success(),
-        "PROOF (j): npu status must succeed, stderr: {}",
+        "PROOF (j): gko status must succeed, stderr: {}",
         stderr_of(&output)
     );
     assert!(
@@ -546,9 +546,9 @@ fn verbose_changes_stderr_only_and_never_stdout() {
     let cwd = fixture_dir("verbose-cwd");
     write_broken_scope(&xdg);
 
-    let default_level = run_npu(&cwd, &xdg, &["--help"]);
-    let silenced = run_npu(&cwd, &xdg, &["--verbose", "error", "--help"]);
-    let verbose = run_npu(&cwd, &xdg, &["--verbose", "info", "--help"]);
+    let default_level = run_gko(&cwd, &xdg, &["--help"]);
+    let silenced = run_gko(&cwd, &xdg, &["--verbose", "error", "--help"]);
+    let verbose = run_gko(&cwd, &xdg, &["--verbose", "info", "--help"]);
 
     assert!(
         !stderr_of(&default_level).is_empty(),
@@ -579,8 +579,8 @@ fn broken_config_config_check_matches_doctor() {
     let cwd = fixture_dir("broken-config-check-cwd");
     write_broken_scope(&xdg);
 
-    let doctor = run_npu(&cwd, &xdg, &["doctor"]);
-    let check = run_npu(&cwd, &xdg, &["config", "check"]);
+    let doctor = run_gko(&cwd, &xdg, &["doctor"]);
+    let check = run_gko(&cwd, &xdg, &["config", "check"]);
 
     assert_eq!(check.status.code(), Some(2));
     assert_eq!(stdout_of(&check), stdout_of(&doctor));
@@ -602,9 +602,9 @@ fn removed_top_level_built_ins_are_unknown_commands_with_empty_stdout() {
         &["models"],
         &["version"],
     ] {
-        let output = run_npu(&cwd, &xdg, args);
-        assert_eq!(output.status.code(), Some(2), "npu {args:?}");
-        assert!(output.stdout.is_empty(), "npu {args:?} wrote on stdout");
+        let output = run_gko(&cwd, &xdg, args);
+        assert_eq!(output.status.code(), Some(2), "gko {args:?}");
+        assert!(output.stdout.is_empty(), "gko {args:?} wrote on stdout");
     }
 }
 
@@ -617,11 +617,11 @@ fn a_command_named_status_is_a_business_command() {
     write_healthy_scope(&xdg, &closed_port_base_url());
     write(
         &xdg,
-        "npu/commands/status.md",
+        "gko/commands/status.md",
         "---\ndescription = \"Summarize a status\"\nmodel = \"qwen-fast\"\n---\n{{ input }}\n",
     );
 
-    let output = run_npu(&cwd, &xdg, &["status"]);
+    let output = run_gko(&cwd, &xdg, &["status"]);
 
     assert_eq!(
         output.status.code(),
@@ -641,7 +641,7 @@ fn broken_config_describe_still_describes_a_built_in() {
     let cwd = fixture_dir("broken-describe-cwd");
     write_broken_scope(&xdg);
 
-    let output = run_npu(&cwd, &xdg, &["describe", "backend", "serve"]);
+    let output = run_gko(&cwd, &xdg, &["describe", "backend", "serve"]);
 
     assert!(output.status.success(), "stderr: {}", stderr_of(&output));
     let value: serde_json::Value =
@@ -651,12 +651,12 @@ fn broken_config_describe_still_describes_a_built_in() {
     assert_eq!(value["args"]["MODEL"]["required"], true);
     assert_eq!(value["degraded_mode"], false);
 
-    let doctor = run_npu(&cwd, &xdg, &["describe", "doctor"]);
+    let doctor = run_gko(&cwd, &xdg, &["describe", "doctor"]);
     let value: serde_json::Value =
         serde_json::from_str(stdout_of(&doctor).trim()).expect("stdout must be JSON");
     assert_eq!(value["degraded_mode"], true);
 
-    let custom = run_npu(&cwd, &xdg, &["describe", "commit-message"]);
+    let custom = run_gko(&cwd, &xdg, &["describe", "commit-message"]);
     assert_eq!(custom.status.code(), Some(2));
     assert!(custom.stdout.is_empty());
 }
@@ -668,7 +668,7 @@ fn describe_unknown_path_exits_two_naming_it() {
     let cwd = fixture_dir("describe-unknown-cwd");
     write_healthy_scope(&xdg, &closed_port_base_url());
 
-    let output = run_npu(&cwd, &xdg, &["describe", "backend", "nope"]);
+    let output = run_gko(&cwd, &xdg, &["describe", "backend", "nope"]);
 
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
@@ -688,7 +688,7 @@ fn help_lists_configured_commands_and_built_ins_in_separate_sections() {
     let cwd = fixture_dir("help-sections-cwd");
     write_healthy_scope(&xdg, &closed_port_base_url());
 
-    let output = run_npu(&cwd, &xdg, &["--help"]);
+    let output = run_gko(&cwd, &xdg, &["--help"]);
 
     assert!(output.status.success());
     let stdout = stdout_of(&output);
@@ -714,7 +714,7 @@ fn help_lists_configured_commands_and_built_ins_in_separate_sections() {
 }
 
 /// Progress indicators are for a terminal: through a pipe — how every test,
-/// and every program driving npu, sees it — stderr carries no escape
+/// and every program driving gko, sees it — stderr carries no escape
 /// sequence and no carriage return, even while a model is being waited on.
 #[test]
 fn no_indicator_reaches_a_non_terminal_stderr() {
@@ -722,7 +722,7 @@ fn no_indicator_reaches_a_non_terminal_stderr() {
     let cwd = fixture_dir("no-indicator-cwd");
     write_healthy_scope(&xdg, &closed_port_base_url());
 
-    let output = run_npu(&cwd, &xdg, &["--verbose", "info", "commit-message"]);
+    let output = run_gko(&cwd, &xdg, &["--verbose", "info", "commit-message"]);
 
     assert_eq!(output.status.code(), Some(3));
     assert!(output.stdout.is_empty());
@@ -736,7 +736,7 @@ fn no_indicator_reaches_a_non_terminal_stderr() {
     );
 }
 
-/// `npu help <path…>` is `npu <path…> --help`; an unknown path is a usage
+/// `gko help <path…>` is `gko <path…> --help`; an unknown path is a usage
 /// error with nothing on stdout. It works with a broken configuration too.
 #[test]
 fn help_prints_the_help_of_a_path_even_in_degraded_mode() {
@@ -744,8 +744,8 @@ fn help_prints_the_help_of_a_path_even_in_degraded_mode() {
     let cwd = fixture_dir("help-builtin-cwd");
     write_broken_scope(&xdg);
 
-    let direct = run_npu(&cwd, &xdg, &["backend", "serve", "--help"]);
-    let via_help = run_npu(&cwd, &xdg, &["help", "backend", "serve"]);
+    let direct = run_gko(&cwd, &xdg, &["backend", "serve", "--help"]);
+    let via_help = run_gko(&cwd, &xdg, &["help", "backend", "serve"]);
     assert!(
         via_help.status.success(),
         "stderr: {}",
@@ -753,7 +753,7 @@ fn help_prints_the_help_of_a_path_even_in_degraded_mode() {
     );
     assert_eq!(stdout_of(&via_help), stdout_of(&direct));
 
-    let unknown = run_npu(&cwd, &xdg, &["help", "nope"]);
+    let unknown = run_gko(&cwd, &xdg, &["help", "nope"]);
     assert_eq!(unknown.status.code(), Some(2));
     assert!(unknown.stdout.is_empty());
 }
@@ -767,10 +767,10 @@ fn no_colour_reaches_a_pipe() {
     write_healthy_scope(&xdg, &closed_port_base_url());
 
     for args in [&["doctor"][..], &["--help"], &["describe", "nope"]] {
-        let output = run_npu(&cwd, &xdg, args);
+        let output = run_gko(&cwd, &xdg, args);
         assert!(
             !output.stdout.contains(&0x1b) && !output.stderr.contains(&0x1b),
-            "npu {args:?} wrote an escape sequence"
+            "gko {args:?} wrote an escape sequence"
         );
     }
 }
@@ -804,7 +804,7 @@ fn tune_without_an_npu_export_exits_two_naming_the_directory_with_empty_stdout()
     let models = cwd.join("no-models-here");
 
     let dir = models.to_string_lossy().into_owned();
-    let output = run_npu(&cwd, &xdg, &["backend", "tune", "--models-dir", &dir]);
+    let output = run_gko(&cwd, &xdg, &["backend", "tune", "--models-dir", &dir]);
 
     assert_eq!(
         output.status.code(),
@@ -826,10 +826,10 @@ fn tune_writes_the_graph_and_max_tokens_unless_dry_run() {
     write_npu_export(&models);
     let dir = models.to_string_lossy().into_owned();
     let graph = models.join("qwen-fast-underlying/graph.pbtxt");
-    let model_file = xdg.join("npu/models/qwen-fast.toml");
+    let model_file = xdg.join("gko/models/qwen-fast.toml");
     let before = std::fs::read_to_string(&graph).expect("graph");
 
-    let dry = run_npu(
+    let dry = run_gko(
         &cwd,
         &xdg,
         &["backend", "tune", "--models-dir", &dir, "--dry-run"],
@@ -841,12 +841,12 @@ fn tune_writes_the_graph_and_max_tokens_unless_dry_run() {
     // the plan above, as key=value so a caller can parse them.
     assert!(dry_stdout.contains(&format!(
         "activation_tenths={}",
-        npu::vendor::openvino::graph::ACTIVATION_TENTHS
+        gekko::vendor::openvino::graph::ACTIVATION_TENTHS
     )));
-    assert!(dry_stdout.contains(&format!("step={}", npu::vendor::openvino::graph::STEP)));
+    assert!(dry_stdout.contains(&format!("step={}", gekko::vendor::openvino::graph::STEP)));
     assert_eq!(std::fs::read_to_string(&graph).expect("graph"), before);
 
-    let output = run_npu(
+    let output = run_gko(
         &cwd,
         &xdg,
         &[
@@ -874,7 +874,7 @@ fn tune_writes_the_graph_and_max_tokens_unless_dry_run() {
 
 // -- JSON reports, describe's index, --error-format --------------------------
 
-/// `npu doctor --json`: exit code unchanged, stdout is a JSON array whose
+/// `gko doctor --json`: exit code unchanged, stdout is a JSON array whose
 /// entries carry a machine-readable `kind`/`status` (never the label text).
 #[test]
 fn healthy_config_doctor_json_is_a_parsable_array_naming_kind_and_status() {
@@ -882,7 +882,7 @@ fn healthy_config_doctor_json_is_a_parsable_array_naming_kind_and_status() {
     let cwd = fixture_dir("json-doctor-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["doctor", "--json"]);
+    let output = run_gko(&cwd, &xdg, &["doctor", "--json"]);
     let stdout = stdout_of(&output);
     let checks: serde_json::Value =
         serde_json::from_str(stdout.trim()).expect("doctor --json must be valid JSON");
@@ -891,7 +891,7 @@ fn healthy_config_doctor_json_is_a_parsable_array_naming_kind_and_status() {
     assert!(checks.iter().any(|c| c["kind"] == "config"));
 }
 
-/// `npu config models --json`: a JSON array of objects with the same
+/// `gko config models --json`: a JSON array of objects with the same
 /// fields the table shows.
 #[test]
 fn healthy_config_models_json_lists_the_configured_model_as_an_object() {
@@ -899,7 +899,7 @@ fn healthy_config_models_json_lists_the_configured_model_as_an_object() {
     let cwd = fixture_dir("json-models-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["config", "models", "--json"]);
+    let output = run_gko(&cwd, &xdg, &["config", "models", "--json"]);
     assert!(output.status.success(), "stderr: {}", stderr_of(&output));
     let stdout = stdout_of(&output);
     let rows: serde_json::Value =
@@ -910,7 +910,7 @@ fn healthy_config_models_json_lists_the_configured_model_as_an_object() {
     assert_eq!(rows[0]["backend"], "ovms");
 }
 
-/// `npu backend status --json`: a JSON array, empty when no backend
+/// `gko backend status --json`: a JSON array, empty when no backend
 /// declares a runtime (same content as the text table's header-only case).
 #[test]
 fn healthy_config_status_json_is_an_empty_array_without_a_runtime() {
@@ -918,7 +918,7 @@ fn healthy_config_status_json_is_an_empty_array_without_a_runtime() {
     let cwd = fixture_dir("json-status-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["backend", "status", "--json"]);
+    let output = run_gko(&cwd, &xdg, &["backend", "status", "--json"]);
     assert!(output.status.success(), "stderr: {}", stderr_of(&output));
     let stdout = stdout_of(&output);
     let rows: serde_json::Value =
@@ -926,7 +926,7 @@ fn healthy_config_status_json_is_an_empty_array_without_a_runtime() {
     assert_eq!(rows.as_array().expect("array").len(), 0);
 }
 
-/// `npu describe` with no argument: exit 0, a JSON array covering both a
+/// `gko describe` with no argument: exit 0, a JSON array covering both a
 /// known built-in path and the configured business command.
 #[test]
 fn healthy_config_describe_with_no_argument_returns_the_index() {
@@ -934,7 +934,7 @@ fn healthy_config_describe_with_no_argument_returns_the_index() {
     let cwd = fixture_dir("json-describe-index-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["describe"]);
+    let output = run_gko(&cwd, &xdg, &["describe"]);
     assert!(output.status.success(), "stderr: {}", stderr_of(&output));
     let stdout = stdout_of(&output);
     let entries: serde_json::Value =
@@ -960,7 +960,7 @@ fn unknown_subcommand_with_error_format_json_is_a_one_line_envelope_on_stderr() 
     let cwd = fixture_dir("json-error-format-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["does-not-exist", "--error-format", "json"]);
+    let output = run_gko(&cwd, &xdg, &["does-not-exist", "--error-format", "json"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     let stderr = stderr_of(&output);
@@ -979,13 +979,13 @@ fn help_is_unaffected_by_error_format_json() {
     let cwd = fixture_dir("json-error-format-help-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["--error-format", "json", "--help"]);
+    let output = run_gko(&cwd, &xdg, &["--error-format", "json", "--help"]);
     assert!(output.status.success());
     assert!(!stdout_of(&output).is_empty());
     assert!(output.stderr.is_empty());
 }
 
-/// `npu backend --error-format json` (a group with no further word) is
+/// `gko backend --error-format json` (a group with no further word) is
 /// `clap`'s `DisplayHelpOnMissingArgumentOrSubcommand`: a genuine usage
 /// failure, not a help request, so it must get the same JSON envelope as
 /// any other usage error, keeping `clap`'s own exit code (2).
@@ -995,7 +995,7 @@ fn missing_subcommand_with_error_format_json_is_a_one_line_envelope_on_stderr() 
     let cwd = fixture_dir("json-error-format-missing-sub-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["backend", "--error-format", "json"]);
+    let output = run_gko(&cwd, &xdg, &["backend", "--error-format", "json"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     let stderr = stderr_of(&output);
@@ -1006,7 +1006,7 @@ fn missing_subcommand_with_error_format_json_is_a_one_line_envelope_on_stderr() 
     assert_eq!(envelope["kind"], "usage");
 }
 
-/// `npu help does-not-exist --error-format json`: the second, internal
+/// `gko help does-not-exist --error-format json`: the second, internal
 /// `clap` parse `help` performs must go through the same envelope as any
 /// other usage error, not always `clap`'s bare text.
 #[test]
@@ -1015,7 +1015,7 @@ fn help_of_an_unknown_path_with_error_format_json_is_a_one_line_envelope_on_stde
     let cwd = fixture_dir("json-error-format-help-unknown-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(
+    let output = run_gko(
         &cwd,
         &xdg,
         &["help", "does-not-exist", "--error-format", "json"],
@@ -1030,7 +1030,7 @@ fn help_of_an_unknown_path_with_error_format_json_is_a_one_line_envelope_on_stde
     assert_eq!(envelope["kind"], "usage");
 }
 
-/// `npu help backend --error-format json`: `backend` alone resolves to
+/// `gko help backend --error-format json`: `backend` alone resolves to
 /// `DisplayHelp` (the real help text), not a usage error, so it must be
 /// unaffected by `--error-format json` — same discipline as top-level
 /// `--help`.
@@ -1040,7 +1040,7 @@ fn help_of_a_known_path_with_error_format_json_is_unaffected() {
     let cwd = fixture_dir("json-error-format-help-known-cwd");
     write_healthy_scope(&xdg, "http://127.0.0.1:1");
 
-    let output = run_npu(&cwd, &xdg, &["help", "backend", "--error-format", "json"]);
+    let output = run_gko(&cwd, &xdg, &["help", "backend", "--error-format", "json"]);
     assert!(output.status.success());
     assert!(!stdout_of(&output).is_empty());
     assert!(output.stderr.is_empty());

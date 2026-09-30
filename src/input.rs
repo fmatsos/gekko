@@ -2,7 +2,7 @@
 
 use std::io::Read;
 
-/// The largest input `npu` reads: a prompt is sent whole to a local model,
+/// The largest input `gko` reads: a prompt is sent whole to a local model,
 /// and anything past this is a mistake (a binary, a disk image) rather than
 /// text a context window could hold.
 const MAX_INPUT_BYTES: u64 = 64 * 1024 * 1024;
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn file_mode_with_valid_path() {
         // Creates a temporary file in target/ with known content.
-        let test_file_path = std::path::Path::new("target/npu-input-test-file.txt");
+        let test_file_path = std::path::Path::new("target/gko-input-test-file.txt");
         let test_content = "Hello from test file\n";
 
         // Writes the file
@@ -130,7 +130,7 @@ mod tests {
         // Covers the `StdinOrFile` branch with a file given, distinct from
         // `File`: without this test, a `StdinOrFile` that ignored the file and
         // always read stdin would not be caught by any existing test.
-        let test_file_path = std::path::Path::new("target/npu-input-test-stdin-or-file.txt");
+        let test_file_path = std::path::Path::new("target/gko-input-test-stdin-or-file.txt");
         let test_content = "Hello from stdin_or_file test\n";
         std::fs::write(test_file_path, test_content).expect("test file write");
 
@@ -155,10 +155,10 @@ mod tests {
 
     #[test]
     fn a_missing_file_is_an_io_error_naming_the_path() {
-        let path = std::path::Path::new("target/npu-input-does-not-exist.txt");
+        let path = std::path::Path::new("target/gko-input-does-not-exist.txt");
         let err = resolve(&crate::command::InputMode::File, Some(path)).expect_err("missing");
         assert!(matches!(err, crate::Error::Io(_)));
-        assert!(err.to_string().contains("npu-input-does-not-exist.txt"));
+        assert!(err.to_string().contains("gko-input-does-not-exist.txt"));
     }
 
     #[test]

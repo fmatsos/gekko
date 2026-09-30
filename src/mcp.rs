@@ -258,10 +258,10 @@ impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {
         let info = ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_protocol_version(ProtocolVersion::V_2026_07_28)
-            .with_server_info(Implementation::new("npu", env!("CARGO_PKG_VERSION")));
+            .with_server_info(Implementation::new("gko", env!("CARGO_PKG_VERSION")));
         if let Some(error) = &self.state.load_error {
             info.with_instructions(format!(
-                "Configuration failed to load: {error}. Run npu doctor, then restart this server."
+                "Configuration failed to load: {error}. Run gko doctor, then restart this server."
             ))
         } else {
             info.with_instructions(
@@ -458,7 +458,7 @@ mod tests {
             server
                 .get_info()
                 .instructions
-                .is_some_and(|text| text.contains("npu doctor"))
+                .is_some_and(|text| text.contains("gko doctor"))
         );
     }
 

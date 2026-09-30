@@ -75,7 +75,7 @@ impl std::str::FromStr for Level {
 /// Needed because the CLI's first diagnostic (an unloadable configuration)
 /// is emitted before `get_matches()` — `clap`'s `--help` exits the process
 /// internally, so a warning printed after parsing would never appear for
-/// `npu --help`. Without this function, `--verbose error` would silence
+/// `gko --help`. Without this function, `--verbose error` would silence
 /// every trace except that one, and the flag would be lying.
 ///
 /// Deliberately permissive: an unknown or missing value falls back to
@@ -151,7 +151,7 @@ impl Logger {
                 Level::Info => crate::style::INFO,
             };
             let label = crate::style::paint(style, level.label());
-            crate::progress::suspend(|| anstream::eprintln!("npu: {label}: {message}"));
+            crate::progress::suspend(|| anstream::eprintln!("gko: {label}: {message}"));
         }
     }
 
@@ -223,16 +223,16 @@ mod tests {
 
     #[test]
     fn level_from_args_defaults_to_warn() {
-        assert_eq!(level_from_args(["npu", "classify"]), Level::Warn);
+        assert_eq!(level_from_args(["gko", "classify"]), Level::Warn);
     }
 
     #[test]
     fn level_from_args_reads_the_separated_and_joined_forms() {
-        assert_eq!(level_from_args(["npu", "--verbose", "info"]), Level::Info);
-        assert_eq!(level_from_args(["npu", "--verbose=error"]), Level::Error);
-        assert_eq!(level_from_args(["npu", "-v", "info"]), Level::Info);
-        assert_eq!(level_from_args(["npu", "-v=info"]), Level::Info);
-        assert_eq!(level_from_args(["npu", "-verror"]), Level::Error);
+        assert_eq!(level_from_args(["gko", "--verbose", "info"]), Level::Info);
+        assert_eq!(level_from_args(["gko", "--verbose=error"]), Level::Error);
+        assert_eq!(level_from_args(["gko", "-v", "info"]), Level::Info);
+        assert_eq!(level_from_args(["gko", "-v=info"]), Level::Info);
+        assert_eq!(level_from_args(["gko", "-verror"]), Level::Error);
     }
 
     /// `--` ends option parsing: a literal positional spelled `--verbose`
@@ -240,11 +240,11 @@ mod tests {
     #[test]
     fn level_from_args_stops_at_a_double_dash() {
         assert_eq!(
-            level_from_args(["npu", "--", "--verbose", "error"]),
+            level_from_args(["gko", "--", "--verbose", "error"]),
             Level::Warn
         );
         assert_eq!(
-            level_from_args(["npu", "--verbose", "error", "--", "x"]),
+            level_from_args(["gko", "--verbose", "error", "--", "x"]),
             Level::Error,
             "a value read BEFORE the -- is still honoured"
         );
@@ -254,14 +254,14 @@ mod tests {
     fn level_from_args_falls_back_on_an_unknown_value_instead_of_failing() {
         // clap diagnoses the invalid value itself, a few lines later: this
         // function must not turn a typo into a second error.
-        assert_eq!(level_from_args(["npu", "--verbose", "chatty"]), Level::Warn);
-        assert_eq!(level_from_args(["npu", "--verbose"]), Level::Warn);
+        assert_eq!(level_from_args(["gko", "--verbose", "chatty"]), Level::Warn);
+        assert_eq!(level_from_args(["gko", "--verbose"]), Level::Warn);
     }
 
     #[test]
     fn level_from_args_keeps_the_last_occurrence() {
         assert_eq!(
-            level_from_args(["npu", "--verbose", "info", "--verbose", "error"]),
+            level_from_args(["gko", "--verbose", "info", "--verbose", "error"]),
             Level::Error
         );
     }

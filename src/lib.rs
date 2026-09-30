@@ -35,8 +35,8 @@ pub use error::{Error, Result};
 /// Entry point of the library, called by `main`.
 ///
 /// Pipeline: resolving the scope roots
-/// (`scope::roots()`, from the most general to the most local — `/etc/npu`,
-/// then `$XDG_CONFIG_HOME/npu` or `$HOME/.config/npu`, then `./.npu`),
+/// (`scope::roots()`, from the most general to the most local — `/etc/gko`,
+/// then `$XDG_CONFIG_HOME/gko` or `$HOME/.config/gko`, then `./.gko`),
 /// loading and merging the configuration across these roots
 /// (`config::load_scopes`), discovering and merging the commands
 /// (`command::discover_scopes`), building the `clap` tree, resolving the
@@ -55,11 +55,11 @@ pub use error::{Error, Result};
 /// business commands ONLY if loading succeeded (otherwise
 /// `cli::build_cli(&[])`). Consequences:
 /// - `--help` ALWAYS works, even with a broken configuration;
-/// - a line on STDERR reports the load failure and points to `npu doctor`
+/// - a line on STDERR reports the load failure and points to `gko doctor`
 ///   — emitted BEFORE `cli.get_matches()`, because `--help` exits via
 ///   `clap`'s internal `std::process::exit` without ever returning through
 ///   the rest of this function (cf. `tests/clap_error_stdout_purity.rs`);
-/// - `npu doctor` ALWAYS runs (before any other branch) and reports the
+/// - `gko doctor` ALWAYS runs (before any other branch) and reports the
 ///   kept load error as a failed check (cf. `builtin::doctor`);
 /// - `--version` and `update` run without the configuration, just like `doctor`;
 /// - any OTHER invocation (business command, `models`, `serve`, `stop`,
@@ -71,7 +71,7 @@ pub use error::{Error, Result};
 ///
 /// Exit code carried by the return type: `Ok(0)` (ordinary success,
 /// including a business command), `Ok(code)` for `code != 0` is the exit
-/// code of a REPORT (`npu doctor` — cf. `builtin::doctor_exit_code` — this
+/// code of a REPORT (`gko doctor` — cf. `builtin::doctor_exit_code` — this
 /// is not an engine failure, just a diagnostic that is not entirely green),
 /// and `Err` remains reserved for pipeline failures (`Error::exit_code`).
 /// `main` translates the three cases; it is `run` that writes `doctor`'s
@@ -81,7 +81,7 @@ pub use error::{Error, Result};
 pub fn run() -> Result<i32> {
     // FIRST, before any log or print: `CompleteEnv::complete`'s own
     // warning is "stdout should not be written to before this has had a
-    // chance to run" — `COMPLETE=bash npu ...` IS the completion request,
+    // chance to run" — `COMPLETE=bash gko ...` IS the completion request,
     // and it writes the completion script to stdout itself, exiting the
     // process, when the environment variable is set; a silent no-op
     // otherwise. No built-in, no reserved name: `CLAUDE.md` forbids adding
@@ -104,7 +104,7 @@ pub fn run() -> Result<i32> {
         // on stdout (contract rule: stdout is reserved for the result) —
         // this line is an ENGINE diagnostic, not a command result.
         logger.warn(&format!(
-            "invalid configuration ({err}); run \"npu doctor\" for details on the failed checks"
+            "invalid configuration ({err}); run \"gko doctor\" for details on the failed checks"
         ));
     }
 
@@ -116,7 +116,7 @@ pub fn run() -> Result<i32> {
         cli::builtins::add_builtins(cli::build_cli(specs_for_cli)),
         loaded.is_err(),
     );
-    // Kept for `npu help`, which re-parses `<path> --help` through it.
+    // Kept for `gko help`, which re-parses `<path> --help` through it.
     let help_cli = cli.clone();
     let matches = match cli.try_get_matches() {
         Ok(matches) => matches,
@@ -397,7 +397,7 @@ fn run_backend_lifecycle(
 /// this factory is `Fn() -> clap::Command`, so it repeats that same
 /// loading independently rather than sharing `run`'s own `loaded`, which
 /// does not exist yet at this point (cf. this function's doc: it must run
-/// before anything else). `--config-dir`/`NPU_CONFIG_DIR` are read again
+/// before anything else). `--config-dir`/`GKO_CONFIG_DIR` are read again
 /// here for the same reason: the project scope must be known before the
 /// commands it declares can be listed for completion.
 /// The tree is built with `cli::builtins::add_builtins` directly, NEVER
@@ -407,9 +407,9 @@ fn run_backend_lifecycle(
 /// "Commands:" section — a presentation concern with no bearing here. A
 /// `clap_complete` engine reads that same `hide` flag to decide what to
 /// offer, so completing through the hidden tree would silently drop every
-/// built-in group (`backend`, `config`, ...) from `npu <TAB>`.
+/// built-in group (`backend`, `config`, ...) from `gko <TAB>`.
 /// The command line being completed. A dynamic completion request is
-/// `npu -- npu <words…>`: the first `--` is the completion transport, not
+/// `gko -- gko <words…>`: the first `--` is the completion transport, not
 /// the argument terminator, so it is dropped here before the raw scanners
 /// (which stop at `--`) read the words. Anything that is not a completion
 /// request is returned as is.
@@ -440,7 +440,7 @@ fn complete_env() -> clap_complete::CompleteEnv<'static, impl Fn() -> clap::Comm
 /// Reads everything `run` needs from the RAW command line, before `clap`
 /// parses anything: the diagnostic level (`log::level_from_args`), the
 /// error-envelope format (`error::error_format_from_args`) and the
-/// `--config-dir`/`NPU_CONFIG_DIR` override (the CLI flag wins over the
+/// `--config-dir`/`GKO_CONFIG_DIR` override (the CLI flag wins over the
 /// environment variable when both are set) — the project scope is resolved
 /// to LOAD the configuration, before the `clap` tree built FROM that
 /// configuration even exists. `progress::init` also happens here: it must
@@ -455,7 +455,7 @@ fn read_raw_args() -> (log::Logger, error::ErrorFormat, Option<std::path::PathBu
     (logger, error_format, config_dir_override)
 }
 
-/// `npu describe [COMMAND…]`, once the configuration has LOADED (`run`'s
+/// `gko describe [COMMAND…]`, once the configuration has LOADED (`run`'s
 /// pre-`loaded?` branch already handled a built-in path in degraded mode):
 /// with no argument, the index of every describable path (built-in and
 /// business, cf. `cli::builtins::describe_index`) — never an error naming a
@@ -484,7 +484,7 @@ fn describe_command(
 /// it. Only `--help`/`--version` keep `clap`'s own stdout rendering and
 /// exit `0` whatever `format` is, since they are not errors (cf.
 /// `error::ErrorFormat`'s doc).
-/// `DisplayHelpOnMissingArgumentOrSubcommand` (e.g. `npu backend` with no
+/// `DisplayHelpOnMissingArgumentOrSubcommand` (e.g. `gko backend` with no
 /// further word) is a USAGE failure, not a help request — it still exits
 /// `2` (`err.exit_code()`, `clap`'s own contract) but goes through the
 /// same envelope as any other usage error, or a calling agent would get
@@ -513,7 +513,7 @@ fn skips_config() -> bool {
 /// First argument that is neither a global flag (`--verbose`/`-v`,
 /// `--error-format`, `--config-dir`) nor its value, read from the RAW
 /// command line (cf. [`log::level_from_args`]). A global flag declared
-/// after the actual first word (e.g. `npu classify --verbose info`) is
+/// after the actual first word (e.g. `gko classify --verbose info`) is
 /// none of this function's concern: it only has to look PAST the flags
 /// that can precede the first word, same idiom as `level_from_args`,
 /// `error::error_format_from_args` and `scope::config_dir_from_args`.
@@ -545,10 +545,10 @@ mod first_word_tests {
 
     #[test]
     fn a_completion_request_keeps_the_config_dir_of_the_completed_line() {
-        let argv = ["npu", "--", "npu", "--config-dir", "/custom/.npu", "cl"].map(String::from);
+        let argv = ["gko", "--", "gko", "--config-dir", "/custom/.gko", "cl"].map(String::from);
         assert_eq!(
             crate::scope::config_dir_from_args(super::completed_line(argv)),
-            Some(std::path::PathBuf::from("/custom/.npu"))
+            Some(std::path::PathBuf::from("/custom/.gko"))
         );
     }
 
@@ -577,7 +577,7 @@ mod first_word_tests {
         assert_eq!(first(&["--verbose", "warn"]), None);
     }
 
-    /// `npu --error-format json --version` with a broken configuration must
+    /// `gko --error-format json --version` with a broken configuration must
     /// print no degraded-mode warning: `skips_config` reads `--version` as
     /// the first word, not `--error-format` or its value `json`.
     #[test]

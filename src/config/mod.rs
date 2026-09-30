@@ -1114,7 +1114,7 @@ mod tests {
         );
     }
 
-    /// `port = "auto"` cannot work here: npu has no way to ask a process
+    /// `port = "auto"` cannot work here: gko has no way to ask a process
     /// which port it ended up on. The configuration is wrong — exit 2, not
     /// a runtime that is merely down.
     #[test]
@@ -1169,7 +1169,7 @@ mod tests {
         assert!(message.contains("temperature"), "got: {message}");
     }
 
-    /// `npu serve` reads no input, so the placeholder can never resolve —
+    /// `gko serve` reads no input, so the placeholder can never resolve —
     /// in an argument as in an environment value.
     #[test]
     fn a_process_runtime_referencing_the_input_placeholder_is_rejected() {
@@ -1733,9 +1733,9 @@ mod tests {
     }
 
     #[test]
-    fn real_npu_fixture_still_parses() {
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".npu");
-        let config = load(&root).expect("the real .npu/ fixture must always load");
+    fn real_gko_fixture_still_parses() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".gko");
+        let config = load(&root).expect("the real .gko/ fixture must always load");
 
         let backend = config
             .backends
@@ -2126,7 +2126,7 @@ mod tests {
         let root = fixture_dir("headers-valid");
         write_headers_backend(
             &root,
-            r#"Authorization = "Bearer {{ env.NPU_TEST_TOKEN }}"
+            r#"Authorization = "Bearer {{ env.GKO_TEST_TOKEN }}"
                X-Org = "acme""#,
         );
 
@@ -2164,7 +2164,7 @@ mod tests {
         let root = fixture_dir("headers-content-type");
         write_headers_backend(&root, r#"content-TYPE = "text/plain""#);
 
-        let err = load(&root).expect_err("Content-Type is owned by npu");
+        let err = load(&root).expect_err("Content-Type is owned by gko");
         assert!(matches!(err, crate::Error::Config(_)));
         assert!(err.to_string().contains("h.toml"));
     }
@@ -2174,7 +2174,7 @@ mod tests {
         let root = fixture_dir("headers-content-length");
         write_headers_backend(&root, r#"Content-Length = "0""#);
 
-        let err = load(&root).expect_err("Content-Length is owned by npu");
+        let err = load(&root).expect_err("Content-Length is owned by gko");
         assert!(matches!(err, crate::Error::Config(_)));
     }
 
@@ -2208,12 +2208,12 @@ mod tests {
         let root = fixture_dir("headers-resolve");
         write_headers_backend(
             &root,
-            r#"Authorization = "Bearer {{ env.NPU_TEST_TOKEN }}""#,
+            r#"Authorization = "Bearer {{ env.GKO_TEST_TOKEN }}""#,
         );
         let config = load(&root).expect("must load");
         let backend = config.backends.get("h").expect("backend h");
 
-        let env = |name: &str| (name == "NPU_TEST_TOKEN").then(|| "s3cr3t".to_string());
+        let env = |name: &str| (name == "GKO_TEST_TOKEN").then(|| "s3cr3t".to_string());
         let resolved = backend::resolve_headers(backend, &env).expect("must resolve");
         assert_eq!(
             resolved.get("Authorization").map(String::as_str),
@@ -2226,7 +2226,7 @@ mod tests {
         let root = fixture_dir("headers-resolve-missing");
         write_headers_backend(
             &root,
-            r#"Authorization = "Bearer {{ env.NPU_TEST_TOKEN }}""#,
+            r#"Authorization = "Bearer {{ env.GKO_TEST_TOKEN }}""#,
         );
         let config = load(&root).expect("must load");
         let backend = config.backends.get("h").expect("backend h");
@@ -2241,7 +2241,7 @@ mod tests {
     #[test]
     fn resolve_headers_rejects_any_control_byte_but_keeps_htab() {
         let root = fixture_dir("headers-resolve-control");
-        write_headers_backend(&root, r#"X-Token = "{{ env.NPU_TEST_TOKEN }}""#);
+        write_headers_backend(&root, r#"X-Token = "{{ env.GKO_TEST_TOKEN }}""#);
         let config = load(&root).expect("must load");
         let backend = config.backends.get("h").expect("backend h");
 

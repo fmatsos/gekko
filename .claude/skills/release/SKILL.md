@@ -1,8 +1,8 @@
 ---
 name: release
-description: Cuts an `npu` release — decides the next version from the Conventional Commits since the last tag, writes the `CHANGELOG.md` section (Keep a Changelog headings, one bullet per commit, each linking to its commit and the whole section closing on a compare link), bumps `Cargo.toml`, commits, tags `vX.Y.Z` and pushes, which is what triggers the Release workflow that builds the binaries and publishes the GitHub release. Use it to release, to prepare a changelog, or to check what a release would contain.
+description: Cuts a `gko` release — decides the next version from the Conventional Commits since the last tag, writes the `CHANGELOG.md` section (Keep a Changelog headings, one bullet per commit, each linking to its commit and the whole section closing on a compare link), bumps `Cargo.toml`, commits, tags `vX.Y.Z` and pushes, which is what triggers the Release workflow that builds the binaries and publishes the GitHub release. Use it to release, to prepare a changelog, or to check what a release would contain.
 when_to_use: >
-  Trigger on "release npu", "cut a release", "publish a version", "bump the
+  Trigger on "release gko", "cut a release", "publish a version", "bump the
   version", "prepare the changelog", "what would go in the next release", or
   on any request naming a version number to ship.
 model: inherit
@@ -10,11 +10,11 @@ effort: high
 allowed-tools: Read Write Edit Grep Bash(git:*) Bash(make:*) Bash(gh:*) Bash(cargo:*)
 ---
 
-# Releasing `npu`
+# Releasing `gko`
 
 A release is a tag. Everything after it is automated: pushing `vX.Y.Z` runs
 `.github/workflows/release.yml`, which re-runs `make qa`, builds the six
-release archives and raw update binaries, generates `npu-update.json` with
+release archives and raw update binaries, generates `gko-update.json` with
 their SHA-256 checksums, and publishes the GitHub release with the notes taken
 from `CHANGELOG.md`. Your job is the part a machine cannot do — deciding the
 version and describing the change.
@@ -56,17 +56,17 @@ version and describing the change.
 
    ```sh
    # Cargo.toml: version = "X.Y.Z"
-   cargo update --workspace   # rewrites npu's own version in Cargo.lock
+   cargo update --workspace   # rewrites gko's own version in Cargo.lock
    ```
 
    `Cargo.lock` is committed and the workflow builds with `--locked`: a stale
    lockfile fails the release build, not the local one. The workflow also
    rejects a tag whose `vX.Y.Z` does not exactly match this package version;
-   that invariant keeps `npu update` from repeatedly installing a binary that
+   that invariant keeps `gko update` from repeatedly installing a binary that
    reports a different version from its release manifest.
 
-   Also update the quoted `$ npu --version` console blocks in `README.md` and
-   `docs/cli.md` to `npu X.Y.Z` — build the binary and paste what it actually
+   Also update the quoted `$ gko --version` console blocks in `README.md` and
+   `docs/cli.md` to `gko X.Y.Z` — build the binary and paste what it actually
    prints, never reconstruct it by hand. `tests/docs_quote_the_binary.rs`
    enforces the README block against `CARGO_PKG_VERSION`; nothing enforces
    the `docs/cli.md` one, so it only stays correct if this step is done.
@@ -97,7 +97,7 @@ version and describing the change.
 
 ## Choosing the number
 
-`npu` is pre-1.0, so the major stays `0` and a breaking change bumps the
+`gko` is pre-1.0, so the major stays `0` and a breaking change bumps the
 **minor**. Read the commits, not the diff:
 
 | Since the last tag | Next |
@@ -122,7 +122,7 @@ verbatim as the release notes, so what you write here *is* what readers get.
 ```markdown
 # Changelog
 
-Every notable change to `npu`, newest first. Versions follow
+Every notable change to Gekko (`gko`), newest first. Versions follow
 [semantic versioning](https://semver.org); pre-1.0, a breaking change bumps
 the minor.
 
@@ -130,7 +130,7 @@ the minor.
 
 ### Added
 
-- `npu serve`, `stop`, `status` and `logs`: the container lifecycle of a
+- `gko serve`, `stop`, `status` and `logs`: the container lifecycle of a
   backend declaring a `[docker]` table
   ([`aef66c0`](https://github.com/fmatsos/npu/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
 - `--verbose error|warn|info`, global, default `warn`; no level ever changes
@@ -145,7 +145,7 @@ the minor.
 
 ### Fixed
 
-- `npu-backend`'s skill description, cut short by an unquoted YAML scalar
+- `gko-backend`'s skill description, cut short by an unquoted YAML scalar
   ([`03b5ee5`](https://github.com/fmatsos/npu/commit/03b5ee5cddf07a7ec3cbe66c5032230d03c38ec8))
 
 **Full changelog**: [`v0.1.0...v0.2.0`](https://github.com/fmatsos/npu/compare/v0.1.0...v0.2.0)
@@ -210,6 +210,6 @@ workflows are authoritative:
 - [Exit codes](https://github.com/fmatsos/npu/blob/main/README.md#exit-codes) — the contract a
   release must not break silently
 
-Related skills: **npu-doctor** when the gate fails on a configuration issue.
+Related skills: **gko-doctor** when the gate fails on a configuration issue.
 
 <!-- model/effort: inherit/high — deciding a version and rewriting commits for a reader who has not seen them is judgement, and the tag it produces is not revocable. -->

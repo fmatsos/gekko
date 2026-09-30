@@ -1,5 +1,5 @@
 //! End-to-end verification of `--dry-run`: same idiom as
-//! `tests/backend_headers_e2e.rs` — a temporary `.npu/` scope, the real
+//! `tests/backend_headers_e2e.rs` — a temporary `.gko/` scope, the real
 //! binary launched as a child process.
 
 #![allow(clippy::expect_used)] // tolerated in tests (cf. Cargo.toml [lints.clippy]).
@@ -28,8 +28,8 @@ fn write(dir: &Path, rel: &str, contents: &str) {
     std::fs::write(path, contents).expect("writing the fixture");
 }
 
-fn run_npu(scope: &Path, args: &[&str]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+fn run_gko(scope: &Path, args: &[&str]) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(scope)
         .env("HOME", scope)
@@ -42,21 +42,21 @@ fn run_npu(scope: &Path, args: &[&str]) -> Output {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary");
+        .expect("launching the gko binary");
 
     {
         let stdin = child.stdin.as_mut().expect("stdin of the child process");
-        stdin.write_all(b"hello").expect("writing to npu's stdin");
+        stdin.write_all(b"hello").expect("writing to gko's stdin");
     }
     drop(child.stdin.take());
 
-    child.wait_with_output().expect("waiting for npu to exit")
+    child.wait_with_output().expect("waiting for gko to exit")
 }
 
 fn write_scope(scope: &Path, header_secret_env: &str) {
     write(
         scope,
-        ".npu/backends/stub.toml",
+        ".gko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -80,7 +80,7 @@ fn write_scope(scope: &Path, header_secret_env: &str) {
     );
     write(
         scope,
-        ".npu/models/test-model.toml",
+        ".gko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -90,7 +90,7 @@ fn write_scope(scope: &Path, header_secret_env: &str) {
     );
     write(
         scope,
-        ".npu/commands/e2e-cmd.md",
+        ".gko/commands/e2e-cmd.md",
         "---\nmodel = \"test-model\"\n---\n{{ input }}\n",
     );
 }
@@ -101,28 +101,28 @@ fn write_scope(scope: &Path, header_secret_env: &str) {
 #[test]
 fn dry_run_never_resolves_the_runtime_and_leaves_the_port_placeholder() {
     let scope = fixture_scope("port-auto");
-    write_scope(&scope, "NPU_TEST_DRY_RUN_SECRET");
+    write_scope(&scope, "GKO_TEST_DRY_RUN_SECRET");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(["e2e-cmd", "--dry-run"])
         .current_dir(&scope)
         .env("HOME", &scope)
         .env_remove("XDG_CONFIG_HOME")
         .env_remove("APPDATA")
         .env("PATH", &scope)
-        .env("NPU_TEST_DRY_RUN_SECRET", "s3cr3t-value")
+        .env("GKO_TEST_DRY_RUN_SECRET", "s3cr3t-value")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu");
+        .expect("launching gko");
     let mut child = output;
     {
         let stdin = child.stdin.as_mut().expect("stdin of the child process");
-        stdin.write_all(b"hello").expect("writing to npu's stdin");
+        stdin.write_all(b"hello").expect("writing to gko's stdin");
     }
     drop(child.stdin.take());
-    let output = child.wait_with_output().expect("waiting for npu");
+    let output = child.wait_with_output().expect("waiting for gko");
 
     assert!(
         output.status.success(),
@@ -156,23 +156,23 @@ fn dry_run_never_resolves_the_runtime_and_leaves_the_port_placeholder() {
 #[test]
 fn dry_run_redacts_header_values_but_keeps_their_names() {
     let scope = fixture_scope("redact");
-    write_scope(&scope, "NPU_TEST_DRY_RUN_SECRET_2");
+    write_scope(&scope, "GKO_TEST_DRY_RUN_SECRET_2");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(["e2e-cmd", "--dry-run"])
         .current_dir(&scope)
         .env("HOME", &scope)
         .env_remove("XDG_CONFIG_HOME")
         .env_remove("APPDATA")
         .env("PATH", &scope)
-        .env("NPU_TEST_DRY_RUN_SECRET_2", "s3cr3t-value")
+        .env("GKO_TEST_DRY_RUN_SECRET_2", "s3cr3t-value")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu")
+        .expect("launching gko")
         .wait_with_output()
-        .expect("waiting for npu");
+        .expect("waiting for gko");
 
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).expect("stdout must be UTF-8");
@@ -186,15 +186,15 @@ fn dry_run_redacts_header_values_but_keeps_their_names() {
     assert_ne!(report["headers"]["Authorization"], "s3cr3t-value");
 }
 
-/// `npu doctor --dry-run` and any built-in with `--dry-run`: usage error,
+/// `gko doctor --dry-run` and any built-in with `--dry-run`: usage error,
 /// exit 2, empty stdout — the flag is declared only on business command
 /// leaves, so clap itself rejects it elsewhere.
 #[test]
 fn dry_run_on_a_builtin_is_a_clap_usage_error() {
     let scope = fixture_scope("builtin");
-    write_scope(&scope, "NPU_TEST_DRY_RUN_SECRET_3");
+    write_scope(&scope, "GKO_TEST_DRY_RUN_SECRET_3");
 
-    let output = run_npu(&scope, &["doctor", "--dry-run"]);
+    let output = run_gko(&scope, &["doctor", "--dry-run"]);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
 }
@@ -204,29 +204,29 @@ fn dry_run_on_a_builtin_is_a_clap_usage_error() {
 #[test]
 fn dry_run_shows_the_inserted_partial_and_doctor_flags_a_missing_one() {
     let scope = fixture_scope("partial");
-    write_scope(&scope, "NPU_TEST_DRY_RUN_SECRET");
+    write_scope(&scope, "GKO_TEST_DRY_RUN_SECRET");
     // Without the header, whose variable this test does not set.
     write(
         &scope,
-        ".npu/backends/stub.toml",
+        ".gko/backends/stub.toml",
         "id = \"stub\"\nbase_url = \"http://127.0.0.1:9\"\ntype = \"openai-compatible\"\n\
          [operations.chat]\nmethod = \"POST\"\npath = \"/v1/chat/completions\"\n",
     );
     write(
         &scope,
-        ".npu/commands/styled.md",
+        ".gko/commands/styled.md",
         "---\nmodel = \"test-model\"\n[partials]\nstyle = \"style\"\n---\n\
          {{ partials.style }} {{ input }}\n",
     );
-    write(&scope, ".npu/partials/style.md", "Be terse.");
+    write(&scope, ".gko/partials/style.md", "Be terse.");
     write(
         &scope,
-        ".npu/commands/orphan.md",
+        ".gko/commands/orphan.md",
         "---\nmodel = \"test-model\"\n[partials]\nstyle = \"gone\"\n---\n\
          {{ partials.style }}\n",
     );
 
-    let output = run_npu(&scope, &["styled", "--dry-run"]);
+    let output = run_gko(&scope, &["styled", "--dry-run"]);
     assert!(
         output.status.success(),
         "stderr: {}",
@@ -236,7 +236,7 @@ fn dry_run_shows_the_inserted_partial_and_doctor_flags_a_missing_one() {
         serde_json::from_slice(&output.stdout).expect("dry-run report must be valid JSON");
     assert_eq!(report["body"]["messages"][0]["content"], "Be terse. hello");
 
-    let output = run_npu(&scope, &["doctor"]);
+    let output = run_gko(&scope, &["doctor"]);
     assert_eq!(output.status.code(), Some(2));
     let report = String::from_utf8(output.stdout).expect("stdout must be UTF-8");
     assert!(report.contains("orphan"), "got: {report}");

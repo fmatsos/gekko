@@ -23,7 +23,7 @@
 //! | Coder-3B | 20K | 11.0 GB |
 //!
 //! The formula lands within +0..+15 % of each: never under. Recalibrate on
-//! another NPU or OVMS version, and `npu backend tune --dry-run` prints the
+//! another NPU or OVMS version, and `gko backend tune --dry-run` prints the
 //! constants it used so a user on other hardware can see why the numbers
 //! are what they are.
 
@@ -190,7 +190,7 @@ impl Device {
     }
 }
 
-/// One model `npu backend tune` is about to plan a `graph.pbtxt` for.
+/// One model `gko backend tune` is about to plan a `graph.pbtxt` for.
 #[derive(Debug)]
 pub struct Planned {
     pub id: String,

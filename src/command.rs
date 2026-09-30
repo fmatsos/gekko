@@ -105,7 +105,7 @@ pub struct CommandSpec {
     /// doc) — the one field-by-field merge in the project, an explicit
     /// exception to "replacement, never merge".
     pub generation: Option<crate::config::Generation>,
-    /// Path of the source command file (e.g. `.npu/commands/classify.md`)
+    /// Path of the source command file (e.g. `.gko/commands/classify.md`)
     /// this `CommandSpec` was parsed from. Needed by `output::finalize`
     /// to name, at real execution time, the command
     /// file that requests a schema that is not found/readable/invalid —
@@ -703,7 +703,7 @@ fn convert_args(raw: BTreeMap<String, RawArgSpec>) -> crate::Result<BTreeMap<Str
 /// early as `discover_scopes`/`discover`, before even the
 /// clap tree is built in `build_cli` (see `cli::mod`), would make a schema
 /// missing for a SINGLE command, even a general command nobody ever
-/// invokes, make `npu --help` fail for the whole CLI —
+/// invokes, make `gko --help` fail for the whole CLI —
 /// strictly WORSE than a schema present but syntactically
 /// broken, which stays tolerated: schema compilation
 /// (`output::compile_schema`) is LAZY by design (see `output.rs`'s doc),
@@ -716,7 +716,7 @@ fn convert_args(raw: BTreeMap<String, RawArgSpec>) -> crate::Result<BTreeMap<Str
 /// principle as for a broken backend/model shadowed
 /// by a more local scope: a broken element belonging to a command nobody
 /// invokes must never disable the whole CLI. Exhaustively checking every
-/// schema of every scope, invoked or not, is `npu doctor`'s job,
+/// schema of every scope, invoked or not, is `gko doctor`'s job,
 /// not this function's — DO NOT reinstate an existence check here thinking
 /// you're fixing an oversight: that would reintroduce exactly the bug
 /// this design eliminates.
@@ -966,7 +966,7 @@ const LEGACY_FRONTMATTER_DELIMITER: &str = "+++";
 ///
 /// The frontmatter is delimited by `---` lines; the header is TOML, the
 /// body (after the second delimiter) is the prompt. `scope_root` is the
-/// scope root (e.g. `./.npu`) this command file comes
+/// scope root (e.g. `./.gko`) this command file comes
 /// from: it is used ONLY to resolve a possible relative
 /// `[output].schema`, never for anything
 /// else here. Resolving the schema path needs
@@ -1106,7 +1106,7 @@ pub fn parse(
     // configuration differently from how it is declared (a key read then
     // ignored, or a value reinterpreted, is a defect).
     //
-    // The underlying reason: `npu doctor`/`npu describe` must
+    // The underlying reason: `gko doctor`/`gko describe` must
     // be able to say that a command file is broken WITHOUT invoking it. A
     // file whose prompt can never be rendered (whatever the call) is
     // broken; rejecting it at load time makes it detectable for free,
@@ -1601,7 +1601,7 @@ mod tests {
     fn nested_reserved_name_segment_is_valid() {
         // The rejection only applies to
         // the FIRST segment. `commands/git/describe.md` gives
-        // `npu git describe`, which conflicts with nothing.
+        // `gko git describe`, which conflicts with nothing.
         let root = fixture_dir("reserved-nested-valid");
         write_command(&root, "git/describe", "qwen-fast", "prompt");
 
@@ -2060,7 +2060,7 @@ mod tests {
     #[test]
     fn output_section_is_accepted_and_now_interpreted() {
         // `[output]` already exists
-        // in the versioned fixture `.npu/commands/commit-message.md`
+        // in the versioned fixture `.gko/commands/commit-message.md`
         // (format = "text", max_lines = 1). The three keys must be EFFECTIVE, not just
         // accepted by `deny_unknown_fields`.
         let source = "---\nmodel = \"qwen-fast\"\n\n[output]\nformat = \"text\"\nmax_lines = 1\n\
@@ -2426,11 +2426,11 @@ mod tests {
     #[test]
     fn real_commit_message_fixture_output_section_is_now_effective() {
         // The versioned
-        // fixture `.npu/commands/commit-message.md` declares
+        // fixture `.gko/commands/commit-message.md` declares
         // `[output]` (format = "text", max_lines = 1). It must parse AND
         // yield max_lines = Some(1).
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".npu");
-        let commands = discover(&root).expect("the real .npu/ fixture should always load");
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".gko");
+        let commands = discover(&root).expect("the real .gko/ fixture should always load");
 
         let commit_message = commands
             .iter()

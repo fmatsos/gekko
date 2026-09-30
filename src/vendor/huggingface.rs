@@ -30,7 +30,7 @@ pub fn fetch(url: &str, token: Option<&str>) -> crate::Result<String> {
         .new_agent();
     let mut request = agent
         .get(url)
-        .header("User-Agent", concat!("npu/", env!("CARGO_PKG_VERSION")));
+        .header("User-Agent", concat!("gko/", env!("CARGO_PKG_VERSION")));
     if let Some(token) = token {
         request = request.header("Authorization", format!("Bearer {token}"));
     }
@@ -46,7 +46,7 @@ pub fn fetch(url: &str, token: Option<&str>) -> crate::Result<String> {
         .map_err(|e| failed(&e))
 }
 
-/// The shape a model export's `config.json` gives `npu backend tune`'s
+/// The shape a model export's `config.json` gives `gko backend tune`'s
 /// budget arithmetic: the fields `transformers`-compatible configs share
 /// (`num_hidden_layers`, `num_attention_heads`, `hidden_size`,
 /// `max_position_embeddings`, with `head_dim` and `num_key_value_heads`

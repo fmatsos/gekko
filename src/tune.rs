@@ -1,4 +1,4 @@
-//! `npu backend tune`: sizes the static context of every NPU-compiled model
+//! `gko backend tune`: sizes the static context of every NPU-compiled model
 //! from the model's own characteristics and the host's memory.
 //!
 //! An `OpenVINO` NPU graph is compiled for a STATIC context: `MAX_PROMPT_LEN`
@@ -79,7 +79,7 @@ fn set_max_tokens(text: &str, max_tokens: u64, source: &Path) -> crate::Result<S
 /// half-written file either.
 fn replace_file(path: &Path, text: &str) -> crate::Result<()> {
     let mut staging = path.as_os_str().to_owned();
-    staging.push(".npu-tune.tmp");
+    staging.push(".gko-tune.tmp");
     let with_path =
         |e: std::io::Error| std::io::Error::new(e.kind(), format!("{}: {e}", path.display()));
     std::fs::write(&staging, text).map_err(with_path)?;
@@ -252,7 +252,7 @@ pub fn tune(
         }
         logger.info(
             "applied the plan to each graph.pbtxt and the max_tokens of each model: \
-             the next `npu backend serve` recompiles the graph",
+             the next `gko backend serve` recompiles the graph",
         );
     }
     Ok(report.trim_end().to_string())
