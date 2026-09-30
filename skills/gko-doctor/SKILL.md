@@ -154,9 +154,9 @@ This skill is a summary. When a case is not covered here, or when the
 behaviour it describes does not match what the binary does, the repository
 documentation is authoritative:
 
-- [Built-in commands and degraded mode](https://github.com/fmatsos/npu/blob/main/docs/cli.md)
-- [Exit codes](https://github.com/fmatsos/npu/blob/main/docs/output.md#exit-codes)
-- [When a broader scope is broken](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#when-a-broader-scope-is-broken)
+- [Built-in commands and degraded mode](https://github.com/fmatsos/gekko/blob/main/docs/cli.md)
+- [Exit codes](https://github.com/fmatsos/gekko/blob/main/docs/output.md#exit-codes)
+- [When a broader scope is broken](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#when-a-broader-scope-is-broken)
 
 Related skills: **gko-config**, **gko-backend**, **gko-model**, **gko-command**.
 

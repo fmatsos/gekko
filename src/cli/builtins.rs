@@ -703,8 +703,8 @@ pub(crate) fn update(
         if rejected {
             logger.warn(&format!(
                 "your configuration is not valid for gko {current}; see the changelog \
-                 (https://github.com/fmatsos/npu/blob/main/CHANGELOG.md) and the documentation \
-                 (https://github.com/fmatsos/npu/tree/main/docs), then run \"gko doctor\""
+                 (https://github.com/fmatsos/gekko/blob/main/CHANGELOG.md) and the documentation \
+                 (https://github.com/fmatsos/gekko/tree/main/docs), then run \"gko doctor\""
             ));
         }
     }

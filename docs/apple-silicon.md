@@ -47,7 +47,7 @@ which is why a model has to fit in RAM with room left over for everything else.
 
 - An Apple Silicon Mac: `uname -m` prints `arm64`.
 - The `gko` binary for `aarch64-apple-darwin`, from the
-  [releases](https://github.com/fmatsos/npu/releases).
+  [releases](https://github.com/fmatsos/gekko/releases).
 - llama.cpp. Homebrew's build has Metal enabled:
 
   ```sh
