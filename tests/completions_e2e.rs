@@ -1,4 +1,4 @@
-//! End-to-end verification of `COMPLETE=<shell> npu` (`clap_complete::CompleteEnv`,
+//! End-to-end verification of `COMPLETE=<shell> gko` (`clap_complete::CompleteEnv`,
 //! see `src/lib.rs::complete_env`): no built-in, no subcommand -- the
 //! completion request is entirely environment-driven.
 
@@ -6,12 +6,12 @@
 
 use std::process::{Command, Stdio};
 
-/// `COMPLETE=bash npu` prints the shell registration script on stdout and
+/// `COMPLETE=bash gko` prints the shell registration script on stdout and
 /// exits 0 -- it must run before anything else in `run()`, so this must
 /// work even with a completely broken configuration.
 #[test]
 fn complete_bash_prints_a_registration_script() {
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
         .env("COMPLETE", "bash")
         .env("HOME", "/does/not/exist")
         .env_remove("XDG_CONFIG_HOME")
@@ -19,9 +19,9 @@ fn complete_bash_prints_a_registration_script() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu")
+        .expect("launching gko")
         .wait_with_output()
-        .expect("waiting for npu");
+        .expect("waiting for gko");
 
     assert!(
         output.status.success(),
@@ -30,7 +30,7 @@ fn complete_bash_prints_a_registration_script() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("npu"),
+        stdout.contains("gko"),
         "the registration script must name the binary, got: {stdout}"
     );
 }
@@ -45,8 +45,8 @@ fn complete_bash_prints_a_registration_script() {
 /// `config`, ...) must still be offered here.
 #[test]
 fn complete_bash_dynamic_request_lists_global_flags() {
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
-        .args(["--", "npu", ""])
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
+        .args(["--", "gko", ""])
         .env("COMPLETE", "bash")
         .env("_CLAP_COMPLETE_INDEX", "1")
         .env("HOME", "/does/not/exist")
@@ -55,9 +55,9 @@ fn complete_bash_dynamic_request_lists_global_flags() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu")
+        .expect("launching gko")
         .wait_with_output()
-        .expect("waiting for npu");
+        .expect("waiting for gko");
 
     assert!(
         output.status.success(),
@@ -77,8 +77,8 @@ fn complete_bash_dynamic_request_lists_global_flags() {
 /// completion must not inherit that hide.
 #[test]
 fn complete_bash_dynamic_request_offers_builtin_groups() {
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
-        .args(["--", "npu", ""])
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
+        .args(["--", "gko", ""])
         .env("COMPLETE", "bash")
         .env("_CLAP_COMPLETE_INDEX", "1")
         .env("HOME", "/does/not/exist")
@@ -87,9 +87,9 @@ fn complete_bash_dynamic_request_offers_builtin_groups() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu")
+        .expect("launching gko")
         .wait_with_output()
-        .expect("waiting for npu");
+        .expect("waiting for gko");
 
     assert!(
         output.status.success(),

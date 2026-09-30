@@ -7,17 +7,17 @@
 //! Covers a gap not covered by
 //! `output_contract_e2e.rs`, which only checks stdout purity on the
 //! application error path — `Error::Config`/`Error::Output`, handled by
-//! `main()` — never on `clap`'s own path: `npu` is a CLI meant to be invoked
+//! `main()` — never on `clap`'s own path: `gko` is a CLI meant to be invoked
 //! by an agent, for whom non-empty output on stdout on failure is
 //! just as dangerous here as on any other error path — an
 //! agent piping stdout must never receive a `clap` usage message
 //! mixed with command output.
 //!
-//! Uses the REAL compiled `npu` binary (`env!("CARGO_BIN_EXE_npu")`),
-//! run with the repo's versioned `.npu/` fixture (current directory =
+//! Uses the REAL compiled `gko` binary (`env!("CARGO_BIN_EXE_gko")`),
+//! run with the repo's versioned `.gko/` fixture (current directory =
 //! crate root, cf. `CARGO_MANIFEST_DIR`) as the local scope — the same
 //! fixture as `tests/cli.rs`. `HOME` is redirected to a
-//! temporary directory without `.config/npu` and `XDG_CONFIG_HOME` is removed, so that
+//! temporary directory without `.config/gko` and `XDG_CONFIG_HOME` is removed, so that
 //! only this local fixture is taken into account (same isolation
 //! idiom as `tests/output_contract_e2e.rs`); no network is
 //! ever contacted by these three scenarios, `clap` failing (or `--help`
@@ -39,9 +39,9 @@ fn isolated_home() -> std::path::PathBuf {
     dir
 }
 
-fn run_npu(args: &[&str]) -> Output {
+fn run_gko(args: &[&str]) -> Output {
     let home = isolated_home();
-    Command::new(env!("CARGO_BIN_EXE_npu"))
+    Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .env("HOME", home)
@@ -51,9 +51,9 @@ fn run_npu(args: &[&str]) -> Output {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("failed to launch the npu binary")
+        .expect("failed to launch the gko binary")
         .wait_with_output()
-        .expect("failed to wait for the npu process to finish")
+        .expect("failed to wait for the gko process to finish")
 }
 
 /// Nonexistent subcommand: `clap` fails BEFORE `main()`
@@ -61,7 +61,7 @@ fn run_npu(args: &[&str]) -> Output {
 /// directly, cf. `lib.rs::run`). stdout must remain strictly empty.
 #[test]
 fn unknown_subcommand_writes_nothing_to_stdout() {
-    let output = run_npu(&["nonexistent-subcommand"]);
+    let output = run_gko(&["nonexistent-subcommand"]);
 
     assert!(!output.status.success(), "an unknown subcommand must fail");
     assert!(
@@ -81,7 +81,7 @@ fn unknown_subcommand_writes_nothing_to_stdout() {
 /// subcommand resolution). stdout must remain strictly empty.
 #[test]
 fn missing_required_arg_writes_nothing_to_stdout() {
-    let output = run_npu(&["translate"]);
+    let output = run_gko(&["translate"]);
 
     assert!(
         !output.status.success(),
@@ -105,16 +105,16 @@ fn missing_required_arg_writes_nothing_to_stdout() {
 /// must never write anything to stdout", which would be false.
 #[test]
 fn help_writes_to_stdout_not_stderr() {
-    let output = run_npu(&["--help"]);
+    let output = run_gko(&["--help"]);
 
-    assert!(output.status.success(), "npu --help must succeed");
+    assert!(output.status.success(), "gko --help must succeed");
     assert!(
         !output.stdout.is_empty(),
-        "npu --help MUST write the help to stdout, this is not an error path"
+        "gko --help MUST write the help to stdout, this is not an error path"
     );
     assert!(
         output.stderr.is_empty(),
-        "npu --help must not write anything to stderr, got: {}",
+        "gko --help must not write anything to stderr, got: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }

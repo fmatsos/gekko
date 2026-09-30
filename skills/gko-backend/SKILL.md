@@ -1,18 +1,18 @@
 ---
-name: npu-backend
-description: Writes and fixes `npu` backend files (`.npu/backends/*.toml`) — the `id`, `type`, `base_url` and `[operations.<name>]` tables that tell `npu` where to send requests and on which HTTP path, plus the optional `[runtime]` table `npu backend serve` uses to start the runtime — as a Docker container (`type = "docker"`, whose untagged `[docker]` spelling of earlier versions is still accepted) or as a local process (`type = "process"`), and the optional `[timeouts]` table that overrides the request timeout. Covers the constraints enforced at load time — `openai-compatible` is the only supported type, `POST` the only supported method, and unknown keys are rejected rather than ignored. Use it whenever a backend declaration is created, changed or rejected.
+name: gko-backend
+description: Writes and fixes `gko` backend files (`.gko/backends/*.toml`) — the `id`, `type`, `base_url` and `[operations.<name>]` tables that tell `gko` where to send requests and on which HTTP path, plus the optional `[runtime]` table `gko backend serve` uses to start the runtime — as a Docker container (`type = "docker"`, whose untagged `[docker]` spelling of earlier versions is still accepted) or as a local process (`type = "process"`), and the optional `[timeouts]` table that overrides the request timeout. Covers the constraints enforced at load time — `openai-compatible` is the only supported type, `POST` the only supported method, and unknown keys are rejected rather than ignored. Use it whenever a backend declaration is created, changed or rejected.
 when_to_use: >
-  Trigger on "add an npu backend", "point npu at my model server / OVMS /
-  llama.cpp / Ollama", "change the base_url", "add an operation", "make npu
-  start OVMS with Docker", "make npu launch llama-server itself", or on any npu
+  Trigger on "add a gko backend", "point gko at my model server / OVMS /
+  llama.cpp / Ollama", "change the base_url", "add an operation", "make gko
+  start OVMS with Docker", "make gko launch llama-server itself", or on any gko
   error mentioning a backend id,
   `base_url`, `type`, `method`, an operation name or a `[runtime]`/`[docker]` key.
 model: sonnet
 effort: low
-allowed-tools: Read Write Edit Glob Grep Bash(npu:*)
+allowed-tools: Read Write Edit Glob Grep Bash(gko:*)
 ---
 
-# `npu` backends
+# `gko` backends
 
 A backend declares the runtime protocol, where to reach it, and which
 operations it exposes. Models point at a backend and one of its operations;
@@ -21,7 +21,7 @@ commands never see it.
 ## The file
 
 ```toml
-# .npu/backends/ovms.toml
+# .gko/backends/ovms.toml
 id = "ovms"
 type = "openai-compatible"
 base_url = "http://127.0.0.1:8000"
@@ -42,9 +42,9 @@ next reader.
 | `base_url` | yes | joined with an operation's `path`; a trailing `/` is handled either way |
 | `port` | no | declared once, read as `{{ backend.port }}` in `base_url` and `[runtime]` |
 | `[operations.<name>]` | at least one | each needs `method` and `path`; optional `protocol`: `"chat"` (default), `"embeddings"` or `"transcriptions"` |
-| `[runtime]` | no | how `npu backend serve` starts this backend; `type` picks the family — `"docker"` or `"process"` |
+| `[runtime]` | no | how `gko backend serve` starts this backend; `type` picks the family — `"docker"` or `"process"` |
 | `[timeouts]` | no | `request_secs` — overrides the default request timeout (120s) |
-| `max_concurrent` | no | only `1`: one request at a time across `npu` processes (others wait; with `--no-wait` a busy backend fails, or hands over to the model's fallback) |
+| `max_concurrent` | no | only `1`: one request at a time across `gko` processes (others wait; with `--no-wait` a busy backend fails, or hands over to the model's fallback) |
 | `structured_output` | no | `true` when the server accepts `response_format: json_schema` (OVMS, `llama-server`, vLLM): a command's output schema is then sent with the request. Default `false` |
 | `[headers]` | no | extra HTTP headers sent with every `chat` request; values accept only `{{ env.NAME }}` |
 
@@ -71,7 +71,7 @@ silently ignored:
   precedent;
 - a `[headers]` value referencing anything other than `{{ env.NAME }}` (`{{ input }}`,
   `{{ args.* }}`, `{{ schemas.* }}` are rejected — a header cannot depend on the command run);
-- a `[headers]` name that is `Content-Type`/`Content-Length` (case-insensitively; `npu` owns
+- a `[headers]` name that is `Content-Type`/`Content-Length` (case-insensitively; `gko` owns
   both), is not a legal HTTP token, or collides with another name once case is ignored;
 - at request time, a `[headers]` value whose `{{ env.NAME }}` is undefined — resolved at
   preflight, before the input is read, naming the file and the header;
@@ -81,7 +81,7 @@ silently ignored:
 
 ## Operation names are yours
 
-`chat` is the only operation `npu` knows how to *drive* today, so a model must
+`chat` is the only operation `gko` knows how to *drive* today, so a model must
 name an operation the backend exposes and that operation must be usable as a
 chat completion. Declaring `[operations.embeddings]` is allowed — nothing
 breaks — but no model can consume it yet.
@@ -104,13 +104,13 @@ method = "POST"
 path = "/v1/chat/completions"
 ```
 
-Check the server's own documentation for the path; `npu` joins `base_url` and
+Check the server's own documentation for the path; `gko` joins `base_url` and
 `path` verbatim and does not probe for it.
 
 ## Starting the backend: the `[runtime]` table
 
-Optional. Declaring it gives this backend a lifecycle — `npu backend serve <model>`,
-`npu backend stop <model>`, `npu backend status`, `npu backend logs <model>`. `type` picks the family,
+Optional. Declaring it gives this backend a lifecycle — `gko backend serve <model>`,
+`gko backend stop <model>`, `gko backend status`, `gko backend logs <model>`. `type` picks the family,
 and each family reads its own keys.
 
 ### `type = "docker"`
@@ -130,12 +130,12 @@ args = [
 ```
 
 `options` go **before** the image, `args` **after** it — `docker run [OPTIONS]
-IMAGE [ARG...]`. `npu` adds `-d` and `--name npu-<backend-id>`, nothing else. That name is how
+IMAGE [ARG...]`. `gko` adds `-d` and `--name gko-<backend-id>`, nothing else. That name is how
 `stop`, `status` and `logs` find the container afterwards.
 
 Templating is the prompt engine's: `{{ args.model }}` (the served model's
 `model` field, the only argument available here) and `{{ env.NAME }}`.
-`{{ input }}` is rejected — `npu backend serve` reads no input.
+`{{ input }}` is rejected — `gko backend serve` reads no input.
 
 The untagged `[docker]` table of earlier versions is still accepted and folded into `[runtime]`
 with `type = "docker"` at load time — write `[runtime]` in new files, and never both, which is
@@ -164,18 +164,18 @@ LLAMA_CACHE = "{{ env.HOME }}/.cache/llama.cpp"
 | --- | --- | --- |
 | `command` | yes | absolute/relative path used as-is, or a bare name looked up on `PATH` |
 | `arguments` | no | one list entry per argument, never one string to be split |
-| `[runtime.env]` | no | layered **over** `npu`'s own environment, never replacing it |
+| `[runtime.env]` | no | layered **over** `gko`'s own environment, never replacing it |
 | `startup_timeout_secs` | no | readiness budget, `30` by default, `0` rejected |
 
 Same templating, with one exception: `{{ backend.port }}` is substituted in `arguments` and in
 `[runtime.env]` values, **not** in `command`.
 
-Unlike `docker run -d`, `npu backend serve` **waits** here until the backend's `base_url` answers, the
+Unlike `docker run -d`, `gko backend serve` **waits** here until the backend's `base_url` answers, the
 server exits, or the budget runs out — so a `serve` that printed a pid means a server that
-answers. It prints the pid; `npu backend stop` prints the backend id and escalates `SIGTERM` → `SIGKILL`.
+answers. It prints the pid; `gko backend stop` prints the backend id and escalates `SIGTERM` → `SIGKILL`.
 
-`npu backend serve` writes a JSON state record and a `.log` file (both streams) under
-`$XDG_STATE_HOME/npu/`, named `<backend id>-<digest of the backend file>` — that is how `stop`,
+`gko backend serve` writes a JSON state record and a `.log` file (both streams) under
+`$XDG_STATE_HOME/gko/`, named `<backend id>-<digest of the backend file>` — that is how `stop`,
 `status` and `logs` find the process again, Docker's name registry having no equivalent here, and
 why two projects each declaring `llamacpp` get two records rather than fighting over one. The
 record's `(pid, birth time)` pair is the identity check that keeps `stop` from killing a recycled
@@ -194,14 +194,14 @@ there is no NPU-only image, the GPU tag carries both plugins. In `options`,
 with `--model_name`/`--model_path`: the device is baked into that export's
 `graph.pbtxt` at `ovms --configure` time, and OVMS reads it from there. One
 export serves one device — running the same model on both means two exports
-(see **npu-export**, which builds the GPU twin as symlinks), two backends, two
-ports and two containers, since `npu` names a container `npu-<backend-id>`.
+(see **gko-export**, which builds the GPU twin as symlinks), two backends, two
+ports and two containers, since `gko` names a container `gko-<backend-id>`.
 That is also how several small models run in parallel: one backend each.
 
 ## Declaring the port once: the `port` key
 
 A containerized backend spells its port twice — `-p` and `base_url` — and the two diverging is
-this file's nastiest failure: `npu doctor` stays green (its probe reaches whatever answers on the
+this file's nastiest failure: `gko doctor` stays green (its probe reaches whatever answers on the
 `base_url` port, possibly another backend) and only the real request fails, with exit `3`.
 
 ```toml
@@ -218,18 +218,18 @@ only `backend.*` placeholder there is. Both halves are enforced: the placeholder
 is rejected, and a `port` nothing reads is rejected too.
 
 `port = "auto"` hands the allocation to Docker: `{{ backend.port }}` becomes `0` in the `[runtime]`
-lists (`-p 0:8000`), the kernel picks a free port, and `npu` reads it back with `docker port`.
+lists (`-p 0:8000`), the kernel picks a free port, and `gko` reads it back with `docker port`.
 Collision is impossible by construction — nothing is derived or guessed. The cost is that Docker
 becomes a prerequisite for **executing commands** on that backend, not just for its lifecycle; a
 fixed port never consults it. Two further rules, enforced at load: `"auto"` needs a Docker runtime
 table, and it needs `base_url` to read `{{ backend.port }}`.
 
-The port changes on each `npu backend serve`; `npu backend status` prints the resolved URL, and shows `-` for a
+The port changes on each `gko backend serve`; `gko backend status` prints the resolved URL, and shows `-` for a
 backend that is not started.
 
-**A fixed port already in use is reported by `npu backend serve` itself** — exit `3`, naming the backend
+**A fixed port already in use is reported by `gko backend serve` itself** — exit `3`, naming the backend
 and the port, before `docker run` is reached. Never moved automatically: a fixed number is a
-decision something outside `npu` may depend on. `"auto"` is how you say it does not matter.
+decision something outside `gko` may depend on. `"auto"` is how you say it does not matter.
 
 `serve` checks whether the backend is **already served** before it looks at the port: a running
 container holds its own port, and diagnosing that as a port conflict would send the user to edit a
@@ -237,7 +237,7 @@ correct `port` key.
 
 ## Overriding the request timeout: the `[timeouts]` table
 
-Optional. `npu`'s default (120s) is sized for a full `max_tokens` generation
+Optional. `gko`'s default (120s) is sized for a full `max_tokens` generation
 on a slow accelerator; a backend that is slower still (a large model on an
 NPU, for instance) overrides it:
 
@@ -251,14 +251,14 @@ rejected at load time naming the file.
 
 ## Overriding a backend from a broader scope
 
-Merging is **replacement**: a file in `./.npu` with the same `id` as one in
-`/etc/npu` replaces it whole. Copy every field you still need — nothing is
+Merging is **replacement**: a file in `./.gko` with the same `id` as one in
+`/etc/gko` replaces it whole. Copy every field you still need — nothing is
 inherited, `[runtime]` included.
 
 ## Verifying
 
 ```sh
-npu doctor
+gko doctor
 ```
 
 `✓ backend "ovms" reachable` means a TCP socket was accepted, and nothing
@@ -268,7 +268,7 @@ backend on a wrong `path` therefore still reports green here and fails at
 execution with exit `3`.
 
 `✗ backend "ovms" reachable: TCP connection … failed` and no other failure
-gives `npu doctor` exit code `3`: the configuration is fine, the runtime is
+gives `gko doctor` exit code `3`: the configuration is fine, the runtime is
 not started.
 
 `✓ container runtime available` only appears when at least one backend
@@ -284,16 +284,16 @@ failure as well — an absent executable is something to install, not a file to 
 This skill is a summary. When a case is not covered here, or when the
 behaviour it describes does not match what the binary does, the repository
 documentation is authoritative. The exact set of keys the binary accepts is
-`npu config schema backend` (a JSON Schema derived from the parser itself):
+`gko config schema backend` (a JSON Schema derived from the parser itself):
 
 - [Backends](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#backends)
 - [Scopes and precedence](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#scopes-and-precedence)
 - [Starting a backend with Docker](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#starting-a-backend-with-docker)
 - [Starting a backend as a process](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#starting-a-backend-as-a-process)
-- [`npu config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-config-schema)
-- [`npu doctor`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-doctor)
-- [`npu backend serve`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-backend-serve)
+- [`gko config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-schema)
+- [`gko doctor`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-doctor)
+- [`gko backend serve`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-backend-serve)
 
-Related skills: **npu-model**, **npu-config**, **npu-doctor**.
+Related skills: **gko-model**, **gko-config**, **gko-doctor**.
 
 <!-- model/effort: Five keys and a table of operations; the constraints are enumerated above, not inferred. -->

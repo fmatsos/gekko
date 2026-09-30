@@ -7,17 +7,17 @@
 //!    same idiom as
 //!    `backend::tests::chat_end_to_end_against_stubbed_http_server`) that
 //!    answers with a fixed `chat/completions` response;
-//! 2. writes a temporary `.npu/` scope under `target/` (backend, model and
+//! 2. writes a temporary `.gko/` scope under `target/` (backend, model and
 //!    command) pointing at that fake backend;
-//! 3. runs the REAL `npu` binary (`env!("CARGO_BIN_EXE_npu")`, never a
+//! 3. runs the REAL `gko` binary (`env!("CARGO_BIN_EXE_gko")`, never a
 //!    function called directly in this test process) with that scope as
 //!    the current directory, and checks the exit code, stdout and stderr.
 //!
 //! `HOME` is redirected to the temporary scope itself (which never contains
-//! `.config/npu`) and `XDG_CONFIG_HOME` is removed from the child's
-//! environment: only the temporary scope root (`<scope>/.npu`, via the
+//! `.config/gko`) and `XDG_CONFIG_HOME` is removed from the child's
+//! environment: only the temporary scope root (`<scope>/.gko`, via the
 //! current directory) must be taken into account by `scope::roots()`, never
-//! the real `$HOME` nor an `/etc/npu` that might otherwise exist on the
+//! the real `$HOME` nor an `/etc/gko` that might otherwise exist on the
 //! machine. `Command::env`/`env_remove` only touch the CHILD PROCESS's
 //! environment: no test mutates the real environment variables
 //! (`std::env::set_var` is `unsafe` in edition 2024, forbidden by
@@ -35,7 +35,7 @@ use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Creates a unique temporary scope directory under `target/`, distinct
-/// from the versioned `.npu/` fixture — same idiom as the
+/// from the versioned `.gko/` fixture — same idiom as the
 /// `command::tests`/`config::tests`/`tests/cli.rs` fixtures.
 fn fixture_scope(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -56,23 +56,23 @@ fn write(dir: &Path, rel: &str, contents: &str) {
     std::fs::write(path, contents).expect("writing the fixture");
 }
 
-/// Writes a complete `.npu` scope (backend + model) pointing at the fake
+/// Writes a complete `.gko` scope (backend + model) pointing at the fake
 /// HTTP backend `addr`, plus the `e2e-cmd` fixture command whose `[output]`
 /// section is `output_section` (its TOML content, WITHOUT the `[output]`
 /// brackets themselves — every caller of this module supplies a non-empty
 /// one, cf. the four scenarios below).
 ///
-/// `scope` is the current directory the binary receives (`run_npu`), NOT
+/// `scope` is the current directory the binary receives (`run_gko`), NOT
 /// the scope root itself: `scope::roots()` (`src/scope.rs`) computes the
-/// local root as `<cwd>/.npu`, never `<cwd>` directly — every path written
-/// here must therefore be prefixed with `.npu/`, or the binary will find
+/// local root as `<cwd>/.gko`, never `<cwd>` directly — every path written
+/// here must therefore be prefixed with `.gko/`, or the binary will find
 /// neither backend, model, nor command (an exact bug reproduced and fixed
 /// while writing this test: an earlier version wrote directly under
 /// `<scope>/backends/...`, which `scope::roots()` ignores).
 fn write_scope(scope: &Path, addr: std::net::SocketAddr, output_section: &str) {
     write(
         scope,
-        ".npu/backends/stub.toml",
+        ".gko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -87,7 +87,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, output_section: &str) {
     );
     write(
         scope,
-        ".npu/models/test-model.toml",
+        ".gko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -97,17 +97,17 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, output_section: &str) {
     );
     write(
         scope,
-        ".npu/commands/e2e-cmd.md",
+        ".gko/commands/e2e-cmd.md",
         &format!(
             "---\nmodel = \"test-model\"\n\n[output]\n{output_section}\n---\n{{{{ input }}}}\n"
         ),
     );
 }
 
-/// Maximum delay granted to the stubbed server to receive the `npu`
-/// binary's connection when launched by `run_npu`. Bounds the `accept()`
+/// Maximum delay granted to the stubbed server to receive the `gko`
+/// binary's connection when launched by `run_gko`. Bounds the `accept()`
 /// call (see below) rather than letting it block indefinitely: without this
-/// bound, a future change that made `npu` fail BEFORE it contacts the
+/// bound, a future change that made `gko` fail BEFORE it contacts the
 /// backend (a validation regression, for example) would not produce a red
 /// test but a `cargo test` run that never finishes — a defect observed
 /// empirically while writing this file (the scope resolution bug above,
@@ -143,7 +143,7 @@ fn spawn_stub_server(content: String) -> (std::net::SocketAddr, std::thread::Joi
                     assert!(
                         Instant::now() < deadline,
                         "no connection received on the stubbed listener within the \
-                         {ACCEPT_TIMEOUT:?} deadline: the npu binary never contacted the \
+                         {ACCEPT_TIMEOUT:?} deadline: the gko binary never contacted the \
                          backend (did it fail earlier in the pipeline?)"
                     );
                     std::thread::sleep(std::time::Duration::from_millis(20));
@@ -280,31 +280,31 @@ fn spawn_stub_server_with_finish_reason(
     (addr, handle)
 }
 
-/// Runs the REAL `npu` binary (compiled by cargo for this test run, never a
+/// Runs the REAL `gko` binary (compiled by cargo for this test run, never a
 /// function called directly in this test process) with `scope` as the
 /// current directory and `stdin_data` sent on its standard input, then
 /// waits for it to finish and returns its complete output (code, stdout,
 /// stderr).
-fn run_npu(scope: &Path, args: &[&str], stdin_data: &str) -> Output {
-    run_npu_with_env(scope, args, stdin_data, &[])
+fn run_gko(scope: &Path, args: &[&str], stdin_data: &str) -> Output {
+    run_gko_with_env(scope, args, stdin_data, &[])
 }
 
-/// [`run_npu`] with extra variables set on the child.
-fn run_npu_with_env(
+/// [`run_gko`] with extra variables set on the child.
+fn run_gko_with_env(
     scope: &Path,
     args: &[&str],
     stdin_data: &str,
     vars: &[(&str, &Path)],
 ) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
-        .env_remove("NPU_STATS_FILE")
+        .env_remove("GKO_STATS_FILE")
         .envs(vars.iter().copied())
         .current_dir(scope)
         // Configuration scope isolation: only
-        // <scope>/.npu (via the current directory) must be visible. `HOME`
+        // <scope>/.gko (via the current directory) must be visible. `HOME`
         // is redirected to `scope` itself (which never contains
-        // `.config/npu`) and `XDG_CONFIG_HOME` is removed, so that neither
+        // `.config/gko`) and `XDG_CONFIG_HOME` is removed, so that neither
         // the real $HOME nor an XDG_CONFIG_HOME inherited from the test's
         // environment introduce a stray scope root. This only touches the
         // CHILD PROCESS's environment, never the real environment
@@ -317,7 +317,7 @@ fn run_npu_with_env(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary");
+        .expect("launching the gko binary");
 
     // Close stdin (drop) after writing: the fixture command's `stdin` input
     // mode reads until EOF (`read_to_string`), which never happens while
@@ -326,20 +326,20 @@ fn run_npu_with_env(
         let stdin = child.stdin.as_mut().expect("stdin of the child process");
         stdin
             .write_all(stdin_data.as_bytes())
-            .expect("writing to npu's stdin");
+            .expect("writing to gko's stdin");
     }
     drop(child.stdin.take());
 
     child
         .wait_with_output()
-        .expect("waiting for the npu process to finish")
+        .expect("waiting for the gko process to finish")
 }
 
-/// Writes a GENERAL scope (via `$XDG_CONFIG_HOME/npu`, never `<cwd>/.npu`)
+/// Writes a GENERAL scope (via `$XDG_CONFIG_HOME/gko`, never `<cwd>/.gko`)
 /// containing a `never-invoked` command whose `[output].schema` points at
 /// `schemas/broken-or-missing.json` — cf. `src/scope.rs::candidate_roots`:
-/// `$XDG_CONFIG_HOME/npu` is a scope root in its own right, more general
-/// than `<cwd>/.npu`, exactly the level where a
+/// `$XDG_CONFIG_HOME/gko` is a scope root in its own right, more general
+/// than `<cwd>/.gko`, exactly the level where a
 /// broken schema belonging to a command nobody invokes must not disable
 /// the whole CLI.
 ///
@@ -353,7 +353,7 @@ fn write_general_scope_with_never_invoked_command(
 ) {
     write(
         xdg_root,
-        "npu/backends/stub.toml",
+        "gko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -368,7 +368,7 @@ fn write_general_scope_with_never_invoked_command(
     );
     write(
         xdg_root,
-        "npu/models/test-model.toml",
+        "gko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -378,25 +378,25 @@ fn write_general_scope_with_never_invoked_command(
     );
     write(
         xdg_root,
-        "npu/commands/never-invoked.md",
+        "gko/commands/never-invoked.md",
         "---\nmodel = \"test-model\"\n\n[output]\nformat = \"json\"\n\
          schema = \"schemas/broken-or-missing.json\"\n---\n{{ input }}\n",
     );
     if let Some(body) = schema_body {
-        write(xdg_root, "npu/schemas/broken-or-missing.json", body);
+        write(xdg_root, "gko/schemas/broken-or-missing.json", body);
     }
 }
 
-/// Runs the REAL `npu` binary with `$XDG_CONFIG_HOME` pointed at
+/// Runs the REAL `gko` binary with `$XDG_CONFIG_HOME` pointed at
 /// `xdg_config_home` (the GENERAL scope written by
 /// `write_general_scope_with_never_invoked_command`) and `cwd` as the
-/// current directory — a directory deliberately WITHOUT a local `.npu`, so
-/// that the only scope root taken into account is `$XDG_CONFIG_HOME/npu`
+/// current directory — a directory deliberately WITHOUT a local `.gko`, so
+/// that the only scope root taken into account is `$XDG_CONFIG_HOME/gko`
 /// (cf. `src/scope.rs::candidate_roots`). `HOME` is redirected to `cwd`
-/// (which never contains `.config/npu`) for the same isolation reason as
-/// `run_npu`.
-fn run_npu_xdg(cwd: &Path, xdg_config_home: &Path, args: &[&str], stdin_data: &str) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+/// (which never contains `.config/gko`) for the same isolation reason as
+/// `run_gko`.
+fn run_gko_xdg(cwd: &Path, xdg_config_home: &Path, args: &[&str], stdin_data: &str) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd)
@@ -407,23 +407,23 @@ fn run_npu_xdg(cwd: &Path, xdg_config_home: &Path, args: &[&str], stdin_data: &s
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary");
+        .expect("launching the gko binary");
 
     {
         let stdin = child.stdin.as_mut().expect("stdin of the child process");
         stdin
             .write_all(stdin_data.as_bytes())
-            .expect("writing to npu's stdin");
+            .expect("writing to gko's stdin");
     }
     drop(child.stdin.take());
 
     child
         .wait_with_output()
-        .expect("waiting for the npu process to finish")
+        .expect("waiting for the gko process to finish")
 }
 
-/// Creates a temporary working directory without a local `.npu`, distinct
-/// from the general `$XDG_CONFIG_HOME/npu` scope — same idiom as
+/// Creates a temporary working directory without a local `.gko`, distinct
+/// from the general `$XDG_CONFIG_HOME/gko` scope — same idiom as
 /// `fixture_scope`.
 fn fixture_cwd_without_local_scope(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -438,7 +438,7 @@ fn fixture_cwd_without_local_scope(name: &str) -> PathBuf {
 
 /// Proof (a): a MISSING schema, declared by a command in
 /// a general scope that nobody invokes, must not disable
-/// `npu --help` for the whole CLI (lazy existence resolution, aligned with
+/// `gko --help` for the whole CLI (lazy existence resolution, aligned with
 /// lazy compilation — cf. `command::resolve_schema_path`).
 #[test]
 fn help_survives_a_missing_schema_declared_by_an_uninvoked_command_in_the_general_scope() {
@@ -453,11 +453,11 @@ fn help_survives_a_missing_schema_declared_by_an_uninvoked_command_in_the_genera
     // disk.
     write_general_scope_with_never_invoked_command(&xdg, "http://127.0.0.1:1", None);
 
-    let output = run_npu_xdg(&cwd, &xdg, &["--help"], "");
+    let output = run_gko_xdg(&cwd, &xdg, &["--help"], "");
 
     assert!(
         output.status.success(),
-        "PROOF (a): npu --help must succeed (exit 0) even with a missing schema in a general \
+        "PROOF (a): gko --help must succeed (exit 0) even with a missing schema in a general \
          scope, got code {:?}; stderr: {}",
         output.status.code(),
         String::from_utf8_lossy(&output.stderr)
@@ -466,7 +466,7 @@ fn help_survives_a_missing_schema_declared_by_an_uninvoked_command_in_the_genera
 
 /// Proof (b): a schema that IS PRESENT but syntactically
 /// BROKEN, declared by a command in a general scope that nobody invokes,
-/// must not disable `npu --help` either — schema compilation stays lazy.
+/// must not disable `gko --help` either — schema compilation stays lazy.
 #[test]
 fn help_survives_a_syntactically_broken_schema_declared_by_an_uninvoked_command_in_the_general_scope()
  {
@@ -478,11 +478,11 @@ fn help_survives_a_syntactically_broken_schema_declared_by_an_uninvoked_command_
         Some("{ this is not JSON"),
     );
 
-    let output = run_npu_xdg(&cwd, &xdg, &["--help"], "");
+    let output = run_gko_xdg(&cwd, &xdg, &["--help"], "");
 
     assert!(
         output.status.success(),
-        "PROOF (b): npu --help must succeed (exit 0) even with a syntactically broken schema \
+        "PROOF (b): gko --help must succeed (exit 0) even with a syntactically broken schema \
          in a general scope, got code {:?}; stderr: {}",
         output.status.code(),
         String::from_utf8_lossy(&output.stderr)
@@ -502,7 +502,7 @@ fn invoking_the_command_with_a_missing_schema_fails_with_exit_code_two_naming_bo
     let cwd = fixture_cwd_without_local_scope("missing-schema-invoked");
     write_general_scope_with_never_invoked_command(&xdg, "http://127.0.0.1:1", None);
 
-    let output = run_npu_xdg(&cwd, &xdg, &["never-invoked"], "whatever");
+    let output = run_gko_xdg(&cwd, &xdg, &["never-invoked"], "whatever");
 
     assert_eq!(
         output.status.code(),
@@ -541,7 +541,7 @@ fn invoking_the_command_with_a_broken_schema_fails_with_exit_code_two_naming_bot
         Some("{ this is not JSON"),
     );
 
-    let output = run_npu_xdg(&cwd, &xdg, &["never-invoked"], "whatever");
+    let output = run_gko_xdg(&cwd, &xdg, &["never-invoked"], "whatever");
 
     assert_eq!(
         output.status.code(),
@@ -583,14 +583,14 @@ fn json_wrapped_in_fence_and_schema_satisfied_succeeds_end_to_end() {
         },
         "additionalProperties": false
     }"#;
-    write(&scope, ".npu/schemas/classification.json", schema);
+    write(&scope, ".gko/schemas/classification.json", schema);
     write_scope(
         &scope,
         addr,
         "format = \"json\"\nschema = \"schemas/classification.json\"",
     );
 
-    let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+    let output = run_gko(&scope, &["e2e-cmd"], "whatever");
     server.join().expect("the server thread must not panic");
 
     assert!(
@@ -603,7 +603,7 @@ fn json_wrapped_in_fence_and_schema_satisfied_succeeds_end_to_end() {
     assert_eq!(
         stdout, "{\"category\":\"bug\",\"confidence\":0.9}\n",
         "stdout must contain EXACTLY the COMPACT JSON serialization followed by a single \
-         trailing newline (added by `run()`; e.g. npu classify | jq .), regardless of \
+         trailing newline (added by `run()`; e.g. gko classify | jq .), regardless of \
          the Markdown wrapping returned by the model — nothing before, nothing after"
     );
 }
@@ -625,14 +625,14 @@ fn json_violating_schema_fails_with_exit_code_four_end_to_end() {
         },
         "additionalProperties": false
     }"#;
-    write(&scope, ".npu/schemas/classification.json", schema);
+    write(&scope, ".gko/schemas/classification.json", schema);
     write_scope(
         &scope,
         addr,
         "format = \"json\"\nschema = \"schemas/classification.json\"",
     );
 
-    let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+    let output = run_gko(&scope, &["e2e-cmd"], "whatever");
     server.join().expect("the server thread must not panic");
 
     assert_eq!(
@@ -667,7 +667,7 @@ fn non_json_response_with_json_format_fails_with_exit_code_four_end_to_end() {
     // well-formed JSON.
     write_scope(&scope, addr, "format = \"json\"");
 
-    let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+    let output = run_gko(&scope, &["e2e-cmd"], "whatever");
     server.join().expect("the server thread must not panic");
 
     assert_eq!(
@@ -688,7 +688,7 @@ fn text_exceeding_max_lines_fails_with_exit_code_four_end_to_end() {
     let scope = fixture_scope("max-lines-exceeded");
     write_scope(&scope, addr, "format = \"text\"\nmax_lines = 1");
 
-    let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+    let output = run_gko(&scope, &["e2e-cmd"], "whatever");
     server.join().expect("the server thread must not panic");
 
     assert_eq!(
@@ -717,7 +717,7 @@ fn truncated_answer_fails_with_exit_code_four_and_empty_stdout_end_to_end() {
     let scope = fixture_scope("truncated-answer");
     write_scope(&scope, addr, "format = \"text\"");
 
-    let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+    let output = run_gko(&scope, &["e2e-cmd"], "whatever");
     server.join().expect("the server thread must not panic");
 
     assert_eq!(
@@ -748,7 +748,7 @@ fn truncated_answer_with_allow_truncated_succeeds_end_to_end() {
     let scope = fixture_scope("truncated-answer-allowed");
     write_scope(&scope, addr, "format = \"text\"\nallow_truncated = true");
 
-    let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+    let output = run_gko(&scope, &["e2e-cmd"], "whatever");
     server.join().expect("the server thread must not panic");
 
     assert!(
@@ -779,7 +779,7 @@ fn extract_writes_the_pointed_value_and_a_missing_one_fails_with_exit_code_four(
             addr,
             &format!("format = \"json\"\nextract = \"{pointer}\""),
         );
-        let output = run_npu(&scope, &["e2e-cmd"], "whatever");
+        let output = run_gko(&scope, &["e2e-cmd"], "whatever");
         server.join().expect("the server thread must not panic");
         let stderr = String::from_utf8_lossy(&output.stderr);
         if let Some(stdout) = expected {
@@ -793,7 +793,7 @@ fn extract_writes_the_pointed_value_and_a_missing_one_fails_with_exit_code_four(
     }
 }
 
-/// `NPU_STATS_FILE` gets one JSON line per invocation, a failed one
+/// `GKO_STATS_FILE` gets one JSON line per invocation, a failed one
 /// included; a file that cannot be written changes neither the exit code
 /// nor stdout.
 #[test]
@@ -805,7 +805,7 @@ fn stats_file_gets_one_line_per_invocation_and_an_unwritable_one_changes_nothing
     for (content, code) in [("{\"category\": \"bug\"}", 0), ("not JSON", 4)] {
         let (addr, server) = spawn_stub_server(content.to_string());
         write_scope(&scope, addr, "format = \"json\"");
-        let output = run_npu_with_env(&scope, &["e2e-cmd"], "x", &[("NPU_STATS_FILE", &stats)]);
+        let output = run_gko_with_env(&scope, &["e2e-cmd"], "x", &[("GKO_STATS_FILE", &stats)]);
         server.join().expect("the server thread must not panic");
         assert_eq!(output.status.code(), Some(code));
     }
@@ -827,12 +827,12 @@ fn stats_file_gets_one_line_per_invocation_and_an_unwritable_one_changes_nothing
     let (addr, server) = spawn_stub_server("{\"category\": \"bug\"}".to_string());
     write_scope(&scope, addr, "format = \"json\"");
     // A directory cannot be opened for appending.
-    let output = run_npu_with_env(&scope, &["e2e-cmd"], "x", &[("NPU_STATS_FILE", &scope)]);
+    let output = run_gko_with_env(&scope, &["e2e-cmd"], "x", &[("GKO_STATS_FILE", &scope)]);
     server.join().expect("the server thread must not panic");
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(
         String::from_utf8_lossy(&output.stdout),
         "{\"category\":\"bug\"}\n"
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("NPU_STATS_FILE"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("GKO_STATS_FILE"));
 }

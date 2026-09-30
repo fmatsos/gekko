@@ -1,13 +1,13 @@
 # Built-in commands
 
-`npu` ships its built-in commands under seven names: three groups, `backend` (the runtime
+`gko` ships its built-in commands under seven names: three groups, `backend` (the runtime
 lifecycle), `config` (inspection) and `model` (`discover`), plus `doctor`, `describe`, `update`
 and `help`. They are not AI commands, and these seven names are reserved: a command file whose
 first path segment is one of them is rejected at load time, naming the file. Any other name,
 `status` or `logs` included, is yours.
 
-`npu --help` lists your commands under `Commands:` and the built-ins under `Built-ins:`, `help`
-included: `npu help backend serve` is `npu backend serve --help`.
+`gko --help` lists your commands under `Commands:` and the built-ins under `Built-ins:`, `help`
+included: `gko help backend serve` is `gko backend serve --help`.
 
 On a terminal, help, reports and diagnostics are coloured. Through a pipe — or with `NO_COLOR`
 set — every byte is the same as without colours: the escape sequences are stripped on the way out,
@@ -17,7 +17,7 @@ A command's answer, on a terminal, is framed: a blank line, a `●` header namin
 actually answered (the fallback, when it took over), the answer, and a blank line. A pipe or a
 file receives the answer alone, byte for byte.
 
-A free-text answer (`format = "text"` without `max_lines`) is **streamed** to a terminal. `npu`
+A free-text answer (`format = "text"` without `max_lines`) is **streamed** to a terminal. `gko`
 asks the backend for `stream: true`, and each token is printed as it arrives. Nothing is printed
 until the first non-blank token. Until then the fallback can still take over, which covers a
 stopped container or a prompt the NPU refuses. Once a token is on screen, the answer belongs to
@@ -25,33 +25,33 @@ that model: a failure mid-way exits `3` after a partial answer, with no fallback
 or one bounded by `max_lines`, can only be validated whole, so it is never streamed. Neither is
 anything written to a pipe or a file.
 
-- [`npu doctor`](#npu-doctor) (also `npu config check`)
-- [`npu config test`](testing.md)
-- [`npu config models`](#npu-config-models)
-- [`npu config schema`](#npu-config-schema)
-- [`npu backend serve`](#npu-backend-serve)
-- [`npu backend stop`](#npu-backend-stop)
-- [`npu backend status`](#npu-backend-status)
-- [`npu backend logs`](#npu-backend-logs)
-- [`npu backend tune`](#npu-backend-tune)
-- [`npu model discover`](#npu-model-discover)
-- [`npu describe`](#npu-describe)
-- [`npu --version`](#npu-version)
-- [`npu update`](#npu-update)
+- [`gko doctor`](#gko-doctor) (also `gko config check`)
+- [`gko config test`](testing.md)
+- [`gko config models`](#gko-config-models)
+- [`gko config schema`](#gko-config-schema)
+- [`gko backend serve`](#gko-backend-serve)
+- [`gko backend stop`](#gko-backend-stop)
+- [`gko backend status`](#gko-backend-status)
+- [`gko backend logs`](#gko-backend-logs)
+- [`gko backend tune`](#gko-backend-tune)
+- [`gko model discover`](#gko-model-discover)
+- [`gko describe`](#gko-describe)
+- [`gko --version`](#gko-version)
+- [`gko update`](#gko-update)
 - [Verbosity](#verbosity)
 - [Execution statistics](#execution-statistics)
 - [Degraded mode](#degraded-mode)
 
 ---
 
-## `npu doctor`
+## `gko doctor`
 
 Validates the runtime environment and reports on stdout. Its report *is* its result.
-`npu config check` is the same command under its grouped name; `doctor` stays at the top level
+`gko config check` is the same command under its grouped name; `doctor` stays at the top level
 because it is what you type when nothing else works.
 
 ```console
-$ npu doctor
+$ gko doctor
 ✓ configuration loaded
 ✗ backend "ovms" reachable: TCP connection to "127.0.0.1:8000" failed: Connection refused (os error 111)
 ✓ container runtime available
@@ -109,14 +109,14 @@ unacceptable side effect for a diagnostic command. The label therefore says *rea
 
 ---
 
-## `npu config models`
+## `gko config models`
 
 Lists configured models, sorted by name, with column widths computed from the content.
 `FALLBACK` is the model retried once when this one fails with a backend error, or `-` when none is
 declared — see [`fallback`](configuration.md#fallback-optional).
 
 ```console
-$ npu config models
+$ gko config models
 NAME                       BACKEND   OPERATION  FALLBACK
 qwen2.5-coder-3b-instruct  ovms      chat       -
 qwen3-8b                   ovms      chat       qwen3-8b-gpu
@@ -125,21 +125,21 @@ qwen3-8b-gpu               ovms-gpu  chat       -
 
 ---
 
-## `npu config schema`
+## `gko config schema`
 
 Prints the JSON Schema (draft-07) of one configuration format: `backend`, `model`, `command`
 (the frontmatter of a command file) or `test` (a [test case](testing.md)). The schemas are
-derived from the structures `npu` deserializes, so they list exactly the keys it accepts and
-reject any other one, like `npu` itself.
+derived from the structures `gko` deserializes, so they list exactly the keys it accepts and
+reject any other one, like `gko` itself.
 
 ```console
-$ npu config schema backend > .npu/backend.schema.json
+$ gko config schema backend > .gko/backend.schema.json
 ```
 
 A schema checks structure: the keys, their types, and the few literal values that are fixed
 (`type = "openai-compatible"`, `method = "POST"`, `port = "auto"`). It does not check the rules
 that link keys together, such as `values` being allowed only with `type = "enum"`, or a model
-naming a backend that exists. `npu config check` stays authoritative.
+naming a backend that exists. `gko config check` stays authoritative.
 
 The schemas do not depend on your configuration, so the command also works when that
 configuration fails to load.
@@ -158,7 +158,7 @@ meant for tools and for checking the documentation.
 
 ---
 
-## `npu backend serve`
+## `gko backend serve`
 
 Starts the runtime of the backend a model points at, and prints what that runtime family calls
 what it started — its result, and the only thing it writes to stdout. For a
@@ -166,18 +166,18 @@ what it started — its result, and the only thing it writes to stdout. For a
 identifier; for a [process](configuration.md#starting-a-backend-as-a-process) one, the pid.
 
 ```console
-$ npu backend serve qwen-fast
+$ gko backend serve qwen-fast
 2ac5416d2aae6769b9c2674ee2e284eaab4be049fa7d02d38146852989c35e35
 ```
 
 ```console
-$ npu backend serve qwen-fast
+$ gko backend serve qwen-fast
 1002664
 ```
 
 The argument is a **model**, not a backend: a model already names exactly one backend
 (`backend = "ovms"`), so there is nothing to disambiguate, and several served backends coexist
-without ceremony. What gets run comes entirely from that backend's `[runtime]` table — `npu` knows
+without ceremony. What gets run comes entirely from that backend's `[runtime]` table — `gko` knows
 the shape of a `docker run` invocation, or how to spawn a child process, never which server you
 run.
 
@@ -186,29 +186,29 @@ run.
 The command built is:
 
 ```text
-docker run -d --name npu-<backend-id> <options…> <image> <args…>
+docker run -d --name gko-<backend-id> <options…> <image> <args…>
 ```
 
-`-d` and `--name` are imposed by `npu`. Detached, because an attached container would write the
+`-d` and `--name` are imposed by `gko`. Detached, because an attached container would write the
 server's logs onto stdout, where only the result belongs. Named after the **backend**, because
 that is what owns the ports: starting the same backend twice then fails on an explicit name
 conflict instead of silently running a second container fighting for port 8000. That second
-attempt exits `3`, with Docker's own `Conflict. The container name "/npu-ovms" is already in use`
+attempt exits `3`, with Docker's own `Conflict. The container name "/gko-ovms" is already in use`
 on stderr and nothing on stdout.
 
 ### The process family
 
 The declared `command` is spawned directly, with the declared `arguments`, its two streams
-redirected into a log file beside the state record `npu` writes, and `[runtime.env]` layered over
-the environment `npu` itself runs in. Serving the same backend twice is refused before anything is
+redirected into a log file beside the state record `gko` writes, and `[runtime.env]` layered over
+the environment `gko` itself runs in. Serving the same backend twice is refused before anything is
 spawned, naming the backend and the pid already holding it — the state record is what makes that
 possible, Docker's name registry having no equivalent here.
 
-Then, unlike the Docker family, `npu backend serve` **waits**: it polls the backend's `base_url` until
+Then, unlike the Docker family, `gko backend serve` **waits**: it polls the backend's `base_url` until
 something answers, the server exits, or `startup_timeout_secs` runs out. The poll is a TCP
 connection and nothing more — no byte is sent, no protocol is spoken — so a `serve` that printed a
 pid means *something accepted a connection on that address*, which a server still loading its
-model already does. Use `npu doctor` or the runtime's own readiness endpoint for anything
+model already does. Use `gko doctor` or the runtime's own readiness endpoint for anything
 stronger; teaching this engine an HTTP readiness path would bake a protocol assumption into it.
 
 Every failure after the spawn terminates the child and deletes the record, but **keeps the log** —
@@ -229,49 +229,49 @@ Code `3` covers every way a start fails, whichever family: `docker` missing, its
 `docker run` failing; and for a process, a `command` this machine does not have, a port already
 taken, a spawn the OS refused, a server that exited during startup or one that never answered
 within its budget. The port pre-check only exists for a backend that declares a `port` key: one
-spelling its number directly in `base_url` and in `arguments` has nothing for `npu` to check, and
+spelling its number directly in `base_url` and in `arguments` has nothing for `gko` to check, and
 a port already held then surfaces as the server exiting during startup, with the reason in its
 log. It is the same `3` as everywhere else in this CLI — a backend problem. To a
 calling program, *the runtime could not be brought up* and *the backend is unreachable* call for
 the same reaction.
 
-### What `npu backend serve` deliberately does not do
+### What `gko backend serve` deliberately does not do
 
 For a Docker backend it does not wait for the server to be ready: `docker run -d` returns as soon
-as the container is created, long before a model is loaded. Use `npu doctor`, `npu backend status`, or the
+as the container is created, long before a model is loaded. Use `gko doctor`, `gko backend status`, or the
 runtime's own readiness endpoint, to know when it can answer. (A process backend does wait — see
 above.)
 
 It does not detach a spawned process into its own session either, so a terminal hang-up takes it
 down along with everything else in that session.
 
-The rest of the lifecycle lives in its own commands: [`npu backend stop`](#npu-backend-stop),
-[`npu backend status`](#npu-backend-status) and [`npu backend logs`](#npu-backend-logs).
+The rest of the lifecycle lives in its own commands: [`gko backend stop`](#gko-backend-stop),
+[`gko backend status`](#gko-backend-status) and [`gko backend logs`](#gko-backend-logs).
 
 ---
 
-## `npu backend stop`
+## `gko backend stop`
 
-Ends what `npu backend serve` started for that model's backend.
+Ends what `gko backend serve` started for that model's backend.
 
 ```console
-$ npu backend stop qwen-fast
-npu-ovms
+$ gko backend stop qwen-fast
+gko-ovms
 ```
 
 ```console
-$ npu backend stop qwen-fast
+$ gko backend stop qwen-fast
 llamacpp
 ```
 
 For a Docker backend it **removes** the container rather than merely stopping it, and prints its
-name: a stopped container still owns that name, so `npu backend serve` would then fail on a conflict and
+name: a stopped container still owns that name, so `gko backend serve` would then fail on a conflict and
 the lifecycle would be a one-way trip.
 
 For a process backend it prints the **backend identifier**, not the pid `serve` returned. By the
 time `stop` answers, that pid names nothing, and a command printing a pid when it killed one and
 something else when there was nothing to kill would force its caller to branch on which. The pid,
-while it exists, is [`npu backend status`](#npu-backend-status)'s `INSTANCE` column. Termination escalates:
+while it exists, is [`gko backend status`](#gko-backend-status)'s `INSTANCE` column. Termination escalates:
 `SIGTERM`, a bounded wait, then `SIGKILL`.
 
 Stopping a backend that was never started is not an error in either family — the command prints
@@ -279,27 +279,27 @@ the same name and exits `0`, so a script can call it without checking first. Nei
 whose process is already gone, or whose pid has since been recycled: that record is forgotten,
 never signalled, because the pid it holds may belong to anybody by now.
 
-Exit codes are `npu backend serve`'s: `2` for an unknown model or a backend without a `[runtime]` table,
+Exit codes are `gko backend serve`'s: `2` for an unknown model or a backend without a `[runtime]` table,
 `3` when the runtime itself refuses — including a process that survived both signals, in which
 case the record is deliberately **kept**, since forgetting a running server would leave it
-unreachable to `npu`.
+unreachable to `gko`.
 
 ---
 
-## `npu backend status`
+## `gko backend status`
 
 Reports the state of every backend that declares a runtime, sorted by backend, one line
 each. Its report *is* its result.
 
 ```console
-$ npu backend status
+$ gko backend status
 BACKEND   RUNTIME  INSTANCE      URL                     STATE
-ovms      docker   npu-ovms      http://127.0.0.1:8000   Up 3 hours
-ovms-gpu  docker   npu-ovms-gpu  http://127.0.0.1:32768  Up 3 hours
+ovms      docker   gko-ovms      http://127.0.0.1:8000   Up 3 hours
+ovms-gpu  docker   gko-ovms-gpu  http://127.0.0.1:32768  Up 3 hours
 ```
 
 ```console
-$ npu backend status
+$ gko backend status
 BACKEND   RUNTIME  INSTANCE  URL                     STATE
 llamacpp  process  1002664   http://127.0.0.1:18432  running
 ```
@@ -336,12 +336,12 @@ declares a runtime at all.
 
 ---
 
-## `npu backend logs`
+## `gko backend logs`
 
 Streams what the served runtime wrote.
 
 ```console
-$ npu backend logs qwen-fast
+$ gko backend logs qwen-fast
 [2026-09-21 17:26:44.688][1][serving][info][server.cpp:115] OpenVINO Model Server 2026.4.0.869b2186a
 [2026-09-21 17:26:44.688][1][serving][info][server.cpp:116] OpenVINO backend 2026.4.0-22959-99c81491cc3-releases/2026/4
 ```
@@ -349,7 +349,7 @@ $ npu backend logs qwen-fast
 `--follow` (`-f`) keeps streaming as new lines arrive, until you interrupt it.
 
 For a Docker backend the container's two streams are passed through untouched — its stdout on
-`npu`'s stdout, its stderr on `npu`'s stderr, in the order the runtime wrote them. Capturing and
+`gko`'s stdout, its stderr on `gko`'s stderr, in the order the runtime wrote them. Capturing and
 reprinting them would reorder the interleaving, and most servers log to stderr.
 
 For a process backend both streams were already redirected, at `serve` time, into a single log
@@ -357,16 +357,16 @@ file beside the state record — interleaved there in the order the server wrote
 reason — and this command hands that file back byte for byte. It therefore still works after the
 server has exited, which is exactly when its last lines matter; `--follow` is a read to end of
 file and then a poll, so it also works on a server that has not written anything yet. A backend
-`npu` never served has no such file: that is exit `3`, naming the backend and the path that was
+`gko` never served has no such file: that is exit `3`, naming the backend and the path that was
 looked for, with nothing on stdout.
 
-The logs *are* this command's result. Exit codes are `npu backend serve`'s.
+The logs *are* this command's result. Exit codes are `gko backend serve`'s.
 
 ---
 
 ## Cargo feature: `hardware-tooling`
 
-`npu backend tune` and `npu model discover` (below) are the one deliberate exception to "the core
+`gko backend tune` and `gko model discover` (below) are the one deliberate exception to "the core
 understands execution mechanics, not AI business semantics": they know Intel/OpenVINO and Hugging
 Face well enough to help prepare a configuration. Everything they know lives under `src/vendor/`,
 never in the engine, and the whole seam is gated by a Cargo feature, `hardware-tooling`, **on by
@@ -377,8 +377,8 @@ Building with `--no-default-features` drops both commands, and the `model` group
 drops `tune` too:
 
 ```console
-$ npu --help
-Usage: npu [OPTIONS] [COMMAND]
+$ gko --help
+Usage: gko [OPTIONS] [COMMAND]
 
 Commands:
   bank-classify   Classify the transactions of a bank statement
@@ -398,13 +398,13 @@ Built-ins:
   mcp       Expose configured commands to MCP clients
   doctor    Check the runtime environment: configuration, backend reachability, declared output schemas
   describe  Describe a command, built-in or configured, as JSON; with none given, list every command
-  update    Download and install the latest npu release from GitHub
+  update    Download and install the latest gko release from GitHub
   help      Print this message or the help of the given command
 
 Options:
   -v, --verbose <LEVEL>        Diagnostic verbosity on stderr; stdout always carries the result only [default: warn] [possible values: error, warn, info]
       --error-format <FORMAT>  Format errors on stderr as plain text or a one-line JSON envelope [default: text] [possible values: text, json]
-      --config-dir <DIR>       Use this directory as the project scope instead of walking up from the current one [env: NPU_CONFIG_DIR]
+      --config-dir <DIR>       Use this directory as the project scope instead of walking up from the current one [env: GKO_CONFIG_DIR]
   -h, --help                   Print help
   -V, --version                Print version
 ```
@@ -416,7 +416,7 @@ compile-time seam on the engine/hardware-tooling boundary, never a smaller depen
 
 ---
 
-## `npu backend tune`
+## `gko backend tune`
 
 Sizes the context and memory of every model compiled for the NPU or the GPU, from the model and the
 host, and writes the result. An OpenVINO NPU graph is compiled for a fixed prompt length plus a
@@ -425,10 +425,10 @@ its KV cache on demand, and on unified memory nothing bounds it. `tune` sizes bo
 leaving OVMS's defaults: 1024 + 128 tokens on NPU, and an unbounded cache on GPU.
 
 ```console
-$ npu backend tune --help
+$ gko backend tune --help
 Size the context and memory of every NPU- and GPU-compiled model from the model and the host's RAM, and write it
 
-Usage: npu backend tune [OPTIONS]
+Usage: gko backend tune [OPTIONS]
 
 Options:
       --npu                   Tune the NPU models only [default: NPU and GPU, same limits]
@@ -447,8 +447,8 @@ A model is tuned when `<models-dir>/<model>/graph.pbtxt` declares `device: "NPU"
 With `--npu` or `--gpu`, only that device is tuned, so each device can get its own limits:
 
 ```sh
-npu backend tune --npu --max-memory 35
-npu backend tune --gpu --max-memory 15 --max-models 1 --kv-u8
+gko backend tune --npu --max-memory 35
+gko backend tune --gpu --max-memory 15 --max-models 1 --kv-u8
 ```
 
 Each model's share is:
@@ -460,7 +460,7 @@ A GPU twin loads its own copy of the weights, so it counts like any other model.
 command's result:
 
 ```console
-$ npu backend tune --dry-run
+$ gko backend tune --dry-run
 RAM 65.4 GB x 50% - weights 23.0 GB = 1.6 GB per model (6 of 6 NPU or GPU models at once)
 
 model                            device model max  KV/token  prompt  answer est. memory
@@ -489,7 +489,7 @@ What each device gets:
 
 Each model file gets `[generation].max_tokens` set to the answer length. Nothing is written until
 every file has been computed. A file is replaced, not rewritten, so a `graph.pbtxt` created by a
-container running as another user can still be updated. The next `npu backend serve` applies the
+container running as another user can still be updated. The next `gko backend serve` applies the
 new graph.
 
 Re-run it after every export, re-export or `--configure`, since they reset `graph.pbtxt` to the
@@ -498,16 +498,16 @@ with a configuration error (`2`) when no export for the selected devices is foun
 directory. It also fails with `2` when a `config.json`, `openvino_model.bin` or `graph.pbtxt` is
 missing or malformed, naming the file.
 
-## `npu model discover`
+## `gko model discover`
 
 Searches Hugging Face for the models this host can run, whatever runs them: CPU, GPU or NPU. It
 needs no configuration, so like `doctor` it works when yours fails to load.
 
 ```console
-$ npu model discover --help
+$ gko model discover --help
 Search Hugging Face for models this host can run, judged by llmfit when it is on PATH; --backend or --npu narrow the list
 
-Usage: npu model discover [OPTIONS] [QUERY]...
+Usage: gko model discover [OPTIONS] [QUERY]...
 
 Arguments:
   [QUERY]...  Words to search for (e.g. "qwen coder"); none lists the most downloaded
@@ -558,8 +558,8 @@ equal on every key keep the downloads order. The sort runs over every model that
 filters, before `-n` keeps the first ones:
 
 ```sh
-npu model discover qwen3 --sort score              # best score first
-npu model discover qwen3 --sort fit,params:asc     # Perfect fits, smallest first
+gko model discover qwen3 --sort score              # best score first
+gko model discover qwen3 --sort fit,params:asc     # Perfect fits, smallest first
 ``` The `mem GB` column is llmfit's figure when it sized the
 model, and `~` marks the INT4 estimate otherwise. The `score`, `fit`, `on` and `use case` columns
 appear only with llmfit. On a terminal the report is coloured: model ids stand out, a `~` estimate
@@ -567,7 +567,7 @@ and a non-permissive licence are yellow, and a `Perfect` fit and a score of 75 o
 Through a pipe the table is plain.
 
 ```console
-$ npu model discover qwen3 instruct -n 4
+$ gko model discover qwen3 instruct -n 4
 model                                     type            params  mem GB license        downloads score fit     on   use case
 unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF -                    -    15.6 apache-2.0         12.4M  80.8 Perfect GPU  Code generation and completion
 Qwen/Qwen3-4B-Instruct-2507               qwen3             4.0B     5.8 apache-2.0          3.9M  72.3 Perfect GPU  Instruction following, chat
@@ -576,24 +576,24 @@ QuantTrio/Qwen3-VL-30B-A3B-Instruct-AWQ   qwen3_vl_moe     31.1B   ~18.6 apache-
 ```
 
 A Hub or registry that cannot be reached fails with exit `3`, naming the URL. This list answers
-"worth trying". [`npu-export`](intel-npu.md)'s CPU check answers "actually works", and
-[`npu backend tune`](#npu-backend-tune) sizes the context once the model is exported.
+"worth trying". [`gko-export`](intel-npu.md)'s CPU check answers "actually works", and
+[`gko backend tune`](#gko-backend-tune) sizes the context once the model is exported.
 
-## `npu describe`
+## `gko describe`
 
 Prints a JSON description of a command — a configured one or a built-in — useful for humans, and
 for programs driving the CLI. The path is given as words, like the command itself
-(`npu describe git review`); `git/review` is accepted too. Built-ins are looked up first.
+(`gko describe git review`); `git/review` is accepted too. Built-ins are looked up first.
 
 ```console
-$ npu describe translate
-{"name":"translate","kind":"command","description":"Translate input text","model":"qwen3-8b","backend":"ovms","fallback":"qwen3-8b-gpu","source":{"file":"/home/…/npu/.npu/commands/translate.md","scope":"/home/…/npu/.npu"},"input":"stdin_or_file","args":{"language":{"short":"l","required":true,"description":"Target language"}},"output":{"format":"text","schema":null,"max_lines":null}}
+$ gko describe translate
+{"name":"translate","kind":"command","description":"Translate input text","model":"qwen3-8b","backend":"ovms","fallback":"qwen3-8b-gpu","source":{"file":"/home/…/gko/.gko/commands/translate.md","scope":"/home/…/gko/.gko"},"input":"stdin_or_file","args":{"language":{"short":"l","required":true,"description":"Target language"}},"output":{"format":"text","schema":null,"max_lines":null}}
 ```
 
 Pipe it through `jq` to read it:
 
 ```console
-$ npu describe commit-message | jq .
+$ gko describe commit-message | jq .
 {
   "name": "commit-message",
   "kind": "command",
@@ -602,8 +602,8 @@ $ npu describe commit-message | jq .
   "backend": "ovms",
   "fallback": "qwen3-8b-gpu",
   "source": {
-    "file": "/home/…/npu/.npu/commands/commit-message.md",
-    "scope": "/home/…/npu/.npu"
+    "file": "/home/…/gko/.gko/commands/commit-message.md",
+    "scope": "/home/…/gko/.gko"
   },
   "input": "stdin",
   "args": {},
@@ -624,7 +624,7 @@ A built-in is described from the command tree itself, so this works even with a 
 configuration; `degraded_mode` says whether the built-in does too:
 
 ```console
-$ npu describe backend serve | jq .
+$ gko describe backend serve | jq .
 {
   "name": "backend/serve",
   "kind": "builtin",
@@ -644,17 +644,17 @@ $ npu describe backend serve | jq .
 An unknown path is a configuration error listing the configured commands:
 
 ```console
-$ npu describe nexistepas
+$ gko describe nexistepas
 configuration error: unknown command: "nexistepas" (available commands: classify, code, commit-message, synthese, translate)
 ```
 
 ### The index
 
-With no argument, `npu describe` lists every describable path instead — built-in and business,
+With no argument, `gko describe` lists every describable path instead — built-in and business,
 each with its own one-line description — rather than failing on a missing required argument:
 
 ```console
-$ npu describe | jq .
+$ gko describe | jq .
 [
   {
     "about": "Stream the logs of the runtime started for a model's backend",
@@ -675,11 +675,11 @@ $ npu describe | jq .
 
 ## `--json`
 
-`npu doctor` (and its alias `config check`), `npu backend status` and `npu config models` also
+`gko doctor` (and its alias `config check`), `gko backend status` and `gko config models` also
 accept `--json`: the same report, serialized instead of formatted for a terminal.
 
 ```console
-$ npu doctor --json | jq .
+$ gko doctor --json | jq .
 [
   {
     "kind": "config",
@@ -711,7 +711,7 @@ back). `--help` and `--version` are never affected: they stay `clap`'s own rende
 exit `0`, whatever this flag says.
 
 ```console
-$ npu does-not-exist --error-format json
+$ gko does-not-exist --error-format json
 ```
 ```json
 {"kind":"usage","message":"error: unrecognized subcommand 'does-not-exist'"}
@@ -722,14 +722,14 @@ $ npu does-not-exist --error-format json
 
 ## `--config-dir`
 
-`--config-dir <DIR>` (or `$NPU_CONFIG_DIR`, the flag winning when both are set) names the project
+`--config-dir <DIR>` (or `$GKO_CONFIG_DIR`, the flag winning when both are set) names the project
 scope directly, skipping the walk-up search entirely. Read from the raw command line, before
 `clap` parses anything — the project scope is resolved to LOAD the configuration, before the
 `clap` tree (built from it) even exists. See [Scopes and precedence](configuration.md#scopes-and-precedence)
 for the walk-up itself.
 
 ```console
-$ npu --config-dir /path/to/.npu config models
+$ gko --config-dir /path/to/.gko config models
 ```
 
 `config-dir` is consequently a reserved argument name: a command declaring `[args."config-dir"]`
@@ -737,55 +737,55 @@ is rejected at load time, naming the file.
 
 ## Shell completions
 
-`npu` supports dynamic shell completions through `clap_complete::CompleteEnv` — no `completions`
+`gko` supports dynamic shell completions through `clap_complete::CompleteEnv` — no `completions`
 subcommand, no reserved name: setting `COMPLETE=<shell>` makes the binary print the shell's
 registration script instead of running as usual.
 
 ```console
-$ eval "$(COMPLETE=bash npu)"       # bash, once per shell session (or in ~/.bashrc)
-$ eval "$(COMPLETE=zsh npu)"        # zsh
-$ COMPLETE=fish npu | source        # fish
+$ eval "$(COMPLETE=bash gko)"       # bash, once per shell session (or in ~/.bashrc)
+$ eval "$(COMPLETE=zsh gko)"        # zsh
+$ COMPLETE=fish gko | source        # fish
 ```
 
 Once registered, `<TAB>` completes business commands, built-in group names (`backend`, `config`,
 ...) and the global flags — never the HIDDEN top-level built-ins themselves (`doctor`, `describe`,
-`update`; `npu --help` shows them in their own section, but `clap` never lists a hidden subcommand
-as a completion candidate). Completion is resolved from the SAME `clap` tree `npu` itself runs
-against, discovered fresh on every request, so it reflects the current `.npu/` — including
-`--config-dir`/`NPU_CONFIG_DIR`.
+`update`; `gko --help` shows them in their own section, but `clap` never lists a hidden subcommand
+as a completion candidate). Completion is resolved from the SAME `clap` tree `gko` itself runs
+against, discovered fresh on every request, so it reflects the current `.gko/` — including
+`--config-dir`/`GKO_CONFIG_DIR`.
 
 ---
 
-## `npu --version`
+## `gko --version`
 
 Prints the program name and the release number embedded from `Cargo.toml`:
 
 ```console
-$ npu --version
-npu 0.8.0
+$ gko --version
+gko 0.8.0
 ```
 
 It does not load or require a valid AI configuration.
 
 ---
 
-## `npu update`
+## `gko update`
 
 Checks the latest GitHub Release and installs it over the currently running executable:
 
 ```console
-$ npu update
-updated npu from 0.7.0 to 0.7.1
+$ gko update
+updated gko from 0.7.0 to 0.7.1
 ```
 
 When no newer release exists, it reports that fact and leaves the executable untouched:
 
 ```console
-$ npu update
-npu 0.8.0 is already up to date
+$ gko update
+gko 0.8.0 is already up to date
 ```
 
-The release publishes a `npu-update.json` manifest. It maps every supported platform to a raw
+The release publishes a `gko-update.json` manifest. It maps every supported platform to a raw
 binary and its SHA-256 checksum. The command downloads that manifest through GitHub's stable
 `releases/latest` URL, compares semantic versions, selects the current platform (one Linux build
 per architecture, for every glibc-based distribution), verifies the downloaded bytes, then replaces the executable
@@ -816,12 +816,12 @@ subcommand since the argument is global:
 | `info` | a trace: scopes read, command resolved, input size, request sent, response received |
 
 ```console
-$ echo "texte" | npu classify --verbose info > /dev/null
-npu: info: scopes: /home/…/npu/.npu, /home/…/.config/npu
-npu: info: command "classify" -> model "qwen-fast" (backend "ovms", operation "chat") from /home/…/npu/.npu/commands/classify.md
-npu: info: input: 6 characters read from stdin
-npu: info: prompt rendered: 125 characters
-npu: info: POST http://127.0.0.1:8000/v3/chat/completions (model "OpenVINO/Qwen3-8B-int4-ov", timeout 30 s)
+$ echo "texte" | gko classify --verbose info > /dev/null
+gko: info: scopes: /home/…/gko/.gko, /home/…/.config/gko
+gko: info: command "classify" -> model "qwen-fast" (backend "ovms", operation "chat") from /home/…/gko/.gko/commands/classify.md
+gko: info: input: 6 characters read from stdin
+gko: info: prompt rendered: 125 characters
+gko: info: POST http://127.0.0.1:8000/v3/chat/completions (model "OpenVINO/Qwen3-8B-int4-ov", timeout 30 s)
 ```
 
 **No level ever changes stdout.** Verbosity moves a threshold on the diagnostic stream; the result
@@ -830,7 +830,7 @@ every level — `--verbose error` silences the engine's commentary, never the er
 
 ### `--dry-run`
 
-Every business command leaf accepts `--dry-run`: it builds the exact request `npu` would send —
+Every business command leaf accepts `--dry-run`: it builds the exact request `gko` would send —
 url, headers, body — through the same constructor the real call uses, and prints it as JSON
 instead of sending it. Nothing is written or read but the terminal: the runtime is never resolved
 (a `port = "auto"` backend keeps its `{{ backend.port }}` placeholder verbatim, since resolving it
@@ -838,12 +838,12 @@ means asking Docker), only the primary model is shown (never the fallback), and 
 redacted — only their names appear.
 
 ```console
-$ echo "texte" | npu classify --dry-run
+$ echo "texte" | gko classify --dry-run
 {"body":{"messages":[{"content":"Classify: texte\n","role":"user"}],"model":"OpenVINO/Qwen3-8B-int4-ov"},"headers":{},"url":"http://127.0.0.1:8000/v3/chat/completions"}
 ```
 
 `--dry-run` is declared only on business command leaves (`build_clap_node`), never on a built-in:
-`npu doctor --dry-run` is a `clap` usage error (exit `2`, empty stdout), the same path as any other
+`gko doctor --dry-run` is a `clap` usage error (exit `2`, empty stdout), the same path as any other
 unrecognized flag. `dry-run` is consequently a reserved argument name: a command declaring
 `[args."dry-run"]` is rejected at load time, naming the file.
 
@@ -855,7 +855,7 @@ before the input is read: an unknown id fails exactly like an unknown model in t
 would (`Error::Config`, exit `2`, the id named in the message), and nothing is sent to the network.
 
 ```console
-$ echo "texte" | npu classify --model qwen-fast --dry-run
+$ echo "texte" | gko classify --model qwen-fast --dry-run
 {"body":{"messages":[{"content":"Classify: texte\n","role":"user"}],"model":"OpenVINO/Qwen3-8B-int4-ov"},"headers":{},"url":"http://127.0.0.1:8000/v3/chat/completions"}
 ```
 
@@ -865,7 +865,7 @@ declaring `[args.model]` is rejected at load time, naming the file.
 ### `--no-wait`
 
 A business command leaf also accepts `--no-wait`. When the command's backend declares
-[`max_concurrent = 1`](configuration.md#max_concurrent-optional) and another `npu` process is
+[`max_concurrent = 1`](configuration.md#max_concurrent-optional) and another `gko` process is
 using it, the command does not wait for its turn: the busy backend is a backend failure, so the
 model's `fallback` answers if it declares one, and otherwise the command fails at once (exit `3`,
 empty stdout) naming the backend. On a backend without a limit it changes nothing.
@@ -873,10 +873,10 @@ empty stdout) naming the backend. On a backend without a limit it changes nothin
 
 ### Progress indicators
 
-On a terminal, `npu` draws a spinner on stderr while it waits for a model (relabelled when the
-fallback takes over) or for a process backend to start, and a progress bar while `npu update`
+On a terminal, `gko` draws a spinner on stderr while it waits for a model (relabelled when the
+fallback takes over) or for a process backend to start, and a progress bar while `gko update`
 downloads. They are drawn only when **stderr is a terminal** and the level is above `error`:
-through a pipe — how a program driving `npu` sees it — stderr receives no escape sequence and no
+through a pipe — how a program driving `gko` sees it — stderr receives no escape sequence and no
 carriage return, and `--verbose error` means silence. Indicators never touch stdout.
 
 The name `verbose` and the short letter `-v` are consequently reserved: a command declaring
@@ -886,9 +886,9 @@ The name `verbose` and the short letter `-v` are consequently reserved: a comman
 
 ## Execution statistics
 
-With `NPU_STATS_FILE` set to a path, every run of a configured command appends one JSON line to
-that file, created if needed: from the CLI, from [`npu config test`](testing.md) (one line per
-run of a case) and from [`npu mcp serve`](mcp.md) (one line per tool call). A `--dry-run` sends no
+With `GKO_STATS_FILE` set to a path, every run of a configured command appends one JSON line to
+that file, created if needed: from the CLI, from [`gko config test`](testing.md) (one line per
+run of a case) and from [`gko mcp serve`](mcp.md) (one line per tool call). A `--dry-run` sends no
 request and writes nothing.
 
 ```json
@@ -922,15 +922,15 @@ stdout stay what they would have been.
 ## Degraded mode
 
 A broken configuration must not leave you without the tools to diagnose it. When loading fails,
-`npu` keeps the error instead of giving up, builds its command tree with the built-ins **always**
+`gko` keeps the error instead of giving up, builds its command tree with the built-ins **always**
 present, and adds your commands only if loading succeeded.
 
 ```console
-$ npu --help
-Usage: npu [OPTIONS]
+$ gko --help
+Usage: gko [OPTIONS]
 
 Commands:
-  none: the configuration failed to load; run "npu doctor"
+  none: the configuration failed to load; run "gko doctor"
 
 Built-ins:
   backend   Manage the runtime of a model's backend: serve, stop, status, logs, tune
@@ -939,13 +939,13 @@ Built-ins:
   model     Find models for this host: discover
   doctor    Check the runtime environment: configuration, backend reachability, declared output schemas
   describe  Describe a command, built-in or configured, as JSON; with none given, list every command
-  update    Download and install the latest npu release from GitHub
+  update    Download and install the latest gko release from GitHub
   help      Print this message or the help of the given command
 
 Options:
   -v, --verbose <LEVEL>        Diagnostic verbosity on stderr; stdout always carries the result only [default: warn] [possible values: error, warn, info]
       --error-format <FORMAT>  Format errors on stderr as plain text or a one-line JSON envelope [default: text] [possible values: text, json]
-      --config-dir <DIR>       Use this directory as the project scope instead of walking up from the current one [env: NPU_CONFIG_DIR]
+      --config-dir <DIR>       Use this directory as the project scope instead of walking up from the current one [env: GKO_CONFIG_DIR]
   -h, --help                   Print help
   -V, --version                Print version
 ```
@@ -953,13 +953,13 @@ Options:
 Exit code `0`, and on **stderr**:
 
 ```text
-npu: warn: invalid configuration (configuration error: invalid TOML in
-/tmp/…/.npu/backends/k.toml: TOML parse error at line 1, column 2
+gko: warn: invalid configuration (configuration error: invalid TOML in
+/tmp/…/.gko/backends/k.toml: TOML parse error at line 1, column 2
   |
 1 | x{[
   |  ^
 key with no value, expected `=`
-); run "npu doctor" for details on the failed checks
+); run "gko doctor" for details on the failed checks
 ```
 
 The warning matters as much as the help itself. Help listing zero business commands with no
@@ -969,10 +969,10 @@ From there:
 
 | Command | Behaviour with a broken configuration |
 | --- | --- |
-| `npu --help` | exit `0`, built-ins listed, warning on stderr |
-| `npu doctor`, `npu config check` | exit `2`, report on stdout naming the offending file and line |
-| `npu --version`, `update` | run normally; they do not depend on the configuration |
-| `npu config schema` | runs normally (the warning still goes to stderr) |
-| `npu describe <built-in>` | runs normally; `npu describe <command>` exits `2` |
-| `npu backend serve`, `stop`, `status`, `logs`, `npu config models` | exit `2`, stdout empty — they need the configuration that could not load |
+| `gko --help` | exit `0`, built-ins listed, warning on stderr |
+| `gko doctor`, `gko config check` | exit `2`, report on stdout naming the offending file and line |
+| `gko --version`, `update` | run normally; they do not depend on the configuration |
+| `gko config schema` | runs normally (the warning still goes to stderr) |
+| `gko describe <built-in>` | runs normally; `gko describe <command>` exits `2` |
+| `gko backend serve`, `stop`, `status`, `logs`, `gko config models` | exit `2`, stdout empty — they need the configuration that could not load |
 | anything else | exit `2`, stdout empty, error on stderr |

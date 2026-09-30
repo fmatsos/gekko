@@ -1,6 +1,6 @@
 # Changelog
 
-Every notable change to `npu`, newest first. Versions follow
+Every notable change to Gekko (`gko`, named `npu` up to 0.8.0), newest first. Versions follow
 [semantic versioning](https://semver.org); pre-1.0, a breaking change bumps
 the minor.
 

@@ -1,11 +1,11 @@
 //! Integration tests.
 //!
 //! - `discovers_commit_message_fixture`: checks that `command::discover`
-//!   finds the `.npu/commands/commit-message.md` fixture with the correct model
+//!   finds the `.gko/commands/commit-message.md` fixture with the correct model
 //!   and the correct input mode.
 //! - `layered_scopes_local_wins_over_general`: builds two
 //!   temporary scope roots under `target/` (a "general" one and a
-//!   "local" one, both distinct from the versioned `.npu/` fixture) and
+//!   "local" one, both distinct from the versioned `.gko/` fixture) and
 //!   checks that `discover_scopes` and `load_scopes` correctly keep the
 //!   local version of a command AND a model defined in both.
 //!
@@ -14,15 +14,15 @@
 //! over an explicitly passed list of roots, never `scope::roots()`.
 #![allow(clippy::expect_used)] // allowed in tests (see Cargo.toml [lints.clippy]).
 
-use npu::command::{self, InputMode};
-use npu::config;
-use npu::prompt;
+use gekko::command::{self, InputMode};
+use gekko::config;
+use gekko::prompt;
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 #[test]
 fn discovers_commit_message_fixture() {
-    let root = std::path::Path::new(".npu");
+    let root = std::path::Path::new(".gko");
     let commands = command::discover(root).expect("command discovery must succeed");
 
     let commit_message = commands
@@ -34,7 +34,7 @@ fn discovers_commit_message_fixture() {
     assert!(matches!(commit_message.input, InputMode::Stdin));
 }
 
-/// Discovers the versioned `.npu/commands/translate.md` fixture: checks
+/// Discovers the versioned `.gko/commands/translate.md` fixture: checks
 /// that the `language` argument is declared with
 /// the correct short letter and the correct `required` flag, and that its prompt
 /// (which references `{{ args.language }}`) correctly passes the static
@@ -42,7 +42,7 @@ fn discovers_commit_message_fixture() {
 /// only reads and parses local files.
 #[test]
 fn discovers_translate_fixture_with_declared_language_arg() {
-    let root = std::path::Path::new(".npu");
+    let root = std::path::Path::new(".gko");
     let commands = command::discover(root).expect("command discovery must succeed");
 
     let translate = commands
@@ -67,17 +67,17 @@ fn discovers_translate_fixture_with_declared_language_arg() {
     .expect("the translate prompt must pass static placeholder validation");
 }
 
-/// Discovers the versioned `.npu/commands/classify.md` fixture: checks
+/// Discovers the versioned `.gko/commands/classify.md` fixture: checks
 /// that the command correctly declares
 /// `format = "json"` AND that the resolved schema path (`schemas/
-/// classification.json`, relative to the `.npu/` scope root) actually
+/// classification.json`, relative to the `.gko/` scope root) actually
 /// EXISTS on disk — the exact debt this phase repays
 /// (`[output]` read and then honored, not just accepted). Does not call
 /// the network: `command::discover` only reads and parses local
 /// files.
 #[test]
 fn discovers_classify_fixture_with_json_format_and_existing_schema() {
-    let root = std::path::Path::new(".npu");
+    let root = std::path::Path::new(".gko");
     let commands = command::discover(root).expect("command discovery must succeed");
 
     let classify = commands
@@ -87,7 +87,7 @@ fn discovers_classify_fixture_with_json_format_and_existing_schema() {
 
     assert_eq!(
         classify.output.format,
-        npu::output::Format::Json,
+        gekko::output::Format::Json,
         "classify must declare format = \"json\""
     );
     let schema_path = classify

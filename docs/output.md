@@ -16,8 +16,8 @@
 information go to stderr, always.
 
 ```sh
-npu summarize README.md > summary.txt    # the file contains the summary, nothing more
-cat ticket.md | npu classify | jq .      # safe to pipe into a JSON tool
+gko summarize README.md > summary.txt    # the file contains the summary, nothing more
+cat ticket.md | gko classify | jq .      # safe to pipe into a JSON tool
 ```
 
 This holds on failure paths too: when a command fails, stdout is empty — zero bytes — and the
@@ -70,7 +70,7 @@ A schema is declared in one of three forms:
 A value without a `/` and without a `.json` suffix is a name; anything else is a path. A relative
 path resolves against the **scope root** of the command file, not against the current directory
 and not against the command file itself — `schemas/` is a sibling of `commands/`. A command coming
-from `/etc/npu` therefore looks in `/etc/npu/schemas/`. The depth of the command path makes no
+from `/etc/gko` therefore looks in `/etc/gko/schemas/`. The depth of the command path makes no
 difference: `commands/git/review.md` still resolves against the scope root.
 
 ### Sending the schema to the model
@@ -107,7 +107,7 @@ file. The placeholder renders the schema document as compact JSON.
 Schemas are loaded **only when the command actually runs** — before its input is read and
 before the backend is contacted. A schema that is
 missing or malformed on a command nobody invokes does not break the rest of the CLI. Checking all
-of them is what [`npu doctor`](cli.md#npu-doctor) is for.
+of them is what [`gko doctor`](cli.md#gko-doctor) is for.
 
 ---
 
@@ -131,7 +131,7 @@ the declared contract is a failure, not something to repair.
 ## Truncated answers
 
 A backend that stops generating because it hit `max_tokens` (its own default, or the model's
-declared `[generation].max_tokens`) reports it as `finish_reason = "length"`. `npu` treats that as
+declared `[generation].max_tokens`) reports it as `finish_reason = "length"`. `gko` treats that as
 an execution failure by default — exit code `4` — exactly like a schema violation or an
 `max_lines` overrun: a cut-off answer did not honor the command's contract any less than a
 malformed one.
@@ -150,9 +150,9 @@ exists for a prompt an NPU-served model refuses as too long, not for an answer t
 
 The behavior differs slightly with the terminal versus a pipe:
 
-- **piped or redirected** (`npu ... > file`, `npu ... | jq .`): stdout stays **completely empty**
+- **piped or redirected** (`gko ... > file`, `gko ... | jq .`): stdout stays **completely empty**
   on a truncated answer that is not accepted — the answer never reaches it, byte one included.
-- **a terminal, streaming**: tokens already reached the screen as they arrived, before `npu` could
+- **a terminal, streaming**: tokens already reached the screen as they arrived, before `gko` could
   know the stream would end truncated. The exit code is still `4`; only the closing frame is
   skipped. A calling agent reads the exit code and stderr, never the terminal's screen, so this is
   not a contract violation — only a human-facing display detail.
@@ -186,8 +186,8 @@ diagnostic stream is not a transcript.
 
 **Streaming is disabled when `strip_reasoning = true`**, even on a terminal that would otherwise
 stream a plain-text answer: printing tokens as they arrive would show the reasoning block before
-`npu` has a chance to strip it, which defeats the whole point. The answer then arrives in one
-piece, exactly as it already does for a JSON output contract. `npu describe` reports the key, so
+`gko` has a chance to strip it, which defeats the whole point. The answer then arrives in one
+piece, exactly as it already does for a JSON output contract. `gko describe` reports the key, so
 the behavior is discoverable without reading the command file.
 
 A server that reports reasoning in a separate `reasoning_content` field rather than inlining it
@@ -214,7 +214,7 @@ model response → strip Markdown fences → parse JSON → validate against sch
 
 ### Fenced responses
 
-Models very often wrap their JSON in a Markdown code fence. `npu` removes an opening fence at the
+Models very often wrap their JSON in a Markdown code fence. `gko` removes an opening fence at the
 start and its closing fence at the end, with or without a language tag, tolerating surrounding
 whitespace:
 
@@ -232,7 +232,7 @@ What reaches stdout is the compact serialisation of the parsed value, so stdout 
 JSON whatever the model wrapped around it:
 
 ```sh
-cat ticket.md | npu classify | jq .category
+cat ticket.md | gko classify | jq .category
 ```
 
 ### Extracting one value
@@ -247,7 +247,7 @@ extract = "/category"
 ```
 
 ```sh
-category=$(cat ticket.md | npu classify)   # hardware, not {"category":"hardware",...}
+category=$(cat ticket.md | gko classify)   # hardware, not {"category":"hardware",...}
 ```
 
 The schema is still validated on the **whole** document; only then is the pointed value written:
@@ -256,7 +256,7 @@ resolve is an output failure (exit `4`), naming the pointer.
 
 `extract` shapes the CLI's stdout only. An MCP client still receives the whole document, which
 is what the tool's advertised output schema describes, and the expectations of
-[`npu config test`](testing.md) address the whole document too.
+[`gko config test`](testing.md) address the whole document too.
 
 ---
 
@@ -280,7 +280,7 @@ Validation failures list **every** violation, not just the first one, so a promp
 one pass instead of one error at a time.
 
 A response that is not valid JSON, or that violates the schema, is an execution failure with exit
-code `4`. `npu` does not retry, does not reformulate, and does not ask the model again — the
+code `4`. `gko` does not retry, does not reformulate, and does not ask the model again — the
 specification is explicit that invalid structured output is a failure. This matters most when the
 CLI is driven by another program, which needs a stable contract rather than a best effort.
 

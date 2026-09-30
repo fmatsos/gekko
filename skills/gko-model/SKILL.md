@@ -1,17 +1,17 @@
 ---
-name: npu-model
-description: Writes and fixes `npu` model files (`.npu/models/*.toml`) — the `id`, `backend`, `operation`, `model`, optional `fallback` and optional `[generation]` fields that bridge a command to a backend capability. Covers resolution errors (unknown backend, operation the backend does not expose), the single-hop `fallback` retry that moves an over-long prompt from an NPU-served model to a GPU-served one, the fact that omitted generation fields are not sent at all, and replacement-by-id across configuration scopes. Use it whenever a model alias is created, renamed, retuned or rejected.
+name: gko-model
+description: Writes and fixes `gko` model files (`.gko/models/*.toml`) — the `id`, `backend`, `operation`, `model`, optional `fallback` and optional `[generation]` fields that bridge a command to a backend capability. Covers resolution errors (unknown backend, operation the backend does not expose), the single-hop `fallback` retry that moves an over-long prompt from an NPU-served model to a GPU-served one, the fact that omitted generation fields are not sent at all, and replacement-by-id across configuration scopes. Use it whenever a model alias is created, renamed, retuned or rejected.
 when_to_use: >
-  Trigger on "add an npu model", "point this command at another model",
-  "change temperature / max_tokens", "npu config models", or on any npu error
+  Trigger on "add a gko model", "point this command at another model",
+  "change temperature / max_tokens", "gko config models", or on any gko error
   mentioning a model id, an unknown backend, or an operation a backend does
   not expose.
 model: sonnet
 effort: low
-allowed-tools: Read Write Edit Glob Grep Bash(npu:*)
+allowed-tools: Read Write Edit Glob Grep Bash(gko:*)
 ---
 
-# `npu` models
+# `gko` models
 
 A model is the bridge between a command and a backend capability. The command
 names a model; the model names a backend and one of its operations. The
@@ -20,7 +20,7 @@ command never needs to know the endpoint or the protocol.
 ## The file
 
 ```toml
-# .npu/models/qwen-fast.toml
+# .gko/models/qwen-fast.toml
 id = "qwen-fast"
 backend = "ovms"
 operation = "chat"
@@ -84,7 +84,7 @@ retried.
 Written for the NPU case: an NPU-compiled graph has a static maximum prompt
 length, and OVMS refuses an over-long prompt with a clean `400 ... Input
 length exceeds the maximum allowed length` in milliseconds — an exact signal,
-so `npu` needs no tokenizer and no guessed character threshold.
+so `gko` needs no tokenizer and no guessed character threshold.
 
 - **Single hop**: the fallback's own `fallback` is not followed, so no chain
   and no cycle.
@@ -93,7 +93,7 @@ so `npu` needs no tokenizer and no guessed character threshold.
   stderr. A backend down all day must not pass for a healthy fallback.
 - **Two devices means two backends**: the target device is baked into the
   served export (OVMS reads it from `graph.pbtxt`), never chosen per request,
-  and `npu` names its container `npu-<backend-id>`. So the fallback points at
+  and `gko` names its container `gko-<backend-id>`. So the fallback points at
   a second model on a second backend on a second port. Same reasoning for
   running several small models at once.
 - **It does not lift the context length**: a GPU twin built by symlinking the
@@ -117,8 +117,8 @@ Configuration errors (exit `2`), each naming what *is* available:
   carrying a TOML datetime or a non-finite float anywhere in its structure;
 - two files in the same scope sharing an `id`.
 
-Resolution runs **after** the scopes are merged, so a model in `./.npu` may
-reference a backend declared only in `/etc/npu`. A model whose file is
+Resolution runs **after** the scopes are merged, so a model in `./.gko` may
+reference a backend declared only in `/etc/gko`. A model whose file is
 replaced by a more local one with the same `id` is replaced whole — no field
 is inherited.
 
@@ -132,27 +132,27 @@ not.
 ## Verifying
 
 ```sh
-npu config models    # NAME / BACKEND / OPERATION, sorted by name
-npu doctor    # resolves every model against its backend and operation
-npu backend serve <id>  # starts the backend's runtime, when it declares [docker]
-npu backend status      # its state afterwards
+gko config models    # NAME / BACKEND / OPERATION, sorted by name
+gko doctor    # resolves every model against its backend and operation
+gko backend serve <id>  # starts the backend's runtime, when it declares [docker]
+gko backend status      # its state afterwards
 ```
 
-`npu config models` lists what actually resolved. A model you just wrote and cannot
-see there was not loaded — `npu doctor` will say why and name the file.
+`gko config models` lists what actually resolved. A model you just wrote and cannot
+see there was not loaded — `gko doctor` will say why and name the file.
 
 ## Reference
 
 This skill is a summary. When a case is not covered here, or when the
 behaviour it describes does not match what the binary does, the repository
 documentation is authoritative. The exact set of keys the binary accepts is
-`npu config schema model` (a JSON Schema derived from the parser itself):
+`gko config schema model` (a JSON Schema derived from the parser itself):
 
 - [Models](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#models)
 - [Merge semantics](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#merge-semantics)
-- [`npu config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-config-schema)
-- [`npu config models`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-config-models)
+- [`gko config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-schema)
+- [`gko config models`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-models)
 
-Related skills: **npu-backend**, **npu-command**, **npu-doctor**.
+Related skills: **gko-backend**, **gko-command**, **gko-doctor**.
 
 <!-- model/effort: Five keys and two optional generation fields; resolution errors name what is available. -->

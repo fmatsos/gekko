@@ -1,5 +1,5 @@
 //! End-to-end verification of the project scope walk-up and
-//! `--config-dir`/`NPU_CONFIG_DIR` (see `src/scope.rs::project_root`).
+//! `--config-dir`/`GKO_CONFIG_DIR` (see `src/scope.rs::project_root`).
 //! Same idiom as `tests/builtins_and_degraded_mode.rs`: the REAL binary,
 //! temporary directories, `$XDG_CONFIG_HOME` pointed at an EMPTY scope so
 //! only the project scope under test is ever picked up.
@@ -31,9 +31,9 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 
 /// A project scope with just the `qwen-fast` model configured (no backend,
 /// no command needed: `config models` is enough to prove which scope won).
-fn write_scope(npu_dir: &Path) {
+fn write_scope(gko_dir: &Path) {
     write(
-        npu_dir,
+        gko_dir,
         "backends/ovms.toml",
         r#"
         id = "ovms"
@@ -46,7 +46,7 @@ fn write_scope(npu_dir: &Path) {
         "#,
     );
     write(
-        npu_dir,
+        gko_dir,
         "models/qwen-fast.toml",
         r#"
         id = "qwen-fast"
@@ -60,9 +60,9 @@ fn write_scope(npu_dir: &Path) {
 fn run(cwd: &Path, empty_xdg: &Path, args: &[&str], extra_env: &[(&str, &str)]) -> Output {
     // `HOME` deliberately UNRELATED to `cwd`'s ancestry: `HOME == cwd` (or
     // an ancestor of it) would make the walk-up's home boundary stop the
-    // search before it ever reaches the fixture's own `.npu` — these tests
+    // search before it ever reaches the fixture's own `.gko` — these tests
     // are about the walk-up itself, not about the home boundary.
-    Command::new(env!("CARGO_BIN_EXE_npu"))
+    Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(cwd)
         .env("HOME", empty_xdg)
@@ -74,17 +74,17 @@ fn run(cwd: &Path, empty_xdg: &Path, args: &[&str], extra_env: &[(&str, &str)]) 
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu")
+        .expect("launching gko")
         .wait_with_output()
-        .expect("waiting for npu")
+        .expect("waiting for gko")
 }
 
-/// A `.npu` found by walking up from a NESTED cwd (no `.npu` at cwd
+/// A `.gko` found by walking up from a NESTED cwd (no `.gko` at cwd
 /// itself) is picked up: `config models` lists the model it declares.
 #[test]
-fn a_npu_directory_in_a_parent_of_cwd_is_found_by_walking_up() {
+fn a_gko_directory_in_a_parent_of_cwd_is_found_by_walking_up() {
     let root = fixture_dir("walkup-root");
-    write_scope(&root.join(".npu"));
+    write_scope(&root.join(".gko"));
     let nested = root.join("src").join("deep");
     std::fs::create_dir_all(&nested).expect("nested dir");
     let empty_xdg = fixture_dir("walkup-empty-xdg");
@@ -100,12 +100,12 @@ fn a_npu_directory_in_a_parent_of_cwd_is_found_by_walking_up() {
 }
 
 /// A `.git` boundary (as a FILE, the worktree case) stops the walk-up: a
-/// `.npu` further up must stay invisible, and `config models` then lists
+/// `.gko` further up must stay invisible, and `config models` then lists
 /// no model at all.
 #[test]
 fn a_git_boundary_stops_the_walk_up_even_when_git_is_a_file() {
     let outer = fixture_dir("git-boundary-outer");
-    write_scope(&outer.join(".npu"));
+    write_scope(&outer.join(".gko"));
     let project = outer.join("project");
     std::fs::create_dir_all(&project).expect("project dir");
     std::fs::write(project.join(".git"), "gitdir: /elsewhere\n").expect(".git file");
@@ -118,15 +118,15 @@ fn a_git_boundary_stops_the_walk_up_even_when_git_is_a_file() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         !stdout.contains("qwen-fast"),
-        "the outer .npu must stay invisible past the .git boundary, got: {stdout}"
+        "the outer .gko must stay invisible past the .git boundary, got: {stdout}"
     );
 }
 
-/// `NPU_CONFIG_DIR` overrides the walk-up entirely.
+/// `GKO_CONFIG_DIR` overrides the walk-up entirely.
 #[test]
-fn npu_config_dir_env_var_overrides_the_walk_up() {
+fn gko_config_dir_env_var_overrides_the_walk_up() {
     let elsewhere = fixture_dir("env-override-elsewhere");
-    write_scope(&elsewhere.join("the-npu-dir"));
+    write_scope(&elsewhere.join("the-gko-dir"));
     let cwd = fixture_dir("env-override-cwd");
     let empty_xdg = fixture_dir("env-override-empty-xdg");
 
@@ -135,8 +135,8 @@ fn npu_config_dir_env_var_overrides_the_walk_up() {
         &empty_xdg,
         &["config", "models"],
         &[(
-            "NPU_CONFIG_DIR",
-            elsewhere.join("the-npu-dir").to_str().expect("utf-8 path"),
+            "GKO_CONFIG_DIR",
+            elsewhere.join("the-gko-dir").to_str().expect("utf-8 path"),
         )],
     );
     assert!(
@@ -148,13 +148,13 @@ fn npu_config_dir_env_var_overrides_the_walk_up() {
     assert!(stdout.contains("qwen-fast"), "got: {stdout}");
 }
 
-/// `--config-dir` wins over `NPU_CONFIG_DIR` when both are set.
+/// `--config-dir` wins over `GKO_CONFIG_DIR` when both are set.
 #[test]
 fn config_dir_flag_wins_over_the_environment_variable() {
     let env_target = fixture_dir("flag-wins-env-target");
-    write_scope(&env_target.join(".npu"));
+    write_scope(&env_target.join(".gko"));
     let flag_target = fixture_dir("flag-wins-flag-target");
-    write_scope(&flag_target.join(".npu"));
+    write_scope(&flag_target.join(".gko"));
     let cwd = fixture_dir("flag-wins-cwd");
     let empty_xdg = fixture_dir("flag-wins-empty-xdg");
 
@@ -163,13 +163,13 @@ fn config_dir_flag_wins_over_the_environment_variable() {
         &empty_xdg,
         &[
             "--config-dir",
-            flag_target.join(".npu").to_str().expect("utf-8 path"),
+            flag_target.join(".gko").to_str().expect("utf-8 path"),
             "config",
             "models",
         ],
         &[(
-            "NPU_CONFIG_DIR",
-            env_target.join(".npu").to_str().expect("utf-8 path"),
+            "GKO_CONFIG_DIR",
+            env_target.join(".gko").to_str().expect("utf-8 path"),
         )],
     );
     assert!(
@@ -181,11 +181,11 @@ fn config_dir_flag_wins_over_the_environment_variable() {
     assert!(stdout.contains("qwen-fast"), "got: {stdout}");
 }
 
-/// `npu doctor` names the project scope it resolved, as an `Ok` line.
+/// `gko doctor` names the project scope it resolved, as an `Ok` line.
 #[test]
 fn doctor_names_the_resolved_project_scope() {
     let root = fixture_dir("doctor-names-scope");
-    write_scope(&root.join(".npu"));
+    write_scope(&root.join(".gko"));
     let empty_xdg = fixture_dir("doctor-names-scope-empty-xdg");
 
     let output = run(&root, &empty_xdg, &["doctor", "--json"], &[]);

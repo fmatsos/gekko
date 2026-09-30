@@ -2,7 +2,7 @@
 //! `docs/configuration.md`): resolved at preflight, never leaked on stderr.
 //!
 //! Same idiom as `tests/output_contract_e2e.rs`: a fake local HTTP backend,
-//! a temporary `.npu/` scope, the real binary launched as a child process.
+//! a temporary `.gko/` scope, the real binary launched as a child process.
 
 #![allow(clippy::expect_used)] // tolerated in tests (cf. Cargo.toml [lints.clippy]).
 
@@ -34,7 +34,7 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 fn write_scope(scope: &Path, addr: std::net::SocketAddr, headers_table: &str) {
     write(
         scope,
-        ".npu/backends/stub.toml",
+        ".gko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -52,7 +52,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, headers_table: &str) {
     );
     write(
         scope,
-        ".npu/models/test-model.toml",
+        ".gko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -62,7 +62,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, headers_table: &str) {
     );
     write(
         scope,
-        ".npu/commands/e2e-cmd.md",
+        ".gko/commands/e2e-cmd.md",
         "---\nmodel = \"test-model\"\n---\n{{ input }}\n",
     );
 }
@@ -156,8 +156,8 @@ fn spawn_stub_server() -> (
     (addr, handle, rx)
 }
 
-fn run_npu(scope: &Path, args: &[&str], env_vars: &[(&str, &str)]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+fn run_gko(scope: &Path, args: &[&str], env_vars: &[(&str, &str)]) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(scope)
         .env("HOME", scope)
@@ -168,15 +168,15 @@ fn run_npu(scope: &Path, args: &[&str], env_vars: &[(&str, &str)]) -> Output {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary");
+        .expect("launching the gko binary");
 
     {
         let stdin = child.stdin.as_mut().expect("stdin of the child process");
-        stdin.write_all(b"hello").expect("writing to npu's stdin");
+        stdin.write_all(b"hello").expect("writing to gko's stdin");
     }
     drop(child.stdin.take());
 
-    child.wait_with_output().expect("waiting for npu to exit")
+    child.wait_with_output().expect("waiting for gko to exit")
 }
 
 #[test]
@@ -186,10 +186,10 @@ fn a_resolved_header_reaches_the_backend() {
     write_scope(
         &scope,
         addr,
-        r#"Authorization = "Bearer {{ env.NPU_TEST_SECRET }}""#,
+        r#"Authorization = "Bearer {{ env.GKO_TEST_SECRET }}""#,
     );
 
-    let output = run_npu(&scope, &["e2e-cmd"], &[("NPU_TEST_SECRET", "s3cr3t-value")]);
+    let output = run_gko(&scope, &["e2e-cmd"], &[("GKO_TEST_SECRET", "s3cr3t-value")]);
     assert!(
         output.status.success(),
         "stderr: {}",
@@ -208,13 +208,13 @@ fn a_missing_env_var_fails_at_preflight_exit_two_empty_stdout_no_network() {
     write_scope(
         &scope,
         addr,
-        r#"Authorization = "Bearer {{ env.NPU_TEST_UNDEFINED_SECRET }}""#,
+        r#"Authorization = "Bearer {{ env.GKO_TEST_UNDEFINED_SECRET }}""#,
     );
 
-    let output = run_npu(&scope, &["e2e-cmd"], &[]);
+    let output = run_gko(&scope, &["e2e-cmd"], &[]);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("NPU_TEST_UNDEFINED_SECRET"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("GKO_TEST_UNDEFINED_SECRET"));
 
     // The stub must never have received a connection: preflight rejects
     // the missing variable before the network is ever reached.
@@ -229,13 +229,13 @@ fn a_header_value_never_appears_on_stderr_even_at_verbose_info() {
     write_scope(
         &scope,
         addr,
-        r#"Authorization = "Bearer {{ env.NPU_TEST_SECRET }}""#,
+        r#"Authorization = "Bearer {{ env.GKO_TEST_SECRET }}""#,
     );
 
-    let output = run_npu(
+    let output = run_gko(
         &scope,
         &["--verbose", "info", "e2e-cmd"],
-        &[("NPU_TEST_SECRET", "s3cr3t-value")],
+        &[("GKO_TEST_SECRET", "s3cr3t-value")],
     );
     assert!(
         output.status.success(),

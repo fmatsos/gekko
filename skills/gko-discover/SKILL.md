@@ -1,15 +1,15 @@
 ---
-name: npu-discover
+name: gko-discover
 description: Searches Hugging Face for models the host's Intel NPU can actually run, and reports only those — filtered by the architectures `optimum-intel` exports to OpenVINO and, where checkable, by what the NPU plugin runs rather than silently falling back to CPU. Never returns an incompatible model padded with caveats; a model that fails the filter is left out, not listed with a warning. Use it before picking a model to export, when the choice of model is still open.
 when_to_use: >
   Trigger on "what models can run on my NPU", "find a model for the NPU",
-  "search Hugging Face for NPU-compatible models", "npu-discover", or any
+  "search Hugging Face for NPU-compatible models", "gko-discover", or any
   request to pick a model before exporting one, as opposed to a request that
-  already names the model (which goes straight to npu-export).
+  already names the model (which goes straight to gko-export).
 argument-hint: "[optional: task or size hint, e.g. \"coding, under 4B\"]"
 model: sonnet
 effort: medium
-allowed-tools: Read Grep Bash(npu model discover:*) Bash(npu describe:*)
+allowed-tools: Read Grep Bash(gko model discover:*) Bash(gko describe:*)
 ---
 
 # Finding models the host NPU can run
@@ -17,19 +17,19 @@ allowed-tools: Read Grep Bash(npu model discover:*) Bash(npu describe:*)
 ## Usage
 
 ```
-/npu-discover [task or size hint]
+/gko-discover [task or size hint]
 ```
 
-e.g. `/npu-discover coding, under 4B parameters`, or bare `/npu-discover` for a general-purpose
+e.g. `/gko-discover coding, under 4B parameters`, or bare `/gko-discover` for a general-purpose
 chat model. This skill only searches and filters — it never exports. Hand the chosen id to
-**npu-export** afterwards.
+**gko-export** afterwards.
 
 ## 1. Run the search
 
-The filtering is done by `npu` itself — do not re-implement it with `curl`:
+The filtering is done by `gko` itself — do not re-implement it with `curl`:
 
 ```sh
-npu model discover --npu [words] [-n 20] [--task text-generation] [--max-memory 50] [--candidates 100]
+gko model discover --npu [words] [-n 20] [--task text-generation] [--max-memory 50] [--candidates 100]
 ```
 
 Turn the hint into search words (`qwen coder`, `phi`, `llama instruct`...) and, when it names a
@@ -67,10 +67,10 @@ Relay the table (model id, type, parameters, INT4 size, license, and llmfit's sc
 when present) filtered by the user's hint. Prefer instruction-tuned variants (`-Instruct`, or a
 chat template) for a chat or coding use, and mention the licence when it is not permissive.
 
-Close with the next step: `/npu-export <chosen-id>`. It re-verifies the export concretely (the CPU
+Close with the next step: `/gko-export <chosen-id>`. It re-verifies the export concretely (the CPU
 sanity check) rather than trusting this list's architecture match alone. This skill answers "worth
-trying"; **npu-export**'s step 3 answers "actually works". After the export,
-`npu backend tune` sizes its context.
+trying"; **gko-export**'s step 3 answers "actually works". After the export,
+`gko backend tune` sizes its context.
 
 ## What this skill deliberately does not do
 
@@ -84,10 +84,10 @@ trying"; **npu-export**'s step 3 answers "actually works". After the export,
 
 ## Reference
 
-- [`npu model discover`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-model-discover)
+- [`gko model discover`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-model-discover)
 - [Deploying on an Intel NPU](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md)
 
-Related skills: **npu-export** to actually produce and wire in the chosen model,
-**npu-backend** if no NPU-targeting backend exists yet.
+Related skills: **gko-export** to actually produce and wire in the chosen model,
+**gko-backend** if no NPU-targeting backend exists yet.
 
 <!-- model/effort: judgement in choosing search words and reading the table, no irreversible action — sonnet/medium. -->

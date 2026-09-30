@@ -16,7 +16,7 @@
 Configuration is split by concern rather than kept in one monolithic file:
 
 ```text
-.npu/
+.gko/
 ├── backends/
 │   └── *.toml      # where to send requests, and how
 ├── models/
@@ -37,41 +37,41 @@ The same layout can exist at three levels. They are read from broadest to most l
 most local wins**:
 
 ```text
-/etc/npu                                  system-wide
+/etc/gko                                  system-wide
       ↓
-$XDG_CONFIG_HOME/npu   (or $HOME/.config/npu)    per user
+$XDG_CONFIG_HOME/gko   (or $HOME/.config/gko)    per user
       ↓
-<walk-up>/.npu                            per project
+<walk-up>/.gko                            per project
 ```
 
 If `XDG_CONFIG_HOME` is set and non-empty it replaces the `$HOME`-derived path; it does not add to
 it. On macOS, where XDG is not a native convention, the effective path is normally
-`~/.config/npu`. A scope directory that does not exist is skipped silently.
+`~/.config/gko`. A scope directory that does not exist is skipped silently.
 
 ### The project scope
 
-The project scope is a `.npu` directory found by walking UP from the current directory — not only
-`./.npu` any more: running `npu` from a subdirectory of a project still finds that project's
-`.npu`. The walk stops, without going any higher, at the first directory whose `.git` `exists()`
+The project scope is a `.gko` directory found by walking UP from the current directory — not only
+`./.gko` any more: running `gko` from a subdirectory of a project still finds that project's
+`.gko`. The walk stops, without going any higher, at the first directory whose `.git` `exists()`
 (a file in a worktree, a directory otherwise: either way, that is the project's own boundary) or
-at `$HOME` (checked for its own `.npu` before the walk stops there, but never searched above).
+at `$HOME` (checked for its own `.gko` before the walk stops there, but never searched above).
 
-`--config-dir <DIR>` or `$NPU_CONFIG_DIR` (the flag wins when both are set) name the project scope
+`--config-dir <DIR>` or `$GKO_CONFIG_DIR` (the flag wins when both are set) name the project scope
 directly and skip the walk-up entirely:
 
 ```console
-$ npu --config-dir /path/to/.npu config models
+$ gko --config-dir /path/to/.gko config models
 ```
 
-`npu doctor` reports the project scope it actually resolved, as an `Ok` line naming the directory.
+`gko doctor` reports the project scope it actually resolved, as an `Ok` line naming the directory.
 
 On Windows, the same three tiers use their own environment variables instead:
-`%ProgramData%\npu` (system-wide; omitted entirely when `%ProgramData%` is unset — there is no
-hardcoded fallback path for it), then `%APPDATA%\npu` if set, else `%USERPROFILE%\.config\npu` if
-set, else `%HOME%\.config\npu` as a last resort (a manual override, not `%USERPROFILE%` read again
+`%ProgramData%\gko` (system-wide; omitted entirely when `%ProgramData%` is unset — there is no
+hardcoded fallback path for it), then `%APPDATA%\gko` if set, else `%USERPROFILE%\.config\gko` if
+set, else `%HOME%\.config\gko` as a last resort (a manual override, not `%USERPROFILE%` read again
 under another name).
 
-This lets a repository ship its own `.npu/` with project-specific commands, model aliases and
+This lets a repository ship its own `.gko/` with project-specific commands, model aliases and
 backend overrides, without touching the machine or the user setup.
 
 ---
@@ -86,14 +86,14 @@ Merging is **replacement, not deep merge**. The replacement key is:
 | Models | the `id` field inside the file |
 | Commands | the full command path (`git/review`), derived from the file path |
 
-A backend with `id = "ovms"` defined in `./.npu` replaces the `/etc/npu` one **entirely**. A field
+A backend with `id = "ovms"` defined in `./.gko` replaces the `/etc/gko` one **entirely**. A field
 present in the broader definition and absent from the local one is *not* inherited — you get the
 local file, whole.
 
 Entries whose keys differ simply accumulate, so a system-wide command and a project command coexist.
 
 Resolution happens *after* merging, so a model defined in your project can reference a backend
-declared only in `/etc/npu`.
+declared only in `/etc/gko`.
 
 ### Duplicate ids within one scope
 
@@ -106,12 +106,12 @@ ordering, which is not a decision anyone made.
 ## Backends
 
 A backend declares the runtime protocol, where to reach it, and which operations it exposes.
-`npu config schema backend` prints the JSON Schema of this file, and `npu config schema model`
-that of a model file; see [`npu config schema`](cli.md#npu-config-schema) to have an editor
+`gko config schema backend` prints the JSON Schema of this file, and `gko config schema model`
+that of a model file; see [`gko config schema`](cli.md#gko-config-schema) to have an editor
 validate them as you type.
 
 ```toml
-# .npu/backends/ovms.toml
+# .gko/backends/ovms.toml
 id = "ovms"
 type = "openai-compatible"
 base_url = "http://127.0.0.1:8000"
@@ -128,7 +128,7 @@ path = "/v3/chat/completions"
 | `base_url` | yes | joined with an operation's `path`; a trailing `/` is handled either way |
 | `port` | no | the listening port, declared once and read as `{{ backend.port }}` — see below |
 | `[operations.<name>]` | at least one | `method`, `path`, and optionally `protocol` — see below |
-| `[runtime]` | no | how `npu backend serve` starts this backend — see below |
+| `[runtime]` | no | how `gko backend serve` starts this backend — see below |
 
 Unknown keys are rejected, with the file and line. A `type` other than `"openai-compatible"` and
 a `method` other than `POST` are both rejected at load time rather than silently ignored.
@@ -154,7 +154,7 @@ A command running an `embeddings` model must declare `format = "json"`: its outp
 which `[output].schema` can constrain (its length, for one) and `[output].extract` can index.
 `system`, `[[examples]]`, `[generation]`, `strip_reasoning` and `allow_truncated` do not apply
 and are rejected, naming the command file and the model, when the command runs and by
-`npu doctor`. An `embeddings` model cannot declare a `fallback` (two models' vectors cannot be
+`gko doctor`. An `embeddings` model cannot declare a `fallback` (two models' vectors cannot be
 compared) nor a `[generation]` table, and a model's fallback must speak the same protocol as the
 model itself; both are rejected at load time, naming the model file.
 
@@ -168,7 +168,7 @@ detect the format; read from stdin, it is named `input`. A `transcriptions` mode
 ### `port` (optional)
 
 A containerized backend writes its port twice — in `-p` and in `base_url` — and the two silently
-diverging is the worst failure this file has: `npu doctor` stays green (its probe reaches whatever
+diverging is the worst failure this file has: `gko doctor` stays green (its probe reaches whatever
 answers on the `base_url` port, quite possibly another backend) and only the real request fails,
 with exit `3`. `port` removes the second spelling:
 
@@ -196,14 +196,14 @@ port = "auto"
 ```
 
 `"auto"` hands the allocation to Docker: `{{ backend.port }}` becomes `0` in the `[runtime]` lists
-(`-p 0:8000`), the kernel picks a free port, and `npu` reads it back with `docker port` whenever it
+(`-p 0:8000`), the kernel picks a free port, and `gko` reads it back with `docker port` whenever it
 needs the URL. **Collision is impossible by construction** — nothing is derived or guessed, so
 there is no second candidate to try.
 
 Deriving a port instead (a hash of the id) would be stateless but can collide with an unrelated
 service; probing for a free one at each invocation does not even agree with itself, since by the
 time a command runs the port is occupied — by us. Asking Docker what it allocated is the only
-variant that is both collision-free and reproducible across processes, `npu` having no state to
+variant that is both collision-free and reproducible across processes, `gko` having no state to
 write the answer down in.
 
 > [!IMPORTANT]
@@ -214,21 +214,21 @@ write the answer down in.
 > otherwise), and it requires `base_url` to read `{{ backend.port }}` (the allocated port would be
 > unreachable otherwise).
 
-The port changes on each `npu backend serve`. `npu backend status` prints the resolved URL, and a backend that is
+The port changes on each `gko backend serve`. `gko backend status` prints the resolved URL, and a backend that is
 not started reports `-` there rather than failing the report.
 
 ### When a fixed port is already taken
 
-`npu backend serve` checks before starting anything and stops with exit `3`, naming the backend and the
+`gko backend serve` checks before starting anything and stops with exit `3`, naming the backend and the
 port:
 
 ```console
-$ npu backend serve m
+$ gko backend serve m
 backend error: backend "probe": port 8001 is already in use by something else — change its "port" key, stop what is listening on it, or use port = "auto" to let Docker allocate one
 ```
 
 Deliberately not silent, and deliberately not automatic: a fixed number is a decision — something
-outside `npu` connects to it, or a firewall rule names it — so moving it behind your back would
+outside `gko` connects to it, or a firewall rule names it — so moving it behind your back would
 break whatever depended on it. `"auto"` is how you say the number does not matter.
 
 The backend already being served is checked **first**, because from the outside the two look
@@ -236,8 +236,8 @@ identical and only one of them is about the port — a container holds its own p
 user to edit a `port` key that is perfectly correct is the wrong repair:
 
 ```console
-$ npu backend serve qwen3-8b
-backend error: backend "ovms" is already served by container "npu-ovms" — `npu backend status` to see it, `npu backend stop qwen3-8b` to remove it
+$ gko backend serve qwen3-8b
+backend error: backend "ovms" is already served by container "gko-ovms" — `gko backend status` to see it, `gko backend stop qwen3-8b` to remove it
 ```
 
 ### `[timeouts]` (optional)
@@ -257,15 +257,15 @@ accelerator such as an NPU). `request_secs = 0` is rejected at load time, naming
 max_concurrent = 1
 ```
 
-One request at a time to this backend, across every `npu` process on the machine: a git hook and
+One request at a time to this backend, across every `gko` process on the machine: a git hook and
 an editor action launched together no longer make one of them fail with a `5xx` or a timeout on a
 single NPU. The second invocation waits, its spinner reading `waiting for backend "ovms" (busy)`,
 and sends its request once the first one's answer is complete; waiting is not a failure, so it
 never triggers the model's `fallback`. With `--no-wait` a busy backend is a backend failure like
 any other: the model's `fallback` answers if it has one, otherwise the command fails at once
-(exit `3`) naming the backend. `npu config test` and `npu mcp serve` always wait.
+(exit `3`) naming the backend. `gko config test` and `gko mcp serve` always wait.
 
-The lock is an advisory file lock under the [state directory](#what-npu-remembers), taken before
+The lock is an advisory file lock under the [state directory](#what-gko-remembers), taken before
 the backend's URL is resolved and released as soon as the answer ends: a fallback model on the
 same backend takes it again rather than waiting for its own primary. It is keyed by backend id and
 backend file, like the process records, so two scopes describing the same device do not wait for
@@ -300,18 +300,18 @@ OpenAI-compatible endpoint that requires authentication.
 - A value is a template accepting **only** `{{ env.NAME }}`: `{{ input }}`, `{{ args.* }}` and
   `{{ schemas.* }}` are configuration errors here, at load time, naming the file and the header —
   a header cannot depend on the command being run.
-- `Content-Type` and `Content-Length` are rejected (case-insensitively): `npu` owns both, and
+- `Content-Type` and `Content-Length` are rejected (case-insensitively): `gko` owns both, and
   overriding either silently would be a key read and then ignored.
 - A header name must be a legal HTTP token (RFC 9110); two names colliding once case is ignored
   (`Authorization` next to `authorization`) are rejected too — one of them would silently win.
 - The environment variable is resolved at **preflight**, before the command's input is read
   (for the model's backend and, when the model declares a `fallback`, for the fallback's backend
   too) — an undefined variable is a configuration error naming the file and the header, and
-  `git diff | npu ...` fails before the diff is consumed.
-- Header **values are never logged**, at any `--verbose` level, and never shown by `npu
+  `git diff | gko ...` fails before the diff is consumed.
+- Header **values are never logged**, at any `--verbose` level, and never shown by `gko
   describe`: the trace line names the headers sent (`with headers: Authorization, X-Org`), never
   their values.
-- `npu doctor`'s TCP probe does not send headers — it only checks the port is open.
+- `gko doctor`'s TCP probe does not send headers — it only checks the port is open.
 
 ---
 
@@ -321,13 +321,13 @@ A backend may declare how to start its own runtime, in a `[runtime]` table whose
 **family**: `"docker"` (below) or `"process"` (see
 [Starting a backend as a process](#starting-a-backend-as-a-process)). Each family reads its own
 keys, and a key belonging to the other one is rejected by name — the table is tagged precisely so
-that `npu` never has to guess which shape it is looking at.
+that `gko` never has to guess which shape it is looking at.
 
-`npu backend serve <model>` then runs it, and the family's prerequisite — Docker here — becomes an
+`gko backend serve <model>` then runs it, and the family's prerequisite — Docker here — becomes an
 **optional** one: nothing changes for a configuration without this table.
 
 ```toml
-# .npu/backends/ovms.toml, continued
+# .gko/backends/ovms.toml, continued
 [runtime]
 type = "docker"
 image = "openvino/model_server:latest"
@@ -347,7 +347,7 @@ args = [
 | `args` | no | passed to the image **after** it: the server's own arguments |
 
 `type` is what makes an unsupported family a named rejection — `unknown variant "podman"`, with
-the file — instead of a table `npu` would have to guess the meaning of. Unknown keys inside
+the file — instead of a table `gko` would have to guess the meaning of. Unknown keys inside
 `[runtime]` are rejected like everywhere else, and that includes a key of the *other* family:
 `image` under `type = "process"` is a mistake worth naming, not one to ignore.
 
@@ -361,8 +361,8 @@ A backend declaring **both** is rejected at load time, naming the file and the b
 winner would mean reading one table and silently ignoring the other.
 
 Two lists rather than one because `docker run [OPTIONS] IMAGE [ARG...]` is the grammar; merging
-them would make the position of the image implicit. `npu` adds `-d` and
-`--name npu-<backend-id>` itself, and nothing else — it knows the shape of a `docker run`
+them would make the position of the image implicit. `gko` adds `-d` and
+`--name gko-<backend-id>` itself, and nothing else — it knows the shape of a `docker run`
 invocation, never what you are running.
 
 Every entry goes through the same templating as a prompt:
@@ -370,7 +370,7 @@ Every entry goes through the same templating as a prompt:
 - `{{ args.model }}` — the `model` field of the model being served. It is the only argument
   available here; any other name is rejected at load time, naming the file.
 - `{{ env.NAME }}` — an environment variable, required to be defined at `serve` time.
-- `{{ input }}` — rejected: `npu backend serve` reads no input.
+- `{{ input }}` — rejected: `gko backend serve` reads no input.
 
 Declaring a Docker runtime also constrains the backend's `id`, which becomes the container name: ASCII
 letters, digits, `_`, `.` and `-`, starting with a letter or a digit. An `id` outside that set is
@@ -379,7 +379,7 @@ rejected — with its file named — rather than mangled into something Docker a
 > [!WARNING]
 > Scope replacement is per **whole backend**, never field by field. A project scope that redefines
 > `base_url` for `ovms` replaces the user scope's `ovms` entirely, `[runtime]` included. Repeat
-> the table in the local file, or `npu backend serve` will report that the backend declares none.
+> the table in the local file, or `gko backend serve` will report that the backend declares none.
 
 For OpenVINO Model Server specifically: the `-gpu` image tag is the one to use for accelerators
 (there is no NPU-only image; that tag carries both plugins), with `--device /dev/dri` and
@@ -397,10 +397,10 @@ what lets several small models run at once.
 
 The other runtime family starts a server **directly on this machine**, with no container and no
 daemon: `llama.cpp`'s `llama-server`, an MLX server, a shell script of your own. Same table, same
-`npu backend serve` / `stop` / `status` / `logs`, different `type`.
+`gko backend serve` / `stop` / `status` / `logs`, different `type`.
 
 ```toml
-# .npu/backends/llamacpp.toml, continued
+# .gko/backends/llamacpp.toml, continued
 [runtime]
 type = "process"
 command = "llama-server"
@@ -420,31 +420,31 @@ LLAMA_CACHE = "{{ env.HOME }}/.cache/llama.cpp"
 | `type` | yes | `"process"`, which selects this family |
 | `command` | yes | an absolute or relative path used as-is, or a bare name looked up on `PATH`; templated like the rest |
 | `arguments` | no | the server's own arguments, one list entry per argument |
-| `[runtime.env]` | no | variables **layered over** the environment `npu` itself runs in |
+| `[runtime.env]` | no | variables **layered over** the environment `gko` itself runs in |
 | `startup_timeout_secs` | no | readiness budget in seconds, `30` by default; `0` is rejected |
 
 `arguments` is a list of separate entries, never one string to be split: a model path containing a
 space would otherwise become two arguments, and there is no shell here to blame it on. Entries go
 through the same templating as a Docker runtime's — `{{ args.model }}`, `{{ env.NAME }}`,
-`{{ backend.port }}` — with `{{ input }}` rejected, since `npu backend serve` reads no input.
+`{{ backend.port }}` — with `{{ input }}` rejected, since `gko backend serve` reads no input.
 
 `command` is templated too — `{{ args.model }}` and `{{ env.NAME }}`, so a server living under a
 path only the environment knows can be named — but **not** `{{ backend.port }}`: an executable
 whose path depends on a port is not a case this supports, and the placeholder is rejected there
-naming the file. `npu doctor` emits no "runtime command available" check for a templated
+naming the file. `gko doctor` emits no "runtime command available" check for a templated
 `command`: it has no model to resolve it against, and reporting the template itself as a missing
 binary would tell its reader to install `{{ env.LLAMA_BIN }}`.
 
 The lookup requires an **executable** file. A regular file with no execute bit is skipped and the
 `PATH` scan continues, exactly as a shell does — so a non-executable leftover early on `PATH`
-cannot shadow the real server, nor make `npu doctor` green about a command `npu backend serve` then
+cannot shadow the real server, nor make `gko doctor` green about a command `gko backend serve` then
 refuses to spawn.
 
-`[runtime.env]` is an **overlay**, not a replacement: the child inherits `npu`'s own environment
+`[runtime.env]` is an **overlay**, not a replacement: the child inherits `gko`'s own environment
 and these values are layered on top. A server needing `HOME`, `PATH` or a proxy setting therefore
 does not have to redeclare them to gain one variable.
 
-`startup_timeout_secs` is what `npu backend serve` waits, having spawned the server, for it to answer on
+`startup_timeout_secs` is what `gko backend serve` waits, having spawned the server, for it to answer on
 its `base_url` — so a `base_url` this family cannot parse into a host and a port is rejected at
 load time naming the file: a probe that can never succeed would burn the whole budget and then
 terminate a perfectly working server, blaming a timeout key that was correct. The budget's failure
@@ -470,23 +470,23 @@ This family is **Unix-only**. On Windows a `[runtime] type = "process"` backend 
 load time naming the file: there is no `$XDG_STATE_HOME`/`$HOME` convention to put the state
 record under, and no `SIGTERM` — `stop`'s graceful step would silently collapse into an immediate
 hard kill, with no chance for a server to flush. Use `type = "docker"` there, or start the server
-outside `npu`.
+outside `gko`.
 
-### What `npu` remembers
+### What `gko` remembers
 
 Docker is its own registry, so a Docker runtime needs nothing persisted. A process has no
-registry: `npu backend serve` therefore writes a small JSON record, plus a `.log` file it redirects the
+registry: `gko backend serve` therefore writes a small JSON record, plus a `.log` file it redirects the
 server's **two** streams into. `stop` deletes the record; `logs` reads the file. Both are named
 `<backend id>-<digest>`, the digest being the first eight hex characters of the SHA-256 of the
-backend **file** the runtime was declared in. They live in `$XDG_STATE_HOME/npu/`, or
-`$HOME/.local/state/npu/` when that variable is unset — and on macOS in
-`$HOME/Library/Application Support/npu/state/`, with no `XDG_STATE_HOME` branch at all: the
+backend **file** the runtime was declared in. They live in `$XDG_STATE_HOME/gko/`, or
+`$HOME/.local/state/gko/` when that variable is unset — and on macOS in
+`$HOME/Library/Application Support/gko/state/`, with no `XDG_STATE_HOME` branch at all: the
 variable has no meaning there, and honouring it would scatter one machine's state over two places
 depending on which shell exported what.
 
 That directory is **machine-global** while backend identifiers are per-scope, which is what the
-digest is for: two projects each declaring `llamacpp` in their own `./.npu` get two records, two
-logs and two servers, and neither one's `npu backend stop` or `npu backend logs` can reach the other's.
+digest is for: two projects each declaring `llamacpp` in their own `./.gko` get two records, two
+logs and two servers, and neither one's `gko backend stop` or `gko backend logs` can reach the other's.
 
 The record **also** holds the backend file it was served from, and that is not a duplicate of the
 digest. Eight hex characters are 32 bits, so two backend files can meet on one name; the full path
@@ -496,7 +496,7 @@ and `stop` both refuse, naming both files. Once nothing is behind that pid the r
 nothing, and the next `serve` simply forgets it.
 
 The record holds the pid and the moment the system says that pid was born. That **pair** is the
-identity check, and it is what keeps `npu backend stop` from killing an innocent process: a pid alone can,
+identity check, and it is what keeps `gko backend stop` from killing an innocent process: a pid alone can,
 after a reboot or enough process churn, name somebody else's. A record whose pid was recycled is
 reported as `stale state` and forgotten — never signalled. The birth is an epoch **second**, which
 is the resolution of the check: two processes sharing a pid and born inside the same second are
@@ -507,26 +507,26 @@ with a small `pid_max` namespace, not a stock machine — and there is no finer 
 The executable is recorded too, but only so that whoever reads the file knows what was started. It
 is deliberately **not** compared: a `command` ending on `exec` — a wrapper script, a virtualenv or
 `uv`/`conda` shim — replaces the running image while keeping the pid and its birth, so comparing it
-would declare `npu`'s own child an impostor.
+would declare `gko`'s own child an impostor.
 
 Changing a served backend's `[runtime]` family — or removing the table — leaves that record
 unreachable: `stop`, `status` and `logs` dispatch on what the files say **today**, and a backend
-that now declares Docker is asked about a container. Run `npu backend stop` before changing the family.
+that now declares Docker is asked about a container. Run `gko backend stop` before changing the family.
 The record is plain JSON and holds the pid, so a forgotten one is still recoverable by hand.
 
 > [!WARNING]
-> The spawned server is a plain child of the shell `npu backend serve` ran in. It is **not** detached into
+> The spawned server is a plain child of the shell `gko backend serve` ran in. It is **not** detached into
 > its own session, so a terminal hang-up takes it down with everything else in that session. Run
-> `npu backend serve` from a session that outlives it (a service manager, `nohup`, a multiplexer) if the
+> `gko backend serve` from a session that outlives it (a service manager, `nohup`, a multiplexer) if the
 > server is meant to stay up.
 
 > [!WARNING]
-> `npu` signals the process it spawned, and only that one. A `command` whose process **is** the
+> `gko` signals the process it spawned, and only that one. A `command` whose process **is** the
 > server — a binary, or a launcher ending on `exec` — is stopped correctly. A launcher that forks
 > and waits instead (`sh -c "server | tee log"`, `conda run`, anything that does not `exec`) has
-> its wrapper signalled while the real server survives: `npu backend stop` reports success and deletes the
-> record, a failed `npu backend serve` terminates the wrapper and abandons the rest, and the orphan keeps
-> the port while every `npu` command reports the backend as never started. There is no process
+> its wrapper signalled while the real server survives: `gko backend stop` reports success and deletes the
+> record, a failed `gko backend serve` terminates the wrapper and abandons the rest, and the orphan keeps
+> the port while every `gko` command reports the backend as never started. There is no process
 > group to signal instead without `unsafe`, so end your launcher on `exec`.
 
 ---
@@ -536,7 +536,7 @@ The record is plain JSON and holds the pid, so a forgotten one is still recovera
 A model is the bridge between a command and a backend capability.
 
 ```toml
-# .npu/models/qwen-fast.toml
+# .gko/models/qwen-fast.toml
 id = "qwen-fast"
 backend = "ovms"
 operation = "chat"
@@ -557,7 +557,7 @@ max_tokens = 512
 | `[generation]` | no | see [Generation parameters](#generation-parameters) below |
 
 A model naming an unknown backend, or an operation its backend does not expose, produces a
-configuration error listing what *is* available — when a command runs it, and in `npu doctor`.
+configuration error listing what *is* available — when a command runs it, and in `gko doctor`.
 It is not a load-time error: a model nobody uses does not break the rest of the configuration.
 
 ### Generation parameters
@@ -580,20 +580,20 @@ chat_template_kwargs = { enable_thinking = false }
 | `max_tokens` | integer |
 | `seed` | integer, forwarded as-is for deterministic sampling |
 | `top_p` | float, same no-binary-noise serialization as `temperature` |
-| `stop` | a non-empty list of non-empty strings — no upper bound (deliberately not the 1-4 entry limit some providers impose; that would tie `npu` to one provider) |
+| `stop` | a non-empty list of non-empty strings — no upper bound (deliberately not the 1-4 entry limit some providers impose; that would tie `gko` to one provider) |
 | `[generation.extra]` | free-form table, forwarded **verbatim** at the top level of the request, after the typed keys above |
 
 A value is only included in the request when present — no `null` is ever serialized for an
 absent field.
 
-`[generation.extra]` is the one escape hatch for an engine-specific knob `npu` does not model
+`[generation.extra]` is the one escape hatch for an engine-specific knob `gko` does not model
 itself (`chat_template_kwargs.enable_thinking = false` on Qwen3 is the motivating case). Its keys
 are copied TOML structure for TOML structure into JSON (tables become objects, arrays become
 arrays); this is the one place in the crate where "honoured" means "forwarded verbatim" rather
 than interpreted. Two things are rejected at load time, naming the file:
 
 - a key of `extra` that collides with a typed key (`temperature`, `max_tokens`, `seed`, `top_p`,
-  `stop`, and the keys `npu` itself controls: `model`, `messages`, `stream`,
+  `stop`, and the keys `gko` itself controls: `model`, `messages`, `stream`,
   `response_format`) — the typed form is the only spelling, a silent override would be a key
   read and then ignored;
 - a TOML `Datetime` or a non-finite float (`nan`, `inf`, legal TOML float literals) anywhere
@@ -617,7 +617,7 @@ file. When a model declares a `fallback`, the fallback uses **its own** base `[g
 merged with the **same** command override — the override describes the command being run, not
 which model answers it.
 
-`npu describe` prints the *effective* table (after the merge), so an agent sees exactly what
+`gko describe` prints the *effective* table (after the merge), so an agent sees exactly what
 will be sent. The diagnostic log line at `info` names the generation keys actually sent
 (including each `extra` key, as `extra.<key>`), never their values.
 
@@ -638,20 +638,20 @@ returned as-is, because retrying elsewhere would only hide them.
 This exists for a concrete case: a model compiled for an Intel NPU has a static maximum prompt
 length, and OVMS refuses an over-long prompt with a clean `400 ... Input length exceeds the
 maximum allowed length` in milliseconds. That is an exact, cheap signal that the prompt belongs on
-a GPU-served model instead — no token counting on `npu`'s side, no guessed character threshold.
+a GPU-served model instead — no token counting on `gko`'s side, no guessed character threshold.
 
 Three properties worth knowing:
 
 - **The retry is single hop.** The fallback's own `fallback` is not followed, so a chain cannot
   form and no cycle is possible.
-- **It is blind to the reason.** `npu` cannot tell an over-long prompt from a stopped container,
+- **It is blind to the reason.** `gko` cannot tell an over-long prompt from a stopped container,
   so the primary failure is always written to stderr at `warn` level. Without it, a backend that
   has been down all day would look like a healthy fallback.
 - **It is checked at load time.** A `fallback` naming an unknown model, or naming its own model,
   is a configuration error (exit `2`) naming the file — not a surprise on the day the recovery is
   actually needed.
 
-When both fail, the error names both models and both backends. `npu config models` shows the `FALLBACK`
+When both fail, the error names both models and both backends. `gko config models` shows the `FALLBACK`
 column so the routing is never invisible.
 
 > [!IMPORTANT]
@@ -672,7 +672,7 @@ column so the routing is never invisible.
 
 ## When a broader scope is broken
 
-A broken file in `/etc/npu` must not disable your project. `/etc` may belong to root and be out of
+A broken file in `/etc/gko` must not disable your project. `/etc` may belong to root and be out of
 your reach, which is exactly the case a local override is meant to solve. So a broadly-scoped
 entry that is **entirely shadowed** by a more local one does not break anything.
 
@@ -684,5 +684,5 @@ The two paths are **deliberately asymmetric**, and unifying them would reintrodu
 | Commands | the **file path** | The winner is known before anything is read, so only winning files are parsed. A broken but shadowed command file is never opened. |
 
 The same reasoning governs output schemas: a schema that is missing or malformed on a command
-nobody invokes does not break `npu --help`. Checking every schema in every scope is the job of
-[`npu doctor`](cli.md#npu-doctor).
+nobody invokes does not break `gko --help`. Checking every schema in every scope is the job of
+[`gko doctor`](cli.md#gko-doctor).

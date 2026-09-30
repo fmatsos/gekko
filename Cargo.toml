@@ -1,10 +1,16 @@
 [package]
-name = "npu"
+name = "gekko"
 version = "0.8.0"
 edition = "2024"
 description = "Generic execution engine for local AI commands"
 license = "MIT"
 publish = false
+
+# The project is Gekko; the executable it installs is `gko`, short enough to
+# sit in a pipe. The library keeps the package name (`gekko::run`).
+[[bin]]
+name = "gko"
+path = "src/main.rs"
 
 # `hardware-tooling`, on by default, declares the two built-ins that know a
 # specific hub or engine (Hugging Face, OpenVINO, `llmfit`) rather than a
@@ -49,14 +55,14 @@ ureq = { version = "3.4.2", default-features = false, features = ["json", "rustl
 indicatif = { version = "0.18.6", default-features = false }
 anstream = "1.0.0"
 # `unstable-dynamic` is what `clap_complete::CompleteEnv` needs (`COMPLETE=bash
-# npu`, no `completions` subcommand, no reserved name -- CLAUDE.md forbids
+# gko`, no `completions` subcommand, no reserved name -- CLAUDE.md forbids
 # adding a top-level built-in): confirmed against clap_complete 4.6.11's own
 # Cargo.toml (`unstable-dynamic = ["dep:clap_lex", "dep:shlex",
 # "dep:is_executable", "clap/unstable-ext"]`; `clap/unstable-ext` is unified
 # into the crate's single `clap` dependency, so it is not repeated here).
 # Measured on x86_64-unknown-linux-gnu with `cargo tree --edges normal
 # --prefix none | sed 's/ (\*)//' | sort -u | wc -l` and `cargo build
-# --release && stat -c %s target/release/npu`:
+# --release && stat -c %s target/release/gko`:
 #   crates  118 -> 121 (+3: clap_complete, shlex, is_executable; clap_lex was
 #           already in the graph via clap_builder)
 #   binary  9 301 280 B -> 9 438 400 B (+137 120 B, +1.5 %)
@@ -69,7 +75,7 @@ rmcp = { version = "3.4.1", default-features = false, features = ["server", "tra
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "io-std", "sync"] }
 
 [dev-dependencies]
-# Derives the JSON Schemas `npu config schema` prints, from the raw
+# Derives the JSON Schemas `gko config schema` prints, from the raw
 # deserialize structs, under `cfg_attr(test, ...)` only: the generated files
 # are committed under `schemas/` and embedded with `include_str!`, and a unit
 # test fails when they drift from the structs. A dev-dependency never

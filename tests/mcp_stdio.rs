@@ -27,7 +27,7 @@ fn fixture() -> std::path::PathBuf {
 #[test]
 fn pipeline_error_format_json_preserves_empty_stdout_and_exit_code() {
     let root = fixture();
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args([
             "--config-dir",
             root.to_str().expect("UTF-8 path"),
@@ -126,7 +126,7 @@ fn tool_calls_reuse_the_backend_pipeline_for_text_and_json() {
         }
         bodies
     });
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args([
             "--config-dir",
             root.to_str().expect("UTF-8 path"),
@@ -179,7 +179,7 @@ fn tool_calls_reuse_the_backend_pipeline_for_text_and_json() {
 #[test]
 fn discovers_tools_and_rejects_invalid_call_without_stdout_noise() {
     let root = fixture();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args([
             "--config-dir",
             root.to_str().expect("utf-8 path"),
@@ -233,7 +233,7 @@ fn discovers_tools_and_rejects_invalid_call_without_stdout_noise() {
     );
     assert_eq!(
         by_id(1)["result"]["_meta"]["io.modelcontextprotocol/serverInfo"]["name"],
-        "npu"
+        "gko"
     );
     assert_eq!(by_id(2)["result"]["tools"][0]["name"], "git_review");
     assert!(by_id(3).get("error").is_some());

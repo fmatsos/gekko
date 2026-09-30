@@ -1,11 +1,11 @@
-# npu — working notes for Claude
+# Gekko (`gko`) — working notes for Claude
 
 Generic CLI execution engine in Rust. Commands, models, backends and output
 schemas are **configuration**, never code. The core understands execution
 mechanics, not AI business semantics — adding a command must never require a
 rebuild.
 
-A shared `.npu/` directory must never launch a program as a side effect of
+A shared `.gko/` directory must never launch a program as a side effect of
 running a business command. Runtime startup is an explicit built-in action,
 not part of the command execution pipeline or MCP tool calls.
 
@@ -61,7 +61,7 @@ breaks this rule.
 | `3` | `Error::Backend` | unreachable, or non-2xx |
 | `4` | `Error::Output` | the model's answer violated the declared contract |
 
-`npu` is designed to be driven by other programs; these codes are the API.
+`gko` is designed to be driven by other programs; these codes are the API.
 Two consequences already baked in: `panic = "unwind"` in release (abort would
 turn an exit code into SIGABRT), and `doctor` classifies a check by
 `CheckKind`, **never** by the text of its label.
@@ -83,7 +83,7 @@ and `mcp serve` (stdio server for configured commands only);
 the version is the root `--version` flag. Every other name belongs to the
 user's commands: do not add a top-level built-in, grow a group instead.
 
-`npu --help` shows the configured commands and the built-ins in two
+`gko --help` shows the configured commands and the built-ins in two
 sections through a `help_template` (`cli::sectioned_help`): `clap` has
 no per-subcommand heading, so the built-ins are HIDDEN from its list and
 rendered by hand — they parse as before. `clap`'s generated `help`
@@ -114,7 +114,7 @@ The lifecycle drives Docker, which is an **optional** prerequisite. The core
 knows the shape of a `docker run` invocation and nothing else: image, options
 and arguments come from the backend's `[runtime]` table, so changing image,
 ports or accelerator is a configuration change, never a rebuild. The
-container is named `npu-<backend-id>`, which is how `backend stop`/`status`/`logs`
+container is named `gko-<backend-id>`, which is how `backend stop`/`status`/`logs`
 find it again.
 
 `src/builtin/` (`doctor.rs`, `describe.rs`, `models.rs`, `lifecycle.rs`,
@@ -175,7 +175,7 @@ Dependencies are measured: `clap` (builder API, not derive — the command tree 
 built at runtime from a directory scan), `serde`, `serde_json`, `toml`,
 `ureq` (blocking, rustls — chosen over `reqwest`, which drags in tokio),
 `jsonschema` with `default-features = false` (its defaults pull `reqwest`
-back in via `resolve-http`), the three `npu update` brought in:
+back in via `resolve-http`), the three `gko update` brought in:
 `semver` (comparing the release manifest's version to the running one),
 `sha2` (verifying the downloaded binary before it replaces anything) and
 `self-replace` (replacing the running executable at its own path), and
@@ -194,7 +194,7 @@ stripped by the same rule as `clap`'s. The feature and `anstream` together
 cost 90 312 bytes (8 676 880 -> 8 767 192) and six crates (112 -> 118); and
 `clap_complete` with `default-features = false, features =
 ["unstable-dynamic"]` — `clap_complete::CompleteEnv`, called first in `run()`
-before any log or print (`COMPLETE=<shell> npu` prints the shell's
+before any log or print (`COMPLETE=<shell> gko` prints the shell's
 registration script and exits; a dynamic completion request is served the
 same way), no built-in and no reserved name needed. `unstable-dynamic` pulls
 in `clap_lex` (already in the graph via `clap_builder`), `shlex` and
@@ -204,11 +204,11 @@ Adding one is a measured decision: check the binary size and the crate count
 before and after, and record the numbers. A version bump of an existing
 dependency (Dependabot's weekly PRs) needs no measurement.
 
-`schemars` is a DEV-dependency: the JSON Schemas `npu config schema`
+`schemars` is a DEV-dependency: the JSON Schemas `gko config schema`
 prints are derived under `cfg_attr(test, derive(schemars::JsonSchema))`,
 committed under `schemas/` and embedded with `include_str!`; a unit test in
 `builtin/config_schema.rs` fails when they drift from the structs
-(`NPU_UPDATE_SCHEMAS=1 cargo test --lib config_schema` rewrites them). It
+(`GKO_UPDATE_SCHEMAS=1 cargo test --lib config_schema` rewrites them). It
 cost 0 normal-edge crates (the same version already comes in through
 `rmcp`) and 12 528 release bytes (11 671 912 -> 11 684 440). A new field on a configuration struct therefore changes a
 committed schema, and `tests/docs_quote_the_binary.rs` then requires the

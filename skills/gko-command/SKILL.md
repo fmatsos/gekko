@@ -1,17 +1,17 @@
 ---
-name: npu-command
-description: Writes and fixes `npu` command files (`.npu/commands/*.md`) — the Markdown file whose TOML frontmatter is fenced by three dashes (the `+++` of earlier versions is rejected) and whose path becomes the CLI command name. Covers frontmatter keys, input modes, `[args.*]` flags, the five prompt placeholders (`{{ input }}`, `{{ args.x }}`, `{{ env.X }}`, `{{ schemas.id }}`, `{{ partials.id }}`), the `[output]` contract with JSON Schema, reserved command names, and the load-time rejections that catch a typo before it silently reaches the model.
+name: gko-command
+description: Writes and fixes `gko` command files (`.gko/commands/*.md`) — the Markdown file whose TOML frontmatter is fenced by three dashes (the `+++` of earlier versions is rejected) and whose path becomes the CLI command name. Covers frontmatter keys, input modes, `[args.*]` flags, the five prompt placeholders (`{{ input }}`, `{{ args.x }}`, `{{ env.X }}`, `{{ schemas.id }}`, `{{ partials.id }}`), the `[output]` contract with JSON Schema, reserved command names, and the load-time rejections that catch a typo before it silently reaches the model.
 when_to_use: >
-  Trigger on "add an npu command", "write a prompt for npu", "add a flag to
-  this command", "make this command return JSON", "nest npu commands", or on
-  any npu error naming a command file, a placeholder, an argument, a short
+  Trigger on "add a gko command", "write a prompt for gko", "add a flag to
+  this command", "make this command return JSON", "nest gko commands", or on
+  any gko error naming a command file, a placeholder, an argument, a short
   letter, or an `[output]` key.
 model: sonnet
 effort: medium
-allowed-tools: Read Write Edit Glob Grep Bash(npu:*)
+allowed-tools: Read Write Edit Glob Grep Bash(gko:*)
 ---
 
-# `npu` commands
+# `gko` commands
 
 A command is a Markdown file: TOML frontmatter between `---` fences (not
 `+++`, which is rejected at load time with a message saying so), then the
@@ -19,17 +19,17 @@ prompt as the body. There is no registration step — **the path under
 `commands/` is the command name**.
 
 After changing a prompt, add a regression case under
-`.npu/tests/<command path>/<case>.toml` and run `npu config test`. See
+`.gko/tests/<command path>/<case>.toml` and run `gko config test`. See
 `docs/testing.md` for the case format and report contract.
 
 | File | Command |
 | --- | --- |
-| `commands/classify.md` | `npu classify` |
-| `commands/commit-message.md` | `npu commit-message` |
-| `commands/git/review.md` | `npu git review` |
+| `commands/classify.md` | `gko classify` |
+| `commands/commit-message.md` | `gko commit-message` |
+| `commands/git/review.md` | `gko git review` |
 
 Intermediate levels are created automatically and commands sharing a prefix
-merge under the same parent. Running an intermediate level alone (`npu git`)
+merge under the same parent. Running an intermediate level alone (`gko git`)
 is a usage error: its help goes to **stderr**, exit `2`.
 
 `backend`, `config`, `doctor`, `describe`, `update` and `help`
@@ -61,12 +61,12 @@ Preserve meaning and tone.
 ```
 
 ```sh
-cat README.md | npu translate --language french
+cat README.md | gko translate --language french
 ```
 
 | Key | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `description` | string | `""` | shown in `npu --help` |
+| `description` | string | `""` | shown in `gko --help` |
 | `model` | string | **required** | must match a model `id` |
 | `[input] mode` | string | `"stdin"` | `stdin`, `file`, `stdin_or_file`, `binary` |
 | `[args.<name>]` | table | none | becomes a real CLI flag |
@@ -76,7 +76,7 @@ cat README.md | npu translate --language french
 
 **Unknown keys are rejected** — at the top level, under `[input]`, under
 `[args.*]` and under `[output]`. A typo like `moed = "file"` would otherwise
-fall back to the default in silence, and `npu summarize README.md` would read
+fall back to the default in silence, and `gko summarize README.md` would read
 stdin instead of your file without a word.
 
 `system` and `[[examples]]` (both optional) build the request as `[system?] +
@@ -190,7 +190,7 @@ schema = "classification"              # JSON only: a NAME (-> <scope root>/sche
 When the backend declares `structured_output = true`, the output schema is sent
 to the model as `response_format` and constrains its answer: the prompt does
 not need to describe the JSON shape. Without it, the prompt MUST describe the
-shape — `npu` only validates the answer afterwards.
+shape — `gko` only validates the answer afterwards.
 
 ```toml
 [schemas]                              # ids usable as {{ schemas.<id> }} in the prompt
@@ -217,12 +217,12 @@ max_lines = 1                          # text only
 - `extract = "/category"` (JSON only, a pointer starting with `/`) writes
   that one value instead of the document — a string bare — after the whole
   document passed the schema; a pointer the answer lacks is exit `4`. CLI
-  stdout only: MCP and `npu config test` see the whole document.
+  stdout only: MCP and `gko config test` see the whole document.
 - Rejected at load: `schema` with `format = "text"`, `max_lines` with
   `format = "json"`, `extract` with `format = "text"`, any unknown key.
 
 The schema is compiled only when the command actually runs, so a broken schema
-on a command nobody invokes does not break the rest of the CLI. `npu doctor`
+on a command nobody invokes does not break the rest of the CLI. `gko doctor`
 is what checks them all.
 
 `[output].allow_truncated = true` (default `false`) accepts an answer cut
@@ -242,16 +242,16 @@ resolve command → collect arguments → check placeholders resolve
 ```
 
 Everything knowable without the input is checked **before** the input is read.
-Otherwise `git diff | npu commit-message` would drain the whole diff before
+Otherwise `git diff | gko commit-message` would drain the whole diff before
 failing on an unset environment variable — work lost, and a non-replayable
 input lost for good.
 
 ## Verifying
 
 ```sh
-npu --help              # the command appears = it was discovered and parsed
-npu describe <command>  # its effective definition, as JSON
-npu <command> --help    # the generated flags
+gko --help              # the command appears = it was discovered and parsed
+gko describe <command>  # its effective definition, as JSON
+gko <command> --help    # the generated flags
 ```
 
 ## Reference
@@ -259,13 +259,13 @@ npu <command> --help    # the generated flags
 This skill is a summary. When a case is not covered here, or when the
 behaviour it describes does not match what the binary does, the repository
 documentation is authoritative. The exact set of keys the binary accepts is
-`npu config schema command` (a JSON Schema derived from the parser itself):
+`gko config schema command` (a JSON Schema derived from the parser itself):
 
 - [Writing commands](https://github.com/fmatsos/npu/blob/main/docs/commands.md)
 - [Output contracts](https://github.com/fmatsos/npu/blob/main/docs/output.md)
-- [`npu config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-config-schema)
-- [`npu describe`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#npu-describe)
+- [`gko config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-schema)
+- [`gko describe`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-describe)
 
-Related skills: **npu-model**, **npu-config**, **npu-doctor**.
+Related skills: **gko-model**, **gko-config**, **gko-doctor**.
 
 <!-- model/effort: Writing a prompt, choosing an input mode and declaring an output contract need judgement, and a templating mistake is only caught at load time. -->

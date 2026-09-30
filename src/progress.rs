@@ -3,7 +3,7 @@
 //!
 //! Same contract as `log.rs`, and stricter: an indicator is drawn only when
 //! stderr is a terminal AND the threshold is not `error`. A program driving
-//! `npu` through a pipe therefore never receives a control character, and
+//! `gko` through a pipe therefore never receives a control character, and
 //! `--verbose error` means silence. Nothing here ever touches stdout.
 //!
 //! An [`Indicator`] clears itself when dropped, so every path — success,

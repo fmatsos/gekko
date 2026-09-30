@@ -2,8 +2,8 @@
 //! away from the binary and the repository layout.
 //!
 //! - `readme_version_block_matches_crate_version`: the README's console
-//!   block starting with the line "$ npu --version" must show exactly
-//!   "npu `CARGO_PKG_VERSION`" on the next line -- copy-pasted output, never
+//!   block starting with the line "$ gko --version" must show exactly
+//!   "gko `CARGO_PKG_VERSION`" on the next line -- copy-pasted output, never
 //!   reconstructed by hand (see CLAUDE.md: "quote the binary verbatim").
 //! - `readme_prose_has_no_stray_version_number`: the README must not contain
 //!   a "Version X.Y.Z" sentence outside of quoted binary output; version
@@ -29,13 +29,13 @@ fn readme_version_block_matches_crate_version() {
 
     let version_line = readme
         .lines()
-        .skip_while(|line| line.trim() != "$ npu --version")
+        .skip_while(|line| line.trim() != "$ gko --version")
         .nth(1);
 
     assert_eq!(
         version_line.map(str::trim),
-        Some(format!("npu {}", env!("CARGO_PKG_VERSION")).as_str()),
-        "the README's `$ npu --version` block must show the real, current output"
+        Some(format!("gko {}", env!("CARGO_PKG_VERSION")).as_str()),
+        "the README's `$ gko --version` block must show the real, current output"
     );
 }
 
@@ -71,7 +71,7 @@ fn skills_readme_table_links_match_skill_directories() {
         .expect("skills/README.md must be readable");
 
     let linked: BTreeSet<String> = readme
-        .match_indices("](npu-")
+        .match_indices("](gko-")
         .filter_map(|(idx, _)| {
             let rest = &readme[idx + 2..];
             let end = rest.find('/')?;
@@ -84,12 +84,12 @@ fn skills_readme_table_links_match_skill_directories() {
         .filter_map(Result::ok)
         .filter(|entry| entry.path().is_dir())
         .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| name.starts_with("npu-"))
+        .filter(|name| name.starts_with("gko-"))
         .collect();
 
     assert_eq!(
         linked, on_disk,
-        "skills/README.md's table must link exactly the npu-* subdirectories of skills/"
+        "skills/README.md's table must link exactly the gko-* subdirectories of skills/"
     );
 }
 

@@ -1,4 +1,4 @@
-//! How `npu serve` starts a backend's runtime: the Docker and process
+//! How `gko serve` starts a backend's runtime: the Docker and process
 //! families, and the tagged `[runtime]` enum that dispatches between them.
 
 use serde::Deserialize;
@@ -28,7 +28,7 @@ pub struct Docker {
     pub args: Vec<String>,
 }
 
-/// Default value of [`Process::startup_timeout_secs`]: how long `npu serve`
+/// Default value of [`Process::startup_timeout_secs`]: how long `gko serve`
 /// waits for a spawned server to start answering before it gives up, kills
 /// it and reports the failure.
 ///
@@ -65,18 +65,18 @@ pub struct Process {
     /// Arguments handed to `command`, in order.
     #[serde(default)]
     pub arguments: Vec<String>,
-    /// Variables layered OVER the parent environment of `npu serve` for the
+    /// Variables layered OVER the parent environment of `gko serve` for the
     /// child only — an overlay, never a replacement: a server that needs
     /// `HOME` or `PATH` must not have to redeclare them.
     #[serde(default)]
     pub env: std::collections::BTreeMap<String, String>,
     /// Seconds granted to the spawned server to start answering on its port
-    /// before `npu serve` declares the start a failure.
+    /// before `gko serve` declares the start a failure.
     #[serde(default = "default_startup_timeout_secs")]
     pub startup_timeout_secs: u64,
 }
 
-/// How `npu serve` starts this backend's runtime, declared by the optional
+/// How `gko serve` starts this backend's runtime, declared by the optional
 /// tagged `[runtime]` table of `backends/*.toml`:
 ///
 /// ```toml
@@ -192,7 +192,7 @@ pub(crate) fn reject_double_runtime(
             Some(&backend.id),
             format!(
                 "backend \"{}\": declares both [runtime] and the legacy [docker] table — \
-                 keep [runtime] alone, npu will not guess which one wins",
+                 keep [runtime] alone, gko will not guess which one wins",
                 backend.id
             ),
         )));
