@@ -286,13 +286,13 @@ behaviour it describes does not match what the binary does, the repository
 documentation is authoritative. The exact set of keys the binary accepts is
 `gko config schema backend` (a JSON Schema derived from the parser itself):
 
-- [Backends](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#backends)
-- [Scopes and precedence](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#scopes-and-precedence)
-- [Starting a backend with Docker](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#starting-a-backend-with-docker)
-- [Starting a backend as a process](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#starting-a-backend-as-a-process)
-- [`gko config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-schema)
-- [`gko doctor`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-doctor)
-- [`gko backend serve`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-backend-serve)
+- [Backends](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#backends)
+- [Scopes and precedence](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#scopes-and-precedence)
+- [Starting a backend with Docker](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#starting-a-backend-with-docker)
+- [Starting a backend as a process](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#starting-a-backend-as-a-process)
+- [`gko config schema`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-config-schema)
+- [`gko doctor`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-doctor)
+- [`gko backend serve`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-backend-serve)
 
 Related skills: **gko-model**, **gko-config**, **gko-doctor**.
 

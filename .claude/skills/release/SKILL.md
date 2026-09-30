@@ -132,29 +132,29 @@ the minor.
 
 - `gko serve`, `stop`, `status` and `logs`: the container lifecycle of a
   backend declaring a `[docker]` table
-  ([`aef66c0`](https://github.com/fmatsos/npu/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
+  ([`aef66c0`](https://github.com/fmatsos/gekko/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
 - `--verbose error|warn|info`, global, default `warn`; no level ever changes
   stdout
-  ([`aef66c0`](https://github.com/fmatsos/npu/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
+  ([`aef66c0`](https://github.com/fmatsos/gekko/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
 
 ### Changed
 
 - **Breaking**: command frontmatter is fenced by `---` instead of `+++`; a
   file still using `+++` is rejected with a message naming both delimiters
-  ([`aef66c0`](https://github.com/fmatsos/npu/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
+  ([`aef66c0`](https://github.com/fmatsos/gekko/commit/aef66c03fbe6d2b08701b5370480fd1c0c1ce299))
 
 ### Fixed
 
 - `gko-backend`'s skill description, cut short by an unquoted YAML scalar
-  ([`03b5ee5`](https://github.com/fmatsos/npu/commit/03b5ee5cddf07a7ec3cbe66c5032230d03c38ec8))
+  ([`03b5ee5`](https://github.com/fmatsos/gekko/commit/03b5ee5cddf07a7ec3cbe66c5032230d03c38ec8))
 
-**Full changelog**: [`v0.1.0...v0.2.0`](https://github.com/fmatsos/npu/compare/v0.1.0...v0.2.0)
+**Full changelog**: [`v0.1.0...v0.2.0`](https://github.com/fmatsos/gekko/compare/v0.1.0...v0.2.0)
 ```
 
 Rules, in order of how often they are got wrong:
 
 - **Every bullet links to its commit.** Short sha as the label, full sha in
-  the URL (`https://github.com/fmatsos/npu/commit/<full-sha>`) — a short sha
+  the URL (`https://github.com/fmatsos/gekko/commit/<full-sha>`) — a short sha
   can become ambiguous as the repository grows, a full one never does. A
   change spread over several commits links to each of them.
 - **The section ends with the compare link**, `<previous tag>...<new tag>`,
@@ -205,9 +205,9 @@ This skill is a summary. When a case is not covered here, or when the
 behaviour it describes does not match what the repository does, the
 workflows are authoritative:
 
-- [`.github/workflows/release.yml`](https://github.com/fmatsos/npu/blob/main/.github/workflows/release.yml)
-- [`.github/workflows/qa.yml`](https://github.com/fmatsos/npu/blob/main/.github/workflows/qa.yml)
-- [Exit codes](https://github.com/fmatsos/npu/blob/main/README.md#exit-codes) — the contract a
+- [`.github/workflows/release.yml`](https://github.com/fmatsos/gekko/blob/main/.github/workflows/release.yml)
+- [`.github/workflows/qa.yml`](https://github.com/fmatsos/gekko/blob/main/.github/workflows/qa.yml)
+- [Exit codes](https://github.com/fmatsos/gekko/blob/main/README.md#exit-codes) — the contract a
   release must not break silently
 
 Related skills: **gko-doctor** when the gate fails on a configuration issue.

@@ -261,10 +261,10 @@ behaviour it describes does not match what the binary does, the repository
 documentation is authoritative. The exact set of keys the binary accepts is
 `gko config schema command` (a JSON Schema derived from the parser itself):
 
-- [Writing commands](https://github.com/fmatsos/npu/blob/main/docs/commands.md)
-- [Output contracts](https://github.com/fmatsos/npu/blob/main/docs/output.md)
-- [`gko config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-schema)
-- [`gko describe`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-describe)
+- [Writing commands](https://github.com/fmatsos/gekko/blob/main/docs/commands.md)
+- [Output contracts](https://github.com/fmatsos/gekko/blob/main/docs/output.md)
+- [`gko config schema`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-config-schema)
+- [`gko describe`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-describe)
 
 Related skills: **gko-model**, **gko-config**, **gko-doctor**.
 

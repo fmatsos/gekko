@@ -112,9 +112,9 @@ This skill is a summary. When a case is not covered here, or when the
 behaviour it describes does not match what the binary does, the repository
 documentation is authoritative:
 
-- [Configuration reference](https://github.com/fmatsos/npu/blob/main/docs/configuration.md)
-- [Built-in commands](https://github.com/fmatsos/npu/blob/main/docs/cli.md)
-- [README](https://github.com/fmatsos/npu/blob/main/README.md)
+- [Configuration reference](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md)
+- [Built-in commands](https://github.com/fmatsos/gekko/blob/main/docs/cli.md)
+- [README](https://github.com/fmatsos/gekko/blob/main/README.md)
 
 Related skills: **gko-backend**, **gko-model**, **gko-command**, **gko-doctor**.
 

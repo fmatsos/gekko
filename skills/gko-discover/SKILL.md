@@ -77,15 +77,15 @@ trying"; **gko-export**'s step 3 answers "actually works". After the export,
 - **It does not export anything.**
 - **It does not guarantee NPU correctness.** An exportable architecture can still quantize badly
   (see
-  [docs/intel-npu.md §2](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md#2-choosing-quantization-parameters))
+  [docs/intel-npu.md §2](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md#2-choosing-quantization-parameters))
   or fall back from the NPU plugin to CPU for an unsupported op. Only an export and a test catch
   either.
 - **It does not pad the list with near-misses.**
 
 ## Reference
 
-- [`gko model discover`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-model-discover)
-- [Deploying on an Intel NPU](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md)
+- [`gko model discover`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-model-discover)
+- [Deploying on an Intel NPU](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md)
 
 Related skills: **gko-export** to actually produce and wire in the chosen model,
 **gko-backend** if no NPU-targeting backend exists yet.
