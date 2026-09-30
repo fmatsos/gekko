@@ -5,7 +5,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 // A release tag, not `main`: `pip install optimum-intel` may lag it by an
-// architecture or two, which `npu-export`'s CPU check catches. Bump this
+// architecture or two, which `gko-export`'s CPU check catches. Bump this
 // constant to a newer tag when one ships.
 pub const ARCHITECTURES_URL: &str = "https://raw.githubusercontent.com/huggingface/optimum-intel/v2.2.0/optimum/exporters/openvino/model_configs.py";
 

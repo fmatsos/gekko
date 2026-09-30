@@ -71,7 +71,7 @@ pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 /// imperceptible, long enough not to spin a core.
 pub(crate) const PROBE_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
-/// The family name shown in the `RUNTIME` column of `npu status`, and the
+/// The family name shown in the `RUNTIME` column of `gko status`, and the
 /// value a backend writes as `type` in its `[runtime]` table.
 #[must_use]
 pub fn label(runtime: &crate::config::Runtime) -> &'static str {
@@ -111,7 +111,7 @@ pub fn resolve_base_url(
     match backend.runtime() {
         Some(crate::config::Runtime::Docker(_)) => docker::resolve_base_url(backend, runner),
         // Nothing to resolve: `port = "auto"` is refused for this family at
-        // load time — npu cannot ask a process which port it ended up on —
+        // load time — gko cannot ask a process which port it ended up on —
         // so a process backend's `base_url` is already complete.
         Some(crate::config::Runtime::Process(_)) | None => Ok(backend.base_url.clone()),
     }

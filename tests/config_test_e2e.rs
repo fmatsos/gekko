@@ -17,7 +17,7 @@ fn scope(name: &str) -> PathBuf {
         let path = fixtures.join(format!("config-test-{name}-{n}"));
         match std::fs::create_dir(&path) {
             Ok(()) => {
-                std::fs::create_dir(path.join(".npu")).expect("create scope");
+                std::fs::create_dir(path.join(".gko")).expect("create scope");
                 return path;
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -27,7 +27,7 @@ fn scope(name: &str) -> PathBuf {
 }
 
 fn write(root: &Path, name: &str, text: &str) {
-    let path = root.join(".npu").join(name);
+    let path = root.join(".gko").join(name);
     std::fs::create_dir_all(path.parent().expect("parent")).expect("create directory");
     std::fs::write(path, text).expect("write fixture");
 }
@@ -60,14 +60,14 @@ fn configure(root: &Path, port: u16, format: &str) {
 }
 
 fn run(root: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_npu"))
+    Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(root)
         .env("HOME", root)
         .env_remove("XDG_CONFIG_HOME")
         .env_remove("APPDATA")
         .output()
-        .expect("run npu")
+        .expect("run gko")
 }
 
 fn stub(answers: Vec<&'static str>) -> (u16, std::thread::JoinHandle<()>) {
@@ -306,8 +306,8 @@ fn local_case_replaces_same_named_user_case() {
         "tests/git/review/b.toml",
         "args = { kind = \"ticket\" }\ninput = \"other\"\n[expect]\ncontains = [\"other\"]\n",
     );
-    std::fs::rename(user.join(".npu"), user.join("npu")).expect("make XDG user scope");
-    let mut command = Command::new(env!("CARGO_BIN_EXE_npu"));
+    std::fs::rename(user.join(".gko"), user.join("gko")).expect("make XDG user scope");
+    let mut command = Command::new(env!("CARGO_BIN_EXE_gko"));
     command
         .args(["config", "test", "--dry-run", "--json"])
         .current_dir(&root)
@@ -317,7 +317,7 @@ fn local_case_replaces_same_named_user_case() {
     } else {
         command.env("XDG_CONFIG_HOME", &user).env_remove("APPDATA");
     }
-    let result = command.output().expect("run npu");
+    let result = command.output().expect("run gko");
     assert_eq!(
         result.status.code(),
         Some(0),

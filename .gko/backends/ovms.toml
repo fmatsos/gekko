@@ -14,13 +14,13 @@ base_url = "http://127.0.0.1:{{ backend.port }}"
 method = "POST"
 path = "/v3/chat/completions"
 
-# Runtime started by `npu serve qwen3-8b` (Docker, an optional prerequisite).
+# Runtime started by `gko serve qwen3-8b` (Docker, an optional prerequisite).
 # `{{ args.model }}` is replaced by the invoked model's `model` field,
 # `{{ env.HOME }}` by the environment variable: the core knows nothing about
 # OVMS, it just runs what is declared here.
 # Targets the Intel NPU on this host — see docs/intel-npu.md for the full
 # deployment guide. `--user`/`--group-add` are this machine's uid:gid (1000)
-# and render group gid (990, `getent group render`), not templatable: `npu`'s
+# and render group gid (990, `getent group render`), not templatable: `gko`'s
 # [docker] placeholders are only `{{ args.model }}` and `{{ env.NAME }}`, and
 # `$UID`/`$GID` aren't exported environment variables by default.
 #
@@ -28,10 +28,10 @@ path = "/v3/chat/completions"
 # directory already exported locally by `optimum-cli` (git metadata absent),
 # `--source_model` fails every time with `Unable to open file: .../graph.pbtxt`
 # even when that file is present and readable — verified directly against
-# OVMS, independently of `npu`. `--model_name` + `--model_path` is the
+# OVMS, independently of `gko`. `--model_name` + `--model_path` is the
 # documented way to serve an already-prepared local directory and is what
 # `graph.pbtxt`'s own `device` field (baked in by `--configure`, see
-# npu-export's step 3.5) actually drives — no `--target_device` flag needed
+# gko-export's step 3.5) actually drives — no `--target_device` flag needed
 # here.
 [docker]
 image = "openvino/model_server:2026.4.0-gpu"

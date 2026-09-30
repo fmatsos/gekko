@@ -1,22 +1,22 @@
 //! End-to-end verification of the PROCESS runtime family, against the REAL
-//! binary (`env!("CARGO_BIN_EXE_npu")`).
+//! binary (`env!("CARGO_BIN_EXE_gko")`).
 //!
 //! **The controlled child is this test binary itself.** No test here needs
 //! `llama-server`, Docker, or anything else installed: the backend fixtures
 //! point their `[runtime].command` at `std::env::current_exe()` and run the
-//! `fake_server` test below, which reads `NPU_FAKE_MODE` and behaves as a
+//! `fake_server` test below, which reads `GKO_FAKE_MODE` and behaves as a
 //! server that binds, exits at once, never binds, or writes to both streams.
 //! Every other test of this file reduces to "a server that does X" without
 //! there being a server anywhere.
 //!
-//! `NPU_FAKE_MODE` is handed to the CHILD, through the backend's
+//! `GKO_FAKE_MODE` is handed to the CHILD, through the backend's
 //! `[runtime.env]` overlay — never set on this process: `std::env::set_var`
 //! is `unsafe` under edition 2024 and forbidden here (`unsafe_code =
 //! "forbid"`, cf. Cargo.toml). That also makes the overlay itself part of
 //! what these tests exercise.
 //!
 //! The scope is mounted through `$XDG_CONFIG_HOME` and the state directory
-//! through `$XDG_STATE_HOME`, both on the child `npu` process only (same
+//! through `$XDG_STATE_HOME`, both on the child `gko` process only (same
 //! idiom as `tests/builtins_and_degraded_mode.rs`), so nothing here can see
 //! the machine's real configuration or leave a record in the developer's
 //! `~/.local/state`.
@@ -34,29 +34,29 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 /// The variable the fake server reads, handed to it by the fixture's
 /// `[runtime.env]` overlay.
-const MODE_VAR: &str = "NPU_FAKE_MODE";
+const MODE_VAR: &str = "GKO_FAKE_MODE";
 
 /// The port the fake server binds, substituted from `{{ backend.port }}` by
 /// the same overlay.
-const PORT_VAR: &str = "NPU_FAKE_PORT";
+const PORT_VAR: &str = "GKO_FAKE_PORT";
 
-/// What a "noisy" fake server writes on stdout, and what `npu logs` must
+/// What a "noisy" fake server writes on stdout, and what `gko logs` must
 /// hand back.
 const STDOUT_MARKER: &str = "fake-server-on-stdout";
 
 /// The same on stderr: a server logging there must not lose half its output.
 const STDERR_MARKER: &str = "fake-server-on-stderr";
 
-/// A variable set on the `npu` process itself — never on this one, where
+/// A variable set on the `gko` process itself — never on this one, where
 /// `set_var` is `unsafe` and forbidden. `[runtime.env]` is documented as an
 /// OVERLAY, so the spawned server must still see it: adding an
 /// `.env_clear()` before the overlay would otherwise ship green and break
 /// every real server that needs `HOME`, `PATH` or a proxy variable.
-const INHERITED_VAR: &str = "NPU_INHERITED_MARKER";
+const INHERITED_VAR: &str = "GKO_INHERITED_MARKER";
 
 /// Its value, echoed back by the fake server so the assertion is on a VALUE
 /// and not on any wording.
-const INHERITED_VALUE: &str = "inherited-from-the-npu-process";
+const INHERITED_VALUE: &str = "inherited-from-the-gko-process";
 
 /// What the fake server prefixes its own pid with, so a test that only has
 /// the log can still find the process `serve` spawned.
@@ -69,9 +69,9 @@ const FAKE_SERVER_LIFETIME: std::time::Duration = std::time::Duration::from_secs
 
 /// The controlled child of every test in this file.
 ///
-/// Without `NPU_FAKE_MODE` this is an ordinary (empty) test, which is how it
+/// Without `GKO_FAKE_MODE` this is an ordinary (empty) test, which is how it
 /// behaves in a normal `cargo test` run. With it, this binary was spawned by
-/// `npu serve` and must act as the server the fixture described.
+/// `gko serve` and must act as the server the fixture described.
 #[test]
 fn fake_server() {
     let Ok(mode) = std::env::var(MODE_VAR) else {
@@ -101,7 +101,7 @@ fn fake_server() {
                 .expect("the fake server must be able to bind its port");
             println!("{STDOUT_MARKER}");
             // The overlay is layered OVER the parent environment: this one
-            // was set on `npu`, not here.
+            // was set on `gko`, not here.
             println!(
                 "{INHERITED_VAR}={}",
                 std::env::var(INHERITED_VAR).unwrap_or_default()
@@ -139,7 +139,7 @@ fn free_port() -> u16 {
 }
 
 /// Everything one scenario needs: a scope, a state directory, a home with no
-/// local `.npu`, and the port its fake server was told to bind.
+/// local `.gko`, and the port its fake server was told to bind.
 struct Fixture {
     scope: PathBuf,
     state: PathBuf,
@@ -160,7 +160,7 @@ impl Fixture {
     /// `Makefile` recipe.
     ///
     /// `exec` swaps the image and keeps the birth, so the running process is
-    /// still the pid `npu serve` spawned while reporting another executable.
+    /// still the pid `gko serve` spawned while reporting another executable.
     /// Unix-only because it is about `/bin/sh`.
     #[cfg(unix)]
     fn through_a_wrapper(name: &str, mode: &str, startup_timeout_secs: u64) -> Fixture {
@@ -188,7 +188,7 @@ impl Fixture {
 
         write(
             &scope,
-            "npu/backends/local.toml",
+            "gko/backends/local.toml",
             &format!(
                 r#"
 id = "local"
@@ -216,7 +216,7 @@ startup_timeout_secs = {startup_timeout_secs}
 
         write(
             &scope,
-            "npu/models/qwen.toml",
+            "gko/models/qwen.toml",
             r#"
 id = "qwen"
 backend = "local"
@@ -233,9 +233,9 @@ model = "qwen3-4b"
         }
     }
 
-    /// Runs the real `npu` binary against this fixture.
-    fn npu(&self, args: &[&str]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_npu"))
+    /// Runs the real `gko` binary against this fixture.
+    fn gko(&self, args: &[&str]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_gko"))
             .args(args)
             .current_dir(&self.home)
             .env("HOME", &self.home)
@@ -248,15 +248,15 @@ model = "qwen3-4b"
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("launching the npu binary")
+            .expect("launching the gko binary")
             .wait_with_output()
-            .expect("waiting for the npu binary")
+            .expect("waiting for the gko binary")
     }
 
     /// The same backend identifier in ANOTHER project: its own scope, the
     /// machine's ONE state directory and one home.
     ///
-    /// Backend identifiers are per-scope and `./.npu` is a documented scope,
+    /// Backend identifiers are per-scope and `./.gko` is a documented scope,
     /// so `llamacpp` declared by two projects is ordinary, not pathological
     /// — while the state directory they share is machine-global. The home is
     /// shared with the state directory on purpose: macOS derives the state
@@ -269,41 +269,41 @@ model = "qwen3-4b"
         other
     }
 
-    /// The environment `npu` resolves its state directory from, built from
-    /// the very variables [`Fixture::npu`] hands the child.
-    fn state_env(&self) -> npu::runtime::state::StateEnv {
-        npu::runtime::state::StateEnv {
+    /// The environment `gko` resolves its state directory from, built from
+    /// the very variables [`Fixture::gko`] hands the child.
+    fn state_env(&self) -> gekko::runtime::state::StateEnv {
+        gekko::runtime::state::StateEnv {
             xdg_state_home: Some(self.state.clone()),
             home: Some(self.home.clone()),
         }
     }
 
-    /// This fixture's backend FILE, as `npu` records it: canonicalized when
+    /// This fixture's backend FILE, as `gko` records it: canonicalized when
     /// the filesystem allows it, exactly as `config.rs` does.
     ///
     /// Half the state record's name, so a test cannot find that record
     /// without it — which is the whole point: the same identifier in
     /// another project is another file and another record.
     fn backend_source(&self) -> PathBuf {
-        let declared = self.scope.join("npu").join("backends").join("local.toml");
+        let declared = self.scope.join("gko").join("backends").join("local.toml");
         std::fs::canonicalize(&declared).unwrap_or(declared)
     }
 
-    /// The state record `npu serve` writes.
+    /// The state record `gko serve` writes.
     ///
     /// Derived through the library's own resolver rather than by restating
-    /// the Linux convention: the directory is `$XDG_STATE_HOME/npu` on Linux
-    /// and `$HOME/Library/Application Support/npu/state` on macOS, and a
+    /// the Linux convention: the directory is `$XDG_STATE_HOME/gko` on Linux
+    /// and `$HOME/Library/Application Support/gko/state` on macOS, and a
     /// hard-coded path here would make every assertion below fail on the
     /// second platform for a reason that has nothing to do with the runtime.
     /// The file NAME is resolved the same way, and for the same reason: it
     /// carries a digest of the backend file this suite must not restate.
     fn record(&self) -> PathBuf {
-        npu::runtime::state::state_path(&self.state_env(), "local", &self.backend_source())
+        gekko::runtime::state::state_path(&self.state_env(), "local", &self.backend_source())
             .expect("a valid backend identifier")
     }
 
-    /// The log file `npu serve` redirects the child's two streams into: the
+    /// The log file `gko serve` redirects the child's two streams into: the
     /// record's own path with a `.log` extension, exactly as `serve` derives
     /// it.
     fn log(&self) -> PathBuf {
@@ -316,7 +316,7 @@ model = "qwen3-4b"
 ///
 /// Deliberately ends on `exec` and not on a plain call: that is what every
 /// real launcher does, and what makes the spawned pid report an executable
-/// other than the one `npu` recorded.
+/// other than the one `gko` recorded.
 #[cfg(unix)]
 fn wrapper(root: &Path, target: &Path) -> PathBuf {
     use std::os::unix::fs::PermissionsExt as _;
@@ -348,7 +348,7 @@ fn stderr_of(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).to_string()
 }
 
-/// The pid `npu serve` wrote on stdout — its RESULT, and the only thing on
+/// The pid `gko serve` wrote on stdout — its RESULT, and the only thing on
 /// that stream.
 fn served_pid(output: &Output) -> u32 {
     stdout_of(output)
@@ -360,7 +360,7 @@ fn served_pid(output: &Output) -> u32 {
 /// Is that pid still a live process? Uses the library's own inspector, so
 /// the assertion rests on the same source `stop` does.
 fn is_live(pid: u32) -> bool {
-    npu::runtime::process::inspect(pid).is_some()
+    gekko::runtime::process::inspect(pid).is_some()
 }
 
 /// Waits for a pid to disappear, with a bound: signal delivery and process
@@ -385,7 +385,7 @@ fn wait_until_gone(pid: u32) -> bool {
 fn serve_then_status_then_stop_then_status() {
     let fixture = Fixture::new("lifecycle", "bind", 20);
 
-    let served = fixture.npu(&["backend", "serve", "qwen"]);
+    let served = fixture.gko(&["backend", "serve", "qwen"]);
     assert_eq!(
         served.status.code(),
         Some(0),
@@ -395,7 +395,7 @@ fn serve_then_status_then_stop_then_status() {
     let pid = served_pid(&served);
     assert!(is_live(pid), "the served process must be running");
 
-    let status = fixture.npu(&["backend", "status"]);
+    let status = fixture.gko(&["backend", "status"]);
     assert_eq!(status.status.code(), Some(0));
     let report = stdout_of(&status);
     let line = report
@@ -408,7 +408,7 @@ fn serve_then_status_then_stop_then_status() {
     assert!(line.contains(&pid.to_string()), "{report}");
     assert!(line.contains(&fixture.port.to_string()), "{report}");
 
-    let stopped = fixture.npu(&["backend", "stop", "qwen"]);
+    let stopped = fixture.gko(&["backend", "stop", "qwen"]);
     assert_eq!(
         stopped.status.code(),
         Some(0),
@@ -423,7 +423,7 @@ fn serve_then_status_then_stop_then_status() {
     // state word the row prints — a state word is prose, and `status` still
     // has to produce a line either way.
     assert!(!fixture.record().exists(), "{}", fixture.record().display());
-    let after = fixture.npu(&["backend", "status"]);
+    let after = fixture.gko(&["backend", "status"]);
     assert_eq!(after.status.code(), Some(0));
     assert!(
         stdout_of(&after)
@@ -439,7 +439,7 @@ fn serve_then_status_then_stop_then_status() {
 ///
 /// The regression this pins: while process identity also required the
 /// EXECUTABLE to match, such a runtime reported `stale state` the moment it
-/// was up, and `npu stop` answered success (exit `0`, the backend id on
+/// was up, and `gko stop` answered success (exit `0`, the backend id on
 /// stdout) while leaving the server running, holding its port, and deleting
 /// the only record that could still find it. The assertion that pins it is
 /// the last one — the process is actually GONE after `stop` — since under
@@ -451,7 +451,7 @@ fn serve_then_status_then_stop_then_status() {
 fn a_server_reached_through_an_exec_ing_wrapper_is_still_ours_to_stop() {
     let fixture = Fixture::through_a_wrapper("exec-wrapper", "bind", 20);
 
-    let served = fixture.npu(&["backend", "serve", "qwen"]);
+    let served = fixture.gko(&["backend", "serve", "qwen"]);
     assert_eq!(
         served.status.code(),
         Some(0),
@@ -461,14 +461,14 @@ fn a_server_reached_through_an_exec_ing_wrapper_is_still_ours_to_stop() {
     let pid = served_pid(&served);
     assert!(is_live(pid), "the served process must be running");
 
-    let report = stdout_of(&fixture.npu(&["backend", "status"]));
+    let report = stdout_of(&fixture.gko(&["backend", "status"]));
     let line = report
         .lines()
         .find(|line| line.starts_with("local"))
         .expect("the backend must have a line");
     assert!(line.contains(&pid.to_string()), "{report}");
 
-    let stopped = fixture.npu(&["backend", "stop", "qwen"]);
+    let stopped = fixture.gko(&["backend", "stop", "qwen"]);
     assert_eq!(
         stopped.status.code(),
         Some(0),
@@ -489,10 +489,10 @@ fn a_server_reached_through_an_exec_ing_wrapper_is_still_ours_to_stop() {
 /// served from, so each project gets its own record, its own log and its own
 /// server.
 ///
-/// Before that, the second project's `npu stop` found a pid that was
-/// genuinely an npu-started process with a genuinely matching birth, and
+/// Before that, the second project's `gko stop` found a pid that was
+/// genuinely a gko-started process with a genuinely matching birth, and
 /// SIGTERM/SIGKILLed the first project's server — then cleared the record,
-/// leaving `npu status` in the first project reporting a runtime that had
+/// leaving `gko status` in the first project reporting a runtime that had
 /// never been stopped by anyone who meant to.
 ///
 /// What is asserted here is the OUTCOME, not the mechanism: B never reaches
@@ -505,7 +505,7 @@ fn a_server_reached_through_an_exec_ing_wrapper_is_still_ours_to_stop() {
 #[test]
 fn another_project_s_runtime_is_neither_stopped_nor_taken_over() {
     let project_a = Fixture::new("two-projects-a", "bind", 20);
-    let served = project_a.npu(&["backend", "serve", "qwen"]);
+    let served = project_a.gko(&["backend", "serve", "qwen"]);
     assert_eq!(
         served.status.code(),
         Some(0),
@@ -519,7 +519,7 @@ fn another_project_s_runtime_is_neither_stopped_nor_taken_over() {
     // B's backend was never served, so B's `stop` is the idempotent
     // success it is for anything never started — and it reaches nothing of
     // A's.
-    let stopped = project_b.npu(&["backend", "stop", "qwen"]);
+    let stopped = project_b.gko(&["backend", "stop", "qwen"]);
     assert_eq!(stopped.status.code(), Some(0), "{}", stderr_of(&stopped));
     assert!(
         is_live(pid),
@@ -537,7 +537,7 @@ fn another_project_s_runtime_is_neither_stopped_nor_taken_over() {
 
     // And B's `serve` starts B's OWN server, on its own port, without
     // truncating A's log or overwriting A's record.
-    let again = project_b.npu(&["backend", "serve", "qwen"]);
+    let again = project_b.gko(&["backend", "serve", "qwen"]);
     assert_eq!(again.status.code(), Some(0), "{}", stderr_of(&again));
     let other_pid = served_pid(&again);
     assert_ne!(other_pid, pid);
@@ -545,24 +545,24 @@ fn another_project_s_runtime_is_neither_stopped_nor_taken_over() {
     assert!(project_a.record().exists());
 
     // Each project stops its own, and only its own.
-    let by_b = project_b.npu(&["backend", "stop", "qwen"]);
+    let by_b = project_b.gko(&["backend", "stop", "qwen"]);
     assert_eq!(by_b.status.code(), Some(0), "{}", stderr_of(&by_b));
     assert!(wait_until_gone(other_pid), "B must stop B's server");
     assert!(is_live(pid), "B's stop must not reach A's server");
 
-    let by_owner = project_a.npu(&["backend", "stop", "qwen"]);
+    let by_owner = project_a.gko(&["backend", "stop", "qwen"]);
     assert_eq!(by_owner.status.code(), Some(0), "{}", stderr_of(&by_owner));
     assert!(wait_until_gone(pid), "its own project must still stop it");
 }
 
 /// The READ half of the same isolation, and the defect this keying exists
-/// for: project B's `npu logs` used to print project A's server output on
+/// for: project B's `gko logs` used to print project A's server output on
 /// stdout, with exit `0` — `logs` reads the log file without ever consulting
 /// a record, so nothing compared the two origins.
 #[test]
 fn another_project_s_logs_are_never_handed_over() {
     let project_a = Fixture::new("two-projects-logs-a", "bind", 20);
-    let served = project_a.npu(&["backend", "serve", "qwen"]);
+    let served = project_a.gko(&["backend", "serve", "qwen"]);
     assert_eq!(
         served.status.code(),
         Some(0),
@@ -572,7 +572,7 @@ fn another_project_s_logs_are_never_handed_over() {
     let pid = served_pid(&served);
 
     // A has a log, and it holds what A's server wrote.
-    let mine = project_a.npu(&["backend", "logs", "qwen"]);
+    let mine = project_a.gko(&["backend", "logs", "qwen"]);
     assert_eq!(mine.status.code(), Some(0), "{}", stderr_of(&mine));
     assert!(
         stdout_of(&mine).contains(STDOUT_MARKER),
@@ -581,7 +581,7 @@ fn another_project_s_logs_are_never_handed_over() {
     );
 
     let project_b = project_a.beside("two-projects-logs-b");
-    let theirs = project_b.npu(&["backend", "logs", "qwen"]);
+    let theirs = project_b.gko(&["backend", "logs", "qwen"]);
 
     // B served nothing: exit `3`, and stdout is ZERO bytes — never a single
     // byte of A's log.
@@ -598,7 +598,7 @@ fn another_project_s_logs_are_never_handed_over() {
         "two backend files must not share one log"
     );
 
-    drop(project_a.npu(&["backend", "stop", "qwen"]));
+    drop(project_a.gko(&["backend", "stop", "qwen"]));
     assert!(wait_until_gone(pid));
 }
 
@@ -608,7 +608,7 @@ fn another_project_s_logs_are_never_handed_over() {
 fn stopping_a_backend_that_was_never_served_succeeds() {
     let fixture = Fixture::new("stop-idempotent", "bind", 20);
 
-    let stopped = fixture.npu(&["backend", "stop", "qwen"]);
+    let stopped = fixture.gko(&["backend", "stop", "qwen"]);
 
     assert_eq!(stopped.status.code(), Some(0), "{}", stderr_of(&stopped));
     assert_eq!(stdout_of(&stopped).trim(), "local");
@@ -620,11 +620,11 @@ fn stopping_a_backend_that_was_never_served_succeeds() {
 fn serving_twice_is_refused_and_writes_nothing_to_stdout() {
     let fixture = Fixture::new("serve-twice", "bind", 20);
 
-    let served = fixture.npu(&["backend", "serve", "qwen"]);
+    let served = fixture.gko(&["backend", "serve", "qwen"]);
     assert_eq!(served.status.code(), Some(0), "{}", stderr_of(&served));
     let pid = served_pid(&served);
 
-    let again = fixture.npu(&["backend", "serve", "qwen"]);
+    let again = fixture.gko(&["backend", "serve", "qwen"]);
 
     assert_eq!(again.status.code(), Some(3));
     assert!(again.stdout.is_empty(), "{:?}", stdout_of(&again));
@@ -632,7 +632,7 @@ fn serving_twice_is_refused_and_writes_nothing_to_stdout() {
     assert!(message.contains("local"), "{message}");
     assert!(message.contains(&pid.to_string()), "{message}");
 
-    drop(fixture.npu(&["backend", "stop", "qwen"]));
+    drop(fixture.gko(&["backend", "stop", "qwen"]));
     assert!(wait_until_gone(pid));
 }
 
@@ -643,7 +643,7 @@ fn serving_twice_is_refused_and_writes_nothing_to_stdout() {
 fn a_server_that_exits_at_once_fails_with_three_and_keeps_its_log() {
     let fixture = Fixture::new("early-exit", "exit", 20);
 
-    let served = fixture.npu(&["backend", "serve", "qwen"]);
+    let served = fixture.gko(&["backend", "serve", "qwen"]);
 
     assert_eq!(served.status.code(), Some(3));
     assert!(served.stdout.is_empty(), "{:?}", stdout_of(&served));
@@ -683,7 +683,7 @@ fn a_server_that_exits_at_once_fails_with_three_and_keeps_its_log() {
 fn a_server_that_never_binds_times_out_and_is_terminated() {
     let fixture = Fixture::new("never-binds", "silent", 1);
 
-    let served = fixture.npu(&["backend", "serve", "qwen"]);
+    let served = fixture.gko(&["backend", "serve", "qwen"]);
 
     assert_eq!(served.status.code(), Some(3), "{}", stderr_of(&served));
     assert!(served.stdout.is_empty(), "{:?}", stdout_of(&served));
@@ -699,7 +699,7 @@ fn a_server_that_never_binds_times_out_and_is_terminated() {
 
     // ...and, above all, nothing left RUNNING. The state file says nothing
     // about the process, so the pid comes out of the log this path keeps:
-    // an orphaned server would hold its port while every npu command
+    // an orphaned server would hold its port while every gko command
     // reported the backend as never started.
     let kept = std::fs::read_to_string(fixture.log()).expect("the log must be kept");
     let pid: u32 = kept
@@ -714,39 +714,39 @@ fn a_server_that_never_binds_times_out_and_is_terminated() {
     );
 }
 
-/// Both of a server's streams reach `npu logs`: a server that logs to stderr
+/// Both of a server's streams reach `gko logs`: a server that logs to stderr
 /// (most do) would otherwise lose half its output.
 #[test]
 fn logs_hand_back_what_the_server_wrote_on_both_streams() {
     let fixture = Fixture::new("logs", "bind", 20);
 
-    let served = fixture.npu(&["backend", "serve", "qwen"]);
+    let served = fixture.gko(&["backend", "serve", "qwen"]);
     assert_eq!(served.status.code(), Some(0), "{}", stderr_of(&served));
     let pid = served_pid(&served);
 
-    let logs = fixture.npu(&["backend", "logs", "qwen"]);
+    let logs = fixture.gko(&["backend", "logs", "qwen"]);
 
     assert_eq!(logs.status.code(), Some(0), "{}", stderr_of(&logs));
     let out = stdout_of(&logs);
     assert!(out.contains(STDOUT_MARKER), "{out}");
     assert!(out.contains(STDERR_MARKER), "{out}");
-    // `[runtime.env]` is an overlay: the child still sees what `npu` itself
+    // `[runtime.env]` is an overlay: the child still sees what `gko` itself
     // was given. A regression to `.env_clear().envs(...)` would break every
     // server needing `HOME`, `PATH` or a proxy variable, and nothing else
     // here would notice.
     assert!(out.contains(INHERITED_VALUE), "{out}");
 
-    drop(fixture.npu(&["backend", "stop", "qwen"]));
+    drop(fixture.gko(&["backend", "stop", "qwen"]));
     assert!(wait_until_gone(pid));
 }
 
-/// `npu logs` on a backend that was never served says so, naming it, and
+/// `gko logs` on a backend that was never served says so, naming it, and
 /// writes nothing on stdout — which carries the log and nothing else.
 #[test]
 fn logs_of_a_never_served_backend_fail_with_three_and_an_empty_stdout() {
     let fixture = Fixture::new("logs-absent", "bind", 20);
 
-    let logs = fixture.npu(&["backend", "logs", "qwen"]);
+    let logs = fixture.gko(&["backend", "logs", "qwen"]);
 
     assert_eq!(logs.status.code(), Some(3));
     assert!(logs.stdout.is_empty(), "{:?}", stdout_of(&logs));
@@ -765,7 +765,7 @@ fn doctor_reports_a_missing_runtime_command_as_unreachable() {
 
     write(
         &scope,
-        "npu/backends/local.toml",
+        "gko/backends/local.toml",
         &format!(
             r#"
 id = "local"
@@ -778,12 +778,12 @@ path = "/v1/chat/completions"
 
 [runtime]
 type = "process"
-command = "npu-no-such-command-anywhere"
+command = "gko-no-such-command-anywhere"
 "#
         ),
     );
 
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
         .arg("doctor")
         .current_dir(&home)
         .env("HOME", &home)
@@ -793,14 +793,14 @@ command = "npu-no-such-command-anywhere"
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary")
+        .expect("launching the gko binary")
         .wait_with_output()
-        .expect("waiting for the npu binary");
+        .expect("waiting for the gko binary");
 
     // `3`, never `2`: nothing in the files is wrong.
     assert_eq!(output.status.code(), Some(3), "{}", stdout_of(&output));
     let report = stdout_of(&output);
-    assert!(report.contains("npu-no-such-command-anywhere"), "{report}");
+    assert!(report.contains("gko-no-such-command-anywhere"), "{report}");
 }
 
 /// `port = "auto"` cannot be honoured for a process runtime, and that is a
@@ -814,7 +814,7 @@ fn port_auto_with_a_process_runtime_is_rejected_end_to_end() {
 
     write(
         &scope,
-        "npu/backends/local.toml",
+        "gko/backends/local.toml",
         r#"
 id = "local"
 base_url = "http://127.0.0.1:{{ backend.port }}"
@@ -833,7 +833,7 @@ arguments = ["--port", "{{ backend.port }}"]
     );
     write(
         &scope,
-        "npu/models/qwen.toml",
+        "gko/models/qwen.toml",
         r#"
 id = "qwen"
 backend = "local"
@@ -842,7 +842,7 @@ model = "qwen3-4b"
 "#,
     );
 
-    let output = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let output = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(["backend", "serve", "qwen"])
         .current_dir(&home)
         .env("HOME", &home)
@@ -852,9 +852,9 @@ model = "qwen3-4b"
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching the npu binary")
+        .expect("launching the gko binary")
         .wait_with_output()
-        .expect("waiting for the npu binary");
+        .expect("waiting for the gko binary");
 
     assert_eq!(output.status.code(), Some(2), "{}", stderr_of(&output));
     assert!(output.stdout.is_empty(), "{:?}", stdout_of(&output));

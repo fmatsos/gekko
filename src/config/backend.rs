@@ -79,12 +79,12 @@ pub struct Backend {
     /// `{{ backend.port }}` in `base_url` and in the `[docker]` lists.
     ///
     /// Exists so the port is declared ONCE. Written twice — in `-p` and in
-    /// `base_url` — a divergence is invisible to `npu doctor` (its probe
+    /// `base_url` — a divergence is invisible to `gko doctor` (its probe
     /// reaches whatever answers on the `base_url` port, possibly another
     /// backend) and only surfaces as exit `3` at execution.
     #[serde(default)]
     pub port: Option<Port>,
-    /// Optional: how `npu serve` starts this backend's runtime, tagged form.
+    /// Optional: how `gko serve` starts this backend's runtime, tagged form.
     ///
     /// Read through [`Backend::runtime`] only: a legacy `[docker]` backend
     /// is normalized into this field at load time, so this is the single
@@ -111,7 +111,7 @@ pub struct Backend {
     /// Optional: overrides `backend::REQUEST_TIMEOUT` for this backend.
     #[serde(default)]
     pub timeouts: Option<Timeouts>,
-    /// Optional: `1` serializes the requests every `npu` process on this
+    /// Optional: `1` serializes the requests every `gko` process on this
     /// machine sends to this backend (an advisory lock in the state
     /// directory, see `runtime::state::acquire_request_slot`). Absent, no
     /// limit. Any other value is rejected: honouring it would need one
@@ -142,9 +142,9 @@ pub struct Backend {
     /// so a file spelling `source = "..."` is rejected by
     /// `deny_unknown_fields` instead of forging the value. It is the
     /// discriminator [`crate::runtime::state`] records, because backend
-    /// identifiers are per-scope (`./.npu` is a documented scope) while the
+    /// identifiers are per-scope (`./.gko` is a documented scope) while the
     /// state directory is machine-global: two projects naming a backend
-    /// `llamacpp` would otherwise share one record, and `npu stop` in one
+    /// `llamacpp` would otherwise share one record, and `gko stop` in one
     /// would signal the other's server.
     #[serde(skip)]
     pub source: PathBuf,
@@ -173,7 +173,7 @@ impl Backend {
     /// How this backend's runtime is started, in its normalized form.
     ///
     /// `None` means the backend was never told how to start anything — a
-    /// perfectly valid backend, just one `npu serve` cannot act on.
+    /// perfectly valid backend, just one `gko serve` cannot act on.
     #[must_use]
     pub fn runtime(&self) -> Option<&Runtime> {
         self.runtime.as_ref()
@@ -224,7 +224,7 @@ impl Method {
 }
 
 /// The only `{{ args.<name> }}` placeholder a `[runtime]` template may
-/// reference: `npu serve` takes a model identifier and nothing else, so
+/// reference: `gko serve` takes a model identifier and nothing else, so
 /// `model` is the only value it can substitute. Any other name is a
 /// configuration error rather than an empty string silently handed to the
 /// runtime.
@@ -238,13 +238,13 @@ const RUNTIME_PLACEHOLDER_ARG: &str = "model";
 const MAX_STARTUP_TIMEOUT_SECS: u64 = 24 * 60 * 60;
 
 /// Validates one `[runtime]` template, whatever the family it belongs to:
-/// `{{ input }}` has no meaning here (`npu serve` reads no input) and
+/// `{{ input }}` has no meaning here (`gko serve` reads no input) and
 /// `{{ args.<name> }}` is restricted to [`RUNTIME_PLACEHOLDER_ARG`].
 /// `{{ env.NAME }}` passes: it is resolved at `serve` time, against the
 /// environment injected by the caller.
 ///
 /// One validator for every family rather than one per family: the rule is
-/// about what `npu serve` can resolve, which does not depend on whether the
+/// about what `gko serve` can resolve, which does not depend on whether the
 /// template ends up in a `docker run` line or in a child process's argument
 /// vector. The message names `[runtime]` for the same reason — a Docker
 /// backend spelling the legacy `[docker]` table has already been folded into
@@ -348,7 +348,7 @@ fn validate_header_name(name: &str, backend_id: &str, source: &Path) -> crate::R
             source,
             Some(backend_id),
             format!(
-                "backend \"{backend_id}\": [headers] cannot set \"{name}\": npu owns this \
+                "backend \"{backend_id}\": [headers] cannot set \"{name}\": gko owns this \
                  header (set by the HTTP client for every JSON request)"
             ),
         )));
@@ -421,7 +421,7 @@ fn validate_headers(backend: &Backend, source: &Path) -> crate::Result<()> {
 }
 
 /// Characters Docker accepts in a container name (`[a-zA-Z0-9][a-zA-Z0-9_.-]*`).
-/// `npu serve` derives the container name from the backend identifier, which
+/// `gko serve` derives the container name from the backend identifier, which
 /// is a free-form TOML string: an identifier outside this set is rejected at
 /// load time, naming its file, rather than transformed silently or handed to
 /// `docker run` to fail on its own terms.
@@ -501,7 +501,7 @@ fn validate_process(backend: &Backend, source: &Path) -> crate::Result<()> {
             format!(
                 "backend \"{}\": [runtime] type = \"{}\" is not supported on Windows (no state \
                  directory convention, and no SIGTERM to stop a server with) — use type = \"{}\", \
-                 or start the server outside npu",
+                 or start the server outside gko",
                 backend.id,
                 crate::runtime::process::NAME,
                 crate::runtime::docker::NAME
@@ -521,7 +521,7 @@ fn validate_process(backend: &Backend, source: &Path) -> crate::Result<()> {
             Some(&backend.id),
             format!(
                 "backend \"{}\": {detail} — a process runtime is started only once its \
-                 base_url answers, so an address npu cannot parse can never be satisfied",
+                 base_url answers, so an address gko cannot parse can never be satisfied",
                 backend.id
             ),
         )));
@@ -566,7 +566,7 @@ fn validate_process(backend: &Backend, source: &Path) -> crate::Result<()> {
             Some(&backend.id),
             format!(
                 "backend \"{}\": [runtime].startup_timeout_secs must be at most \
-                 {MAX_STARTUP_TIMEOUT_SECS} (a day); npu cannot build a deadline out of \
+                 {MAX_STARTUP_TIMEOUT_SECS} (a day); gko cannot build a deadline out of \
                  {}",
                 backend.id, process.startup_timeout_secs
             ),
@@ -666,7 +666,7 @@ pub(crate) fn validate_backend(backend: &Backend, source: &Path) -> crate::Resul
 /// same testability reason as `prompt::render`). An undefined variable is
 /// `Error::Config` naming the file and the header — resolved at preflight,
 /// before the input is read (see `exec::execute_business_command`'s
-/// invariant), so `git diff | npu ...` fails before the diff is consumed.
+/// invariant), so `git diff | gko ...` fails before the diff is consumed.
 /// A resolved value containing a CR, LF or NUL is also rejected here: `ureq`
 /// would otherwise fail later, at request time, with a less actionable
 /// message (exit 3 instead of 2) for what is a configuration defect.

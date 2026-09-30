@@ -156,7 +156,7 @@ mod tests {
                 "-p".to_string(),
                 "8000:8000".to_string(),
                 "-v".to_string(),
-                "{{ env.NPU_TEST_MODELS }}:/models".to_string(),
+                "{{ env.GKO_TEST_MODELS }}:/models".to_string(),
             ],
             args: vec!["--source_model".to_string(), "{{ args.model }}".to_string()],
         }));
@@ -176,7 +176,7 @@ mod tests {
             &test_env,
             &|args: &[String]| {
                 assert_eq!(args.first().map(String::as_str), Some("ps"));
-                Ok("npu-ovms\n".to_string())
+                Ok("gko-ovms\n".to_string())
             },
             &test_host(),
         )
@@ -184,7 +184,7 @@ mod tests {
 
         assert_eq!(err.exit_code(), 3);
         let message = err.to_string();
-        assert!(message.contains("npu-ovms"), "got: {message}");
+        assert!(message.contains("gko-ovms"), "got: {message}");
         assert!(message.contains("qwen"), "got: {message}");
     }
 
@@ -734,7 +734,7 @@ mod tests {
             system: None,
             examples: Vec::new(),
             generation: None,
-            file: std::path::PathBuf::from(".npu/commands/translate.md"),
+            file: std::path::PathBuf::from(".gko/commands/translate.md"),
         }
     }
 
@@ -937,7 +937,7 @@ mod tests {
 
     fn test_env(name: &str) -> Option<String> {
         match name {
-            "NPU_TEST_MODELS" => Some("/home/tester/models".to_string()),
+            "GKO_TEST_MODELS" => Some("/home/tester/models".to_string()),
             _ => None,
         }
     }
@@ -974,7 +974,7 @@ mod tests {
                 "run",
                 "-d",
                 "--name",
-                "npu-ovms",
+                "gko-ovms",
                 "-p",
                 "8000:8000",
                 "-v",
@@ -1069,7 +1069,7 @@ mod tests {
 
         assert!(matches!(err, crate::Error::Config(_)));
         assert!(
-            err.to_string().contains("NPU_TEST_MODELS"),
+            err.to_string().contains("GKO_TEST_MODELS"),
             "the message must name the undefined variable"
         );
         assert!(captured.into_inner().is_empty());
@@ -1157,7 +1157,7 @@ mod tests {
 
         assert_eq!(
             captured.into_inner(),
-            vec!["rm", "--force", "npu-ovms"],
+            vec!["rm", "--force", "gko-ovms"],
             "stop must REMOVE the container: a stopped one still owns its name"
         );
     }
@@ -1172,7 +1172,7 @@ mod tests {
         let result =
             stop(&config, "qwen", &silent, &test_host()).expect("stopping must stay idempotent");
 
-        assert_eq!(result, "npu-ovms");
+        assert_eq!(result, "gko-ovms");
     }
 
     #[test]
@@ -1188,7 +1188,7 @@ mod tests {
         let captured = std::cell::RefCell::new(Vec::new());
 
         let err = stop(&config, "qwen", &capturing_runner(&captured), &test_host())
-            .expect_err("npu only manages the containers it starts");
+            .expect_err("gko only manages the containers it starts");
 
         assert!(matches!(err, crate::Error::Config(_)));
         assert!(err.to_string().contains("plain"));
@@ -1207,7 +1207,7 @@ mod tests {
         logs(&config, "qwen", true, &streamer, &test_host(), &unused_sink)
             .expect("streaming must succeed");
 
-        assert_eq!(captured.into_inner(), vec!["logs", "--follow", "npu-ovms"]);
+        assert_eq!(captured.into_inner(), vec!["logs", "--follow", "gko-ovms"]);
     }
 
     #[test]
@@ -1229,7 +1229,7 @@ mod tests {
         )
         .expect("streaming must succeed");
 
-        assert_eq!(captured.into_inner(), vec!["logs", "npu-ovms"]);
+        assert_eq!(captured.into_inner(), vec!["logs", "gko-ovms"]);
     }
 
     #[test]
@@ -1240,7 +1240,7 @@ mod tests {
         let report = status(&config, &runner, &test_host()).expect("status never fails");
 
         assert!(report.contains("ovms"), "got: {report}");
-        assert!(report.contains("npu-ovms"), "got: {report}");
+        assert!(report.contains("gko-ovms"), "got: {report}");
         assert!(report.contains("Up 3 minutes"), "got: {report}");
     }
 
@@ -1392,7 +1392,7 @@ mod tests {
         assert!(matches!(check.status, Status::Ok));
     }
 
-    /// A `command` carrying a placeholder is only known once `npu serve`
+    /// A `command` carrying a placeholder is only known once `gko serve`
     /// renders it against a model, and `doctor` has no model. Emitting the
     /// check anyway turned a valid configuration red and told its operator
     /// to install a binary named `{{ env.LLAMA_BIN }}`.
@@ -1477,7 +1477,7 @@ mod tests {
     /// container) proves.
     #[test]
     fn serve_dispatches_a_process_backend_to_the_process_runtime() {
-        let config = process_config("npu-does-not-exist-anywhere");
+        let config = process_config("gko-does-not-exist-anywhere");
         let host = crate::runtime::process::Host {
             env: &|_| None,
             state: fixture_state_env("serve-dispatch"),
@@ -1491,7 +1491,7 @@ mod tests {
 
         assert_eq!(err.exit_code(), 3);
         let message = err.to_string();
-        assert!(message.contains("npu-does-not-exist-anywhere"), "{message}");
+        assert!(message.contains("gko-does-not-exist-anywhere"), "{message}");
         assert!(message.contains("local"), "{message}");
     }
 
@@ -1580,7 +1580,7 @@ mod tests {
             .expect("a report must not die on its first bad line");
 
         assert_eq!(report.lines().count(), 3, "{report}");
-        assert!(report.contains("npu-ovms"), "{report}");
+        assert!(report.contains("gko-ovms"), "{report}");
     }
 
     /// Dispatch again: a process backend's logs come from the file `serve`

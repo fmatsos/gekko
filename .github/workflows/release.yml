@@ -34,7 +34,7 @@ jobs:
           set -euo pipefail
           tag="${{ inputs.tag || github.ref_name }}"
           package_version="$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] | select(.name == "npu") | .version')"
+            | jq -r '.packages[] | select(.name == "gekko") | .version')"
           if [ "$tag" != "v${package_version}" ]; then
             echo "release tag ${tag} does not match Cargo.toml version ${package_version}" >&2
             exit 1
@@ -107,10 +107,10 @@ jobs:
           set -euo pipefail
           version="${{ inputs.tag || github.ref_name }}"
           platform="${{ matrix.target }}"
-          name="npu-${version}-${platform}"
+          name="gko-${version}-${platform}"
           mkdir -p "dist/${name}"
-          cp "target/${{ matrix.target }}/release/npu" "dist/${name}/"
-          cp "target/${{ matrix.target }}/release/npu" "dist/npu-${platform}"
+          cp "target/${{ matrix.target }}/release/gko" "dist/${name}/"
+          cp "target/${{ matrix.target }}/release/gko" "dist/gko-${platform}"
           cp README.md "dist/${name}/"
           tar -czf "dist/${name}.tar.gz" -C dist "${name}"
 
@@ -121,21 +121,21 @@ jobs:
           set -euo pipefail
           version="${{ inputs.tag || github.ref_name }}"
           platform="${{ matrix.target }}"
-          name="npu-${version}-${platform}"
+          name="gko-${version}-${platform}"
           mkdir -p "dist/${name}"
-          cp "target/${{ matrix.target }}/release/npu.exe" "dist/${name}/"
-          cp "target/${{ matrix.target }}/release/npu.exe" "dist/npu-${platform}.exe"
+          cp "target/${{ matrix.target }}/release/gko.exe" "dist/${name}/"
+          cp "target/${{ matrix.target }}/release/gko.exe" "dist/gko-${platform}.exe"
           cp README.md "dist/${name}/"
           7z a "dist/${name}.zip" "./dist/${name}"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: npu-${{ matrix.target }}
+          name: gko-${{ matrix.target }}
           path: |
             dist/*.tar.gz
             dist/*.zip
-            dist/npu-${{ matrix.target }}
-            dist/npu-${{ matrix.target }}.exe
+            dist/gko-${{ matrix.target }}
+            dist/gko-${{ matrix.target }}.exe
           if-no-files-found: error
 
   publish:
@@ -166,12 +166,12 @@ jobs:
           assets='{}'
           count=0
 
-          for path in dist/npu-*; do
+          for path in dist/gko-*; do
             case "$path" in
               *.tar.gz|*.zip) continue ;;
             esac
             name="$(basename "$path")"
-            platform="${name#npu-}"
+            platform="${name#gko-}"
             platform="${platform%.exe}"
             checksum="$(sha256sum "$path" | cut -d ' ' -f 1)"
             assets="$(jq -c \
@@ -202,7 +202,27 @@ jobs:
             --arg version "$version" \
             --argjson assets "$assets" \
             '{schema_version: 1, version: $version, assets: $assets}' \
-            > dist/npu-update.json
+            > dist/gko-update.json
+
+      # ponytail: every binary up to 0.8.0 is `npu`: it fetches
+      # `npu-update.json` and accepts only an asset named `npu-*`. Publishing
+      # the same bytes a second time under that prefix, with a manifest that
+      # differs only by the names, keeps `npu update` a way to reach `gko`.
+      # Ceiling: six extra raw binaries per release. Upgrade path: drop this
+      # step once no 0.8.0 install is left to migrate.
+      - name: Publish the legacy npu update channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in dist/gko-*; do
+            case "$path" in
+              *.tar.gz|*.zip|*.json) continue ;;
+            esac
+            name="$(basename "$path")"
+            cp "$path" "dist/npu-${name#gko-}"
+          done
+          jq '.assets |= with_entries(.value.name |= "npu-" + ltrimstr("gko-"))' \
+            dist/gko-update.json > dist/npu-update.json
 
       # The notes come from CHANGELOG.md, written by the `release` skill and
       # reviewed in the commit that bumped the version: the published notes are

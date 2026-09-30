@@ -30,7 +30,7 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 fn write_scope(scope: &Path) {
     write(
         scope,
-        ".npu/backends/stub.toml",
+        ".gko/backends/stub.toml",
         r#"
         id = "stub"
         base_url = "http://127.0.0.1:0"
@@ -43,7 +43,7 @@ fn write_scope(scope: &Path) {
     );
     write(
         scope,
-        ".npu/models/primary.toml",
+        ".gko/models/primary.toml",
         r#"
         id = "primary"
         backend = "stub"
@@ -53,7 +53,7 @@ fn write_scope(scope: &Path) {
     );
     write(
         scope,
-        ".npu/models/secondary.toml",
+        ".gko/models/secondary.toml",
         r#"
         id = "secondary"
         backend = "stub"
@@ -63,13 +63,13 @@ fn write_scope(scope: &Path) {
     );
     write(
         scope,
-        ".npu/commands/e2e-cmd.md",
+        ".gko/commands/e2e-cmd.md",
         "---\nmodel = \"primary\"\n---\n{{ input }}\n",
     );
 }
 
 fn run(scope: &Path, args: &[&str]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_npu"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
         .current_dir(scope)
         .env("HOME", scope)
@@ -79,13 +79,13 @@ fn run(scope: &Path, args: &[&str]) -> Output {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("launching npu");
+        .expect("launching gko");
     {
         let stdin = child.stdin.as_mut().expect("stdin of the child process");
-        stdin.write_all(b"hello").expect("writing to npu's stdin");
+        stdin.write_all(b"hello").expect("writing to gko's stdin");
     }
     drop(child.stdin.take());
-    child.wait_with_output().expect("waiting for npu")
+    child.wait_with_output().expect("waiting for gko")
 }
 
 /// `--model` replaces the command's own model, proven through `--dry-run`

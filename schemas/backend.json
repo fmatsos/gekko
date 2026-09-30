@@ -171,7 +171,7 @@
       "type": "object"
     }
   },
-  "description": "Structural schema: `npu config check` is authoritative.",
+  "description": "Structural schema: `gko config check` is authoritative.",
   "properties": {
     "base_url": {
       "type": "string"
@@ -231,6 +231,6 @@
     "type",
     "operations"
   ],
-  "title": "npu backend file",
+  "title": "gko backend file",
   "type": "object"
 }

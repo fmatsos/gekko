@@ -1,7 +1,7 @@
 # MCP server
 
-`npu mcp serve` exposes configured business commands over stdio using `rmcp`. Configure an
-MCP client to launch the `npu` executable with arguments `mcp`, `serve`, optionally preceded
+`gko mcp serve` exposes configured business commands over stdio using `rmcp`. Configure an
+MCP client to launch the `gko` executable with arguments `mcp`, `serve`, optionally preceded
 by `--config-dir DIR`. Standard output contains only MCP messages; diagnostics go to stderr.
 
 The server supports MCP `2026-07-28`: start with `server/discover`, then use `tools/list` and
@@ -22,10 +22,10 @@ returned in `structuredContent` when it is an object, always the whole document:
 vector, for one) is returned as text only, and a command whose output schema's root is not
 `type = "object"` advertises no `outputSchema`. Pipeline failures have `isError: true` and a structured
 error envelope in `structuredContent`. If configuration loading fails, discovery explains
-the error and recommends `npu doctor`; `tools/list` is empty. Restart the server after
+the error and recommends `gko doctor`; `tools/list` is empty. Restart the server after
 editing configuration.
 
 Architecture decision: `rmcp` owns protocol framing and version validation, with Tokio only
 at the transport boundary. The existing blocking business pipeline runs in a blocking worker,
 with one execution at a time. This adds a dependency/runtime cost but avoids a hand-written
-JSON-RPC implementation. MCP does not start runtimes: use `npu backend serve` explicitly.
+JSON-RPC implementation. MCP does not start runtimes: use `gko backend serve` explicitly.

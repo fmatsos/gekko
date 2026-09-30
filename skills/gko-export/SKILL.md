@@ -1,15 +1,15 @@
 ---
-name: npu-export
-description: Exports a Hugging Face model for the host's Intel NPU with `optimum-cli`/`optimum-intel`, verifies the export is coherent, builds the GPU twin the `fallback` key needs, and writes both `npu` model files so the pair can be used immediately. Covers detecting whether the host actually has an Intel NPU, the quantization flags that compile correctly on it, the CPU sanity check that catches a broken export before it ever reaches a backend, why the target device is baked into each export directory rather than chosen per request, and which configuration scope the generated model files belong in. Use it whenever a model needs to run on the host's NPU and has no local OpenVINO export yet.
+name: gko-export
+description: Exports a Hugging Face model for the host's Intel NPU with `optimum-cli`/`optimum-intel`, verifies the export is coherent, builds the GPU twin the `fallback` key needs, and writes both `gko` model files so the pair can be used immediately. Covers detecting whether the host actually has an Intel NPU, the quantization flags that compile correctly on it, the CPU sanity check that catches a broken export before it ever reaches a backend, why the target device is baked into each export directory rather than chosen per request, and which configuration scope the generated model files belong in. Use it whenever a model needs to run on the host's NPU and has no local OpenVINO export yet.
 when_to_use: >
   Trigger on "export this model for the NPU", "get <model> running on my
-  NPU", "quantize <model> for OpenVINO", "npu-export", or any request to
+  NPU", "quantize <model> for OpenVINO", "gko-export", or any request to
   prepare a Hugging Face model to be served on an Intel NPU through OVMS —
   including "set up the GPU fallback for <model>".
 argument-hint: "[huggingface model id]"
 model: sonnet
 effort: medium
-allowed-tools: Read Write Edit Glob Grep Bash(npu:*) Bash(python3:*) Bash(pip:*) Bash(optimum-cli:*) Bash(curl:*) Bash(lspci:*) Bash(lsmod:*) Bash(chmod:*) Bash(docker:*)
+allowed-tools: Read Write Edit Glob Grep Bash(gko:*) Bash(python3:*) Bash(pip:*) Bash(optimum-cli:*) Bash(curl:*) Bash(lspci:*) Bash(lsmod:*) Bash(chmod:*) Bash(docker:*)
 ---
 
 # Exporting a Hugging Face model for the host NPU, with its GPU twin
@@ -17,11 +17,11 @@ allowed-tools: Read Write Edit Glob Grep Bash(npu:*) Bash(python3:*) Bash(pip:*)
 ## Usage
 
 ```
-/npu-export <huggingface-model-id>
+/gko-export <huggingface-model-id>
 ```
 
-e.g. `/npu-export Qwen/Qwen2.5-Coder-3B-Instruct`. The argument is a Hugging Face repo id, not a
-local path — **npu-discover** lists ids already known to be compatible when one has not been
+e.g. `/gko-export Qwen/Qwen2.5-Coder-3B-Instruct`. The argument is a Hugging Face repo id, not a
+local path — **gko-discover** lists ids already known to be compatible when one has not been
 picked yet.
 
 This skill is the executor for
@@ -105,7 +105,7 @@ print(tok.decode(out[0], skip_special_tokens=True))
 ```
 
 Coherent prose: proceed. A single token or short pattern repeating past a handful of times
-(`2\n2\n2\n...`, `!!!!!!!`): the export is broken — do not wire it into `npu`. Retry step 2 with
+(`2\n2\n2\n...`, `!!!!!!!`): the export is broken — do not wire it into `gko`. Retry step 2 with
 `--ratio 0.8`; if that still fails, the architecture is a poor fit for this quantization regardless
 of what step 1 said, and that is worth reporting as-is rather than guessing further.
 
@@ -114,8 +114,8 @@ of what step 1 said, and that is worth reporting as-is rather than guessing furt
 A directory produced by `optimum-cli export openvino` is a bare OpenVINO IR — it has no
 `graph.pbtxt`. OVMS's `--source_model` serve path only *reads* an existing `graph.pbtxt`; unlike a
 pull from the Hub, it never generates one for a local export, and serving fails immediately with
-`Unable to open file: <path>/graph.pbtxt` (`npu backend serve` then reports a non-zero backend exit and
-`npu doctor` shows the backend unreachable). Generate it explicitly, once, right after step 3
+`Unable to open file: <path>/graph.pbtxt` (`gko backend serve` then reports a non-zero backend exit and
+`gko doctor` shows the backend unreachable). Generate it explicitly, once, right after step 3
 passes:
 
 ```sh
@@ -144,7 +144,7 @@ every account on the machine, and is not needed once the uid matches.
 ## 3.6. Build the GPU twin
 
 **Always, not on request.** An NPU-compiled graph has a static maximum prompt length: a prompt
-past it is refused with `400 ... Input length exceeds the maximum allowed length`. `npu`'s
+past it is refused with `400 ... Input length exceeds the maximum allowed length`. `gko`'s
 `fallback` key recovers from exactly that by retrying on a GPU-served model — but only if one
 exists. Exporting for the NPU alone leaves the fallback permanently unavailable, and the failure
 then surfaces to the user instead of being absorbed.
@@ -172,13 +172,13 @@ moving on — a twin that silently says `NPU` is a fallback that cannot help.
 Skip this step **only** when step 0 found no NPU and the export was already targeting the GPU:
 there is nothing to fall back from. Say so rather than building a twin of a GPU export.
 
-## 4. Generate the `npu` model files
+## 4. Generate the `gko` model files
 
 Two files, not one — a primary on the NPU declaring the fallback, and the GPU twin it points at.
 Only after step 3.6 passes:
 
 ```toml
-# ~/.config/npu/models/<id>.toml
+# ~/.config/gko/models/<id>.toml
 id = "<id>"
 backend = "<npu-backend-id>"
 operation = "chat"
@@ -190,7 +190,7 @@ temperature = 0.0
 ```
 
 ```toml
-# ~/.config/npu/models/<id>-gpu.toml
+# ~/.config/gko/models/<id>-gpu.toml
 id = "<id>-gpu"
 backend = "<gpu-backend-id>"
 operation = "chat"
@@ -202,16 +202,16 @@ temperature = 0.0
 
 No `fallback` on the twin: the retry is single hop, so a chain would not be followed anyway.
 
-**Write both to the user scope (`$XDG_CONFIG_HOME/npu`, usually `~/.config/npu`), not the
-project's `./.npu`, unless the user explicitly asks otherwise.** The export is tied to this
-machine's NPU and its local `~/models` path — committing that into a project's `.npu/` would break
-the next person who runs it without this hardware. See **npu-config** for the scope reasoning in
+**Write both to the user scope (`$XDG_CONFIG_HOME/gko`, usually `~/.config/gko`), not the
+project's `./.gko`, unless the user explicitly asks otherwise.** The export is tied to this
+machine's NPU and its local `~/models` path — committing that into a project's `.gko/` would break
+the next person who runs it without this hardware. See **gko-config** for the scope reasoning in
 full.
 
 This needs **two** backends, each with its own `[docker]` table, its own port and its own
-container: the device is baked into the served export, and `npu` names a container
-`npu-<backend-id>`, so one backend can hold exactly one running model. If either is missing, say
-so and point at **npu-backend** instead of fabricating one — a `[docker]` table needs
+container: the device is baked into the served export, and `gko` names a container
+`gko-<backend-id>`, so one backend can hold exactly one running model. If either is missing, say
+so and point at **gko-backend** instead of fabricating one — a `[docker]` table needs
 host-specific values (render group id, uid/gid, device paths) this skill has no way to guess
 correctly.
 
@@ -220,7 +220,7 @@ Two coupling facts worth stating when reporting:
 - Re-exporting **in place** (same directory) invalidates the OVMS compilation cache silently —
   clear the stale blob per
   [docs/intel-npu.md §4](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md#4-persisting-the-compilation-cache)
-  before the next `npu backend serve` — **and** it changes the twin too, whose `graph.pbtxt` then describes
+  before the next `gko backend serve` — **and** it changes the twin too, whose `graph.pbtxt` then describes
   weights that no longer exist. Re-run step 3.6's `--configure` after any re-export.
 - The twin shares the primary's `config.json`, hence its context length. It lifts the NPU's
   compiled prompt shape, never the model's own context ceiling: a prompt past that fails on both,
@@ -231,11 +231,11 @@ Two coupling facts worth stating when reporting:
 `--configure` compiles the NPU graph for OVMS's DEFAULT static context: 1024 prompt tokens plus
 128 answer tokens. A longer prompt is refused (the `fallback` absorbs it); a longer ANSWER is cut
 mid-way — no fallback helps, and a JSON answer then fails with exit `4`. Never leave the defaults,
-and never pick numbers by hand: run `npu backend tune` once the model files exist:
+and never pick numbers by hand: run `gko backend tune` once the model files exist:
 
 ```sh
-npu backend tune --dry-run   # print the plan
-npu backend tune             # write it
+gko backend tune --dry-run   # print the plan
+gko backend tune             # write it
 ```
 
 It derives the context of every model file whose export holds an NPU graph from:
@@ -269,21 +269,21 @@ State plainly:
   if permissions had to be fixed, that they were;
 - whether the two model files were written, in which scope, and that `<id>` declares
   `fallback = "<id>-gpu"`;
-- the context `npu backend tune` chose (prompt and answer lengths) and the resulting `max_tokens`;
-- the next step: `npu backend serve <id>` **and** `npu backend serve <id>-gpu` (two containers, two ports), then
-  `npu doctor` to confirm both backends resolve, `npu config models` to see the `FALLBACK` column, then a
+- the context `gko backend tune` chose (prompt and answer lengths) and the resulting `max_tokens`;
+- the next step: `gko backend serve <id>` **and** `gko backend serve <id>-gpu` (two containers, two ports), then
+  `gko doctor` to confirm both backends resolve, `gko config models` to see the `FALLBACK` column, then a
   real request through the command that will use it.
 
 ## What this skill deliberately does not do
 
-- **It does not start or test the actual serving containers.** `npu backend serve` needs backends whose
+- **It does not start or test the actual serving containers.** `gko backend serve` needs backends whose
   `[docker]` tables already exist — that is configuration, not export. The `--configure` runs in
   steps 3.5 and 3.6 are preparation (they write `graph.pbtxt` and exit), not served containers, the
   same distinction OVMS itself draws between `--configure`/`--pull` and plain serve.
 - **It does not write the backends.** It produces two model files pointing at an NPU backend and a
-  GPU backend that must already exist; **npu-backend** owns those.
-- **It does not touch `npu`'s Rust source.** The export, the quantization choice and the generated
-  TOML are all external to the binary — consistent with `npu` knowing nothing about specific
+  GPU backend that must already exist; **gko-backend** owns those.
+- **It does not touch `gko`'s Rust source.** The export, the quantization choice and the generated
+  TOML are all external to the binary — consistent with `gko` knowing nothing about specific
   models or hardware.
 - **It does not overwrite an export at an existing path silently.** Ask first; re-exporting in
   place is a deliberate replacement, not a default — and it invalidates both the compilation cache
@@ -300,8 +300,8 @@ not match what actually happens, the repository documentation is authoritative:
   full procedure this skill executes, including the quantization pitfall and troubleshooting table
 - [Configuration scopes](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#scopes-and-precedence)
 
-Related skills: **npu-discover** to pick a model before exporting one, **npu-backend** for the two
-`[docker]` tables this skill's models depend on, **npu-model** for the file format it generates and
-the `fallback` semantics, **npu-doctor** to diagnose the result.
+Related skills: **gko-discover** to pick a model before exporting one, **gko-backend** for the two
+`[docker]` tables this skill's models depend on, **gko-model** for the file format it generates and
+the `fallback` semantics, **gko-doctor** to diagnose the result.
 
 <!-- model/effort: a fixed procedure with one judgement call (reading the sanity-check output) and external, sometimes slow, commands — sonnet/medium, not the high bar of a diagnosis or a release. -->

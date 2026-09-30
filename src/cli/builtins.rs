@@ -3,7 +3,7 @@
 //! group (`check`, `models`), the `model` group (`discover`), `doctor`,
 //! `describe`, `update` and `help`.
 
-/// `npu model discover`: reads its flags, the host's RAM and NPU, then
+/// `gko model discover`: reads its flags, the host's RAM and NPU, then
 /// delegates to [`crate::discover::discover`], whose report is the result.
 #[cfg(feature = "hardware-tooling")]
 pub(crate) fn model_discover(
@@ -101,7 +101,7 @@ fn discover_engine(
         crate::Error::Config(crate::error::ConfigError::bare(
             Some(name),
             format!(
-                "backend \"{name}\" starts no runtime npu recognizes as an engine: \
+                "backend \"{name}\" starts no runtime gko recognizes as an engine: \
                  pass --backend {}",
                 crate::discover::Engine::NAMES.replace(", ", "|")
             ),
@@ -109,7 +109,7 @@ fn discover_engine(
     })
 }
 
-/// `npu model discover`'s arguments.
+/// `gko model discover`'s arguments.
 #[cfg(feature = "hardware-tooling")]
 pub(crate) fn discover_command() -> clap::Command {
     clap::Command::new("discover")
@@ -192,7 +192,7 @@ pub(crate) fn discover_command() -> clap::Command {
         )
 }
 
-/// `npu backend tune`'s arguments, kept out of [`add_builtins`] for size.
+/// `gko backend tune`'s arguments, kept out of [`add_builtins`] for size.
 #[cfg(feature = "hardware-tooling")]
 pub(crate) fn tune_command() -> clap::Command {
     clap::Command::new("tune")
@@ -414,7 +414,7 @@ pub(crate) fn add_builtins(cli: clap::Command) -> clap::Command {
     )
     .subcommand(
         clap::Command::new("update")
-            .about("Download and install the latest npu release from GitHub"),
+            .about("Download and install the latest gko release from GitHub"),
     )
     .subcommand(
         clap::Command::new("help")
@@ -435,7 +435,7 @@ fn mcp_command() -> clap::Command {
         .subcommand(clap::Command::new("serve").about("Serve MCP over stdio"))
 }
 
-/// `npu backend tune`: reads its flags and the host's RAM, then delegates to
+/// `gko backend tune`: reads its flags and the host's RAM, then delegates to
 /// [`crate::tune::tune`], whose plan is the result.
 #[cfg(feature = "hardware-tooling")]
 pub(crate) fn backend_tune(
@@ -503,7 +503,7 @@ pub(crate) const DEGRADED_MODE_BUILTINS: &[&[&str]] = &[
     &["describe"],
 ];
 
-/// The path `npu describe` was given, one segment per word, a word written
+/// The path `gko describe` was given, one segment per word, a word written
 /// `git/review` counting as two.
 pub(crate) fn describe_words(leaf_matches: &clap::ArgMatches) -> Vec<String> {
     leaf_matches
@@ -521,7 +521,7 @@ pub(crate) fn describe_words(leaf_matches: &clap::ArgMatches) -> Vec<String> {
 /// its own, e.g. `backend serve`) and a GROUP node (`backend`, `config` —
 /// itself resolved by `describe_builtin`, cf. its own doc: "a group is a
 /// built-in too") are describable, so both are collected — only the
-/// synthetic `npu` root (`prefix.is_empty()`) is excluded.
+/// synthetic `gko` root (`prefix.is_empty()`) is excluded.
 fn collect_leaf_paths(
     cmd: &clap::Command,
     prefix: &mut Vec<String>,
@@ -541,13 +541,13 @@ fn collect_leaf_paths(
     }
 }
 
-/// `npu describe` with no argument: every describable path, built-in and
+/// `gko describe` with no argument: every describable path, built-in and
 /// business, sorted by path — the built-ins from the SAME `clap` tree
 /// `describe_builtin` resolves against (so this list cannot drift from
-/// what `npu <path> --help` actually accepts), the business commands from
+/// what `gko <path> --help` actually accepts), the business commands from
 /// `specs` (the discovered `CommandSpec`s).
 pub(crate) fn describe_index(specs: &[crate::command::CommandSpec]) -> String {
-    let tree = add_builtins(clap::Command::new("npu"));
+    let tree = add_builtins(clap::Command::new("gko"));
     let mut entries = Vec::new();
     collect_leaf_paths(&tree, &mut Vec::new(), &mut entries);
     for spec in specs {
@@ -564,7 +564,7 @@ pub(crate) fn describe_index(specs: &[crate::command::CommandSpec]) -> String {
 /// Describes `words` if they name a built-in; `None` lets the caller look
 /// among the configured commands. A group (`backend`) is a built-in too.
 pub(crate) fn describe_builtin(words: &[String]) -> crate::Result<Option<String>> {
-    let tree = add_builtins(clap::Command::new("npu"));
+    let tree = add_builtins(clap::Command::new("gko"));
     let mut command = &tree;
     for word in words {
         match command.find_subcommand(word) {
@@ -627,13 +627,13 @@ pub(crate) fn doctor(
     crate::builtin::doctor_exit_code(&checks)
 }
 
-/// `npu help <path…>` is `npu <path…> --help`: `clap` renders the help text
+/// `gko help <path…>` is `gko <path…> --help`: `clap` renders the help text
 /// itself (`DisplayHelp`, exit 0, on stdout — `clap`'s own rendering).
-/// An unknown path (e.g. `npu help does-not-exist`) is a genuine USAGE
+/// An unknown path (e.g. `gko help does-not-exist`) is a genuine USAGE
 /// error, not a help request, so it goes through the same
 /// `error::render_clap_usage_error` envelope as any other usage error
 /// (`lib.rs::exit_on_clap_error`) instead of always printing `clap`'s bare
-/// text — a calling agent asking `npu help <path> --error-format json`
+/// text — a calling agent asking `gko help <path> --error-format json`
 /// must get JSON back exactly like any other malformed invocation.
 pub(crate) fn help(
     cli: clap::Command,
@@ -644,7 +644,7 @@ pub(crate) fn help(
         .get_many::<String>("COMMAND")
         .into_iter()
         .flatten();
-    let args = std::iter::once("npu".to_string())
+    let args = std::iter::once("gko".to_string())
         .chain(path.cloned())
         .chain(std::iter::once("--help".to_string()));
     match cli.try_get_matches_from(args) {
@@ -669,7 +669,7 @@ pub(crate) const POST_UPDATE_CHECK: &[&str] = &["--verbose", "error", "config", 
 /// running invocation carried one: the new binary must judge the SAME
 /// scope this one resolved, not fall back to its own default walk-up,
 /// which would run `config models` in degraded mode's shadow — checking
-/// the wrong `.npu` and reporting nothing about the one actually in use.
+/// the wrong `.gko` and reporting nothing about the one actually in use.
 /// A pure function (owns no process) so it is testable without spawning
 /// the freshly installed binary.
 fn post_update_check_args(config_dir: Option<&std::path::Path>) -> Vec<String> {
@@ -681,7 +681,7 @@ fn post_update_check_args(config_dir: Option<&std::path::Path>) -> Vec<String> {
     args
 }
 
-/// Runs `npu update`, then asks the NEW binary whether it accepts the
+/// Runs `gko update`, then asks the NEW binary whether it accepts the
 /// configuration and, if not, points the user at the changelog and the docs.
 pub(crate) fn update(
     logger: crate::log::Logger,
@@ -702,9 +702,9 @@ pub(crate) fn update(
             == Some(crate::error::CONFIG_EXIT);
         if rejected {
             logger.warn(&format!(
-                "your configuration is not valid for npu {current}; see the changelog \
+                "your configuration is not valid for gko {current}; see the changelog \
                  (https://github.com/fmatsos/npu/blob/main/CHANGELOG.md) and the documentation \
-                 (https://github.com/fmatsos/npu/tree/main/docs), then run \"npu doctor\""
+                 (https://github.com/fmatsos/npu/tree/main/docs), then run \"gko doctor\""
             ));
         }
     }
@@ -718,7 +718,7 @@ mod tests {
 
     #[test]
     fn post_update_check_args_appends_config_dir_when_given() {
-        let args = post_update_check_args(Some(std::path::Path::new("/custom/.npu")));
+        let args = post_update_check_args(Some(std::path::Path::new("/custom/.gko")));
         assert_eq!(
             args,
             vec![
@@ -727,7 +727,7 @@ mod tests {
                 "config",
                 "models",
                 "--config-dir",
-                "/custom/.npu",
+                "/custom/.gko",
             ]
         );
     }

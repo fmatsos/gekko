@@ -255,7 +255,7 @@ pub struct Model {
     #[serde(default)]
     pub generation: Generation,
     /// The file this model was loaded from, after the scope merge: what
-    /// `npu backend tune` rewrites.
+    /// `gko backend tune` rewrites.
     #[serde(skip)]
     pub source: PathBuf,
 }

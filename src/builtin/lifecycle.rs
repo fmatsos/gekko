@@ -1,4 +1,4 @@
-//! `npu backend serve/stop/logs/status`: dispatch on the runtime family
+//! `gko backend serve/stop/logs/status`: dispatch on the runtime family
 //! (Docker or process) and format of their result — the container/process
 //! lifecycle itself lives in `src/runtime/`, never here.
 
@@ -8,7 +8,7 @@
 #[serde(rename_all = "snake_case")]
 pub(crate) struct RuntimeStatus {
     backend: String,
-    /// Which runtime family manages it — `npu status` reports every family
+    /// Which runtime family manages it — `gko status` reports every family
     /// in one table, so a line that did not say which one it belongs to
     /// would be ambiguous the day a second family exists.
     runtime: String,
@@ -38,8 +38,8 @@ const UNKNOWN_URL: &str = "-";
 /// Shared by [`serve`], [`stop`] and [`logs`] so the three refuse the same
 /// way: a model that does not exist, or a backend that was never told how to
 /// start anything, is a configuration problem naming the identifier at
-/// fault. Guessing a runtime from a `base_url` instead would let `npu stop`
-/// act on a server npu never started.
+/// fault. Guessing a runtime from a `base_url` instead would let `gko stop`
+/// act on a server gko never started.
 fn lifecycle_target<'a>(
     config: &'a crate::config::Config,
     model_id: &str,
@@ -55,7 +55,7 @@ fn lifecycle_target<'a>(
             Some(&backend.id),
             format!(
                 "backend \"{}\" (used by model \"{model_id}\") declares no [runtime] table: \
-                 npu only manages the runtimes it starts",
+                 gko only manages the runtimes it starts",
                 backend.id
             ),
         )));
@@ -64,7 +64,7 @@ fn lifecycle_target<'a>(
     Ok((model, backend, runtime))
 }
 
-/// `npu serve <model>`: starts the runtime of the backend the model points
+/// `gko serve <model>`: starts the runtime of the backend the model points
 /// at, and returns the started instance's identifier — which IS this
 /// command's result, hence what the caller writes to stdout.
 ///
@@ -103,7 +103,7 @@ pub fn serve(
     }
 }
 
-/// `npu stop <model>`: tears down what [`serve`] started for that model's
+/// `gko stop <model>`: tears down what [`serve`] started for that model's
 /// backend, and returns the instance identifier — this command's result.
 ///
 /// # Errors
@@ -123,7 +123,7 @@ pub fn stop(
     }
 }
 
-/// `npu logs <model>`: streams the runtime's logs.
+/// `gko logs <model>`: streams the runtime's logs.
 ///
 /// Uses `streamer` and not `runner`: the logs ARE this command's result, and
 /// a server writes them to both stdout and stderr. Capturing only stdout
@@ -156,7 +156,7 @@ pub fn logs(
     }
 }
 
-/// `npu status`: for every backend declaring a runtime, is that runtime up?
+/// `gko status`: for every backend declaring a runtime, is that runtime up?
 ///
 /// Backends are iterated sorted by identifier, like every other report in
 /// this module: the report must not depend on the runtime's own ordering,
@@ -194,7 +194,7 @@ pub(crate) fn status_rows(
         .filter_map(|id| {
             // `id` comes from `config.backends`'s keys: the entry exists.
             let backend = &config.backends[id];
-            // A backend with no runtime is not a line of this report: npu
+            // A backend with no runtime is not a line of this report: gko
             // was never told how to start it, so it has no state to show.
             let runtime = backend.runtime()?;
 

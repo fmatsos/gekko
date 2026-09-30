@@ -1,4 +1,4 @@
-//! `npu doctor` (also `config check`): reads the current state (loaded
+//! `gko doctor` (also `config check`): reads the current state (loaded
 //! configuration, discovered commands, and whether loading itself failed),
 //! runs every check, and hands back a report ([`Check`]) that the caller
 //! formats and turns into an exit code. Never touches the console itself
@@ -35,7 +35,7 @@ impl std::fmt::Debug for Probes<'_> {
 /// Check: the project scope actually used to load the configuration — an
 /// `Ok` line naming the directory when
 /// [`crate::scope::resolved_project_scope`] found one (an override or a
-/// `.npu` found by walking up from `cwd`), absent entirely otherwise (no
+/// `.gko` found by walking up from `cwd`), absent entirely otherwise (no
 /// line rather than a line claiming "none": a project with no local scope
 /// at all is not a failure, cf. this module's "deliberate omission" doc).
 fn check_project_scope(project_scope: Option<&std::path::Path>) -> Option<Check> {
@@ -175,7 +175,7 @@ fn check_runtime_commands(
         .filter_map(|backend| {
             crate::config::process_of(backend).map(|process| process.command.as_str())
         })
-        // A `command` carrying a placeholder is only known once `npu serve`
+        // A `command` carrying a placeholder is only known once `gko serve`
         // renders it against a model, and `doctor` has no model: reporting
         // the template itself as a missing executable would turn a valid
         // configuration red and tell its operator to install a binary named
@@ -355,7 +355,7 @@ fn check_commands_output_schema(commands: &[crate::command::CommandSpec]) -> Vec
         .collect()
 }
 
-/// Runs all `npu doctor` checks and
+/// Runs all `gko doctor` checks and
 /// returns the report — without ever writing to the console or touching
 /// the network (`probe` is injected); only check (e) touches disk, by
 /// reading the declared schema files.

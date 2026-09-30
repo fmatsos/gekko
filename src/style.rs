@@ -19,7 +19,7 @@ pub const LITERAL: Style = AnsiColor::Cyan.on_default().bold();
 /// mark carries a hue.
 pub const ANSWER_MARK: Style = AnsiColor::Cyan.on_default().bold();
 pub const ANSWER_HEADER: Style = Style::new().bold();
-/// A figure `npu` estimated rather than measured, or a point to check.
+/// A figure `gko` estimated rather than measured, or a point to check.
 pub const ESTIMATE: Style = AnsiColor::Yellow.on_default();
 pub const PLACEHOLDER: Style = AnsiColor::Cyan.on_default();
 

@@ -32,8 +32,8 @@ pub(crate) const PORT_AUTO: &str = "auto";
 /// a `port = "auto"` backend: Docker's own "pick a free one".
 ///
 /// Allocation is delegated to the kernel rather than derived or probed
-/// because `npu` keeps no state between processes: `npu serve` and the
-/// `npu <command>` that follows minutes later, in another process, must
+/// because `gko` keeps no state between processes: `gko serve` and the
+/// `gko <command>` that follows minutes later, in another process, must
 /// agree on a port. Deriving one (a hash of the id) agrees but can collide
 /// with an unrelated service; probing for a free one does not agree at all,
 /// since by request time the port is occupied — by us. Letting Docker
@@ -120,7 +120,7 @@ pub(crate) fn resolve_port(backend: &mut Backend, source: &Path) -> crate::Resul
         }
         Some(Port::Fixed(number)) => *number,
         Some(Port::Keyword(keyword)) if keyword == PORT_AUTO => {
-            // `auto` means "Docker allocates, npu asks it back", so both
+            // `auto` means "Docker allocates, gko asks it back", so both
             // halves must exist: something to start, and a base URL whose
             // port can be filled in afterwards.
             if docker_of(backend).is_none() {
@@ -129,7 +129,7 @@ pub(crate) fn resolve_port(backend: &mut Backend, source: &Path) -> crate::Resul
                     Some(&backend.id),
                     format!(
                         "backend \"{}\": port = \"{PORT_AUTO}\" requires a Docker runtime \
-                         ([runtime] type = \"{RUNTIME_DOCKER}\") — npu can only read back a port it \
+                         ([runtime] type = \"{RUNTIME_DOCKER}\") — gko can only read back a port it \
                          asked Docker to allocate",
                         backend.id
                     ),
@@ -139,7 +139,7 @@ pub(crate) fn resolve_port(backend: &mut Backend, source: &Path) -> crate::Resul
             // without it in [docker] nothing is published, and without it in
             // base_url nothing reaches what was published. Either way the
             // allocated port is unreachable — a failure that would only
-            // surface at the first command, as advice ("start it with npu
+            // surface at the first command, as advice ("start it with gko
             // serve") that could never work.
             let in_docker = docker_of(backend).is_some_and(docker_reads_port);
             if !substitute_port(&backend.base_url, 0).1 || !in_docker {

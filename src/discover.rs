@@ -1,4 +1,4 @@
-//! `npu model discover`: searches Hugging Face for the models this host can
+//! `gko model discover`: searches Hugging Face for the models this host can
 //! run, whatever runs them — CPU, GPU or NPU.
 //!
 //! By default a candidate is kept when its weights fit the host: llmfit's

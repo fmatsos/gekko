@@ -1,5 +1,5 @@
 //! Execution statistics: one JSON line per business invocation, appended to
-//! the file `NPU_STATS_FILE` names.
+//! the file `GKO_STATS_FILE` names.
 //!
 //! A record never holds the prompt, the answer or a header value: only what
 //! happened. It is written after the result, and a failed write is a
@@ -8,7 +8,7 @@
 use std::io::Write as _;
 
 /// The environment variable naming the file records are appended to.
-pub(crate) const STATS_FILE_VAR: &str = "NPU_STATS_FILE";
+pub(crate) const STATS_FILE_VAR: &str = "GKO_STATS_FILE";
 
 /// What one invocation did. A field `null` in the file is one the run never
 /// got to know (the backend failed before answering, it reported no
@@ -55,7 +55,7 @@ impl Record {
     }
 }
 
-/// Appends `record` to the file `NPU_STATS_FILE` names, if it names one.
+/// Appends `record` to the file `GKO_STATS_FILE` names, if it names one.
 pub(crate) fn append(
     env: &dyn Fn(&str) -> Option<String>,
     record: &Record,

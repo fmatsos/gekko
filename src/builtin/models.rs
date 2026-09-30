@@ -1,6 +1,6 @@
-//! `npu config models`: a formatted table of every configured model.
+//! `gko config models`: a formatted table of every configured model.
 
-/// One row of `npu config models --json`: the same fields `format_models`
+/// One row of `gko config models --json`: the same fields `format_models`
 /// tabulates, serialized instead of aligned into columns.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -11,7 +11,7 @@ struct ModelRow<'a> {
     fallback: Option<&'a str>,
 }
 
-/// `npu config models --json`: every configured model, sorted by name like
+/// `gko config models --json`: every configured model, sorted by name like
 /// [`format_models`], serialized rather than tabulated.
 #[must_use]
 pub fn format_models_json(config: &crate::config::Config) -> String {
@@ -29,7 +29,7 @@ pub fn format_models_json(config: &crate::config::Config) -> String {
     serde_json::to_string(&rows).unwrap_or_else(|_| "[]".to_string())
 }
 
-/// Formats the `npu models` table:
+/// Formats the `gko models` table:
 /// NAME/BACKEND/OPERATION columns, sorted by name to stay
 /// deterministic regardless of the underlying `HashMap`'s iteration
 /// order, aligned to the ACTUAL width of the content (never a hardcoded
@@ -42,7 +42,7 @@ pub fn format_models(config: &crate::config::Config) -> String {
     const BACKEND_HEADER: &str = "BACKEND";
     const OPERATION_HEADER: &str = "OPERATION";
     // A routing key invisible here would be as good as silently ignored:
-    // `npu models` is how one sees where a command actually goes.
+    // `gko models` is how one sees where a command actually goes.
     const FALLBACK_HEADER: &str = "FALLBACK";
 
     let mut rows: Vec<(&str, &str, &str, &str)> = config

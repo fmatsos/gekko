@@ -1,11 +1,11 @@
 # Testing configured prompts
 
-`npu config test` runs regression cases for configured commands. A case is a TOML file at
-`.npu/tests/<command path>/<case>.toml`. For example, `tests/git/review/hardware.toml`
-tests `npu git review`. Cases from system, user and project scopes are combined; a more local
+`gko config test` runs regression cases for configured commands. A case is a TOML file at
+`.gko/tests/<command path>/<case>.toml`. For example, `tests/git/review/hardware.toml`
+tests `gko git review`. Cases from system, user and project scopes are combined; a more local
 case replaces one with the same command path and case name. A selection with no cases is an
-error (exit `2`). `npu config schema test` prints the JSON Schema of a case file; see
-[`npu config schema`](cli.md#npu-config-schema).
+error (exit `2`). `gko config schema test` prints the JSON Schema of a case file; see
+[`gko config schema`](cli.md#gko-config-schema).
 
 ```toml
 args = { kind = "ticket" }
@@ -30,11 +30,11 @@ An `exit_code = 4` case cannot also declare output comparisons because it produc
 validated output.
 
 ```sh
-npu config test                      # all cases, sequentially
-npu config test git review           # one command path
-npu config test --model gpu-twin     # run the same cases with another model
-npu config test --repeat 3 --json    # measure distinct final outputs
-npu config test --dry-run --json     # list cases and rendered messages, no request
+gko config test                      # all cases, sequentially
+gko config test git review           # one command path
+gko config test --model gpu-twin     # run the same cases with another model
+gko config test --repeat 3 --json    # measure distinct final outputs
+gko config test --dry-run --json     # list cases and rendered messages, no request
 ```
 
 The normal report has `COMMAND CASE RESULT DURATION` columns. `--json` returns an array
@@ -44,7 +44,7 @@ are counted after the command's output contract, and are zero if no run produced
 output. The runner finishes the suite when expectations fail (exit `4`). Malformed cases
 (exit `2`) and backend errors (exit `3`) stop the suite with empty stdout. A dry run prints
 the rendered messages for each case and never contacts the backend.
-With `NPU_STATS_FILE` set, every run of a case also appends a
+With `GKO_STATS_FILE` set, every run of a case also appends a
 [statistics record](cli.md#execution-statistics) carrying the case name.
 
 A command with `[input] mode = "binary"` takes its case input as a file next to the case

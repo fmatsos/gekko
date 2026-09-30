@@ -11,7 +11,7 @@
 use std::collections::BTreeMap;
 
 /// This family's name: the `type` value a `[runtime]` table declares, and
-/// what the `RUNTIME` column of `npu status` shows.
+/// what the `RUNTIME` column of `gko status` shows.
 pub const NAME: &str = "docker";
 
 /// The container runtime driven by [`serve`] and probed by
@@ -26,9 +26,9 @@ const CONTAINER_RUNTIME: &str = NAME;
 /// that starting the same backend twice fails on an explicit name conflict
 /// rather than silently running a second container fighting for the same
 /// port.
-const CONTAINER_NAME_PREFIX: &str = "npu-";
+const CONTAINER_NAME_PREFIX: &str = "gko-";
 
-/// The container name `npu` gives the runtime of `backend_id` — how
+/// The container name `gko` gives the runtime of `backend_id` — how
 /// `stop`, `status` and `logs` find again what `serve` started.
 #[must_use]
 pub(crate) fn container_name(backend_id: &str) -> String {
@@ -38,7 +38,7 @@ pub(crate) fn container_name(backend_id: &str) -> String {
 /// The `--filter` expression matching exactly one container by name.
 ///
 /// Docker matches this filter as a REGEX, and `.` is a legal character in a
-/// backend identifier: escaped, so `npu-a.b` cannot be answered by `npu-axb`.
+/// backend identifier: escaped, so `gko-a.b` cannot be answered by `gko-axb`.
 fn name_filter(container: &str) -> String {
     format!("name=^{}$", container.replace('.', "\\."))
 }
@@ -48,7 +48,7 @@ fn name_filter(container: &str) -> String {
 /// A `port = "auto"` backend leaves `{{ backend.port }}` in its `base_url`
 /// at load time — the value does not exist until a container is running.
 /// This asks Docker what it published, which is the only source that can
-/// answer the same thing in `npu serve`'s process and in the unrelated
+/// answer the same thing in `gko serve`'s process and in the unrelated
 /// process that runs a command minutes later.
 ///
 /// A fixed port needs none of this and never runs `runner`: Docker stays an
@@ -91,7 +91,7 @@ pub fn resolve_base_url(
 /// port appears twice.
 ///
 /// `None` when nothing is published, when a line cannot be read, or when
-/// SEVERAL distinct host ports are: `npu` would have to guess which one
+/// SEVERAL distinct host ports are: `gko` would have to guess which one
 /// serves the API, and guessing wrong means talking to the wrong port with
 /// no error.
 fn published_port(output: &str) -> Option<u16> {
@@ -169,7 +169,7 @@ fn run_args(
 }
 
 /// Starts `backend`'s container and returns its identifier — which IS
-/// `npu serve`'s result, hence what the caller writes to stdout.
+/// `gko serve`'s result, hence what the caller writes to stdout.
 ///
 /// `runner` is injected, exactly like `probe` in `builtin::doctor`: the
 /// tests of this module never need Docker installed, and nothing here spawns
@@ -197,8 +197,8 @@ pub fn serve(
         return Err(crate::Error::Backend(crate::error::BackendError::at(
             &backend.id,
             format!(
-                "backend \"{}\" is already served by container \"{container}\" — `npu status` to \
-                 see it, `npu stop {}` to remove it",
+                "backend \"{}\" is already served by container \"{container}\" — `gko status` to \
+                 see it, `gko stop {}` to remove it",
                 backend.id, model.id
             ),
         )));
@@ -228,10 +228,10 @@ pub fn serve(
 }
 
 /// Removes the container [`serve`] started for `backend`, and returns what
-/// the runtime printed — the container name, which is `npu stop`'s result.
+/// the runtime printed — the container name, which is `gko stop`'s result.
 ///
 /// `docker rm --force` rather than `docker stop`: a stopped-but-present
-/// container still owns its name, so the next `npu serve` would fail on a
+/// container still owns its name, so the next `gko serve` would fail on a
 /// conflict. Stopping without removing would make the lifecycle a one-way
 /// trip.
 ///
@@ -284,7 +284,7 @@ pub fn logs(
     streamer(&args)
 }
 
-/// What `npu status` shows in the STATE column for `backend_id`.
+/// What `gko status` shows in the STATE column for `backend_id`.
 ///
 /// `None` means no such container: "not started" is a legitimate state of a
 /// lifecycle, and the vocabulary for it belongs to the report, not here.
@@ -487,7 +487,7 @@ mod tests {
         );
     }
 
-    /// Two distinct published ports would force `npu` to guess which one
+    /// Two distinct published ports would force `gko` to guess which one
     /// serves the API, and guessing wrong talks to the wrong port silently.
     #[test]
     fn published_port_refuses_an_ambiguous_mapping() {
@@ -501,7 +501,7 @@ mod tests {
     fn published_port_on_nothing_published_or_unreadable_output() {
         assert_eq!(published_port(""), None);
         assert_eq!(
-            published_port("no public port '8000' published for npu-x"),
+            published_port("no public port '8000' published for gko-x"),
             None
         );
     }
@@ -510,7 +510,7 @@ mod tests {
     fn resolve_base_url_completes_an_auto_port_from_docker() {
         let backend = auto_port_backend("gpu");
         let runner = |args: &[String]| {
-            assert_eq!(args, ["port".to_string(), "npu-gpu".to_string()]);
+            assert_eq!(args, ["port".to_string(), "gko-gpu".to_string()]);
             Ok("8000/tcp -> 0.0.0.0:23451\n8000/tcp -> [::]:23451\n".to_string())
         };
 
@@ -547,16 +547,16 @@ mod tests {
     /// again what `serve` started: derivable from the backend identifier
     /// alone, identically in all four.
     #[test]
-    fn container_name_is_the_backend_identifier_behind_the_npu_prefix() {
-        assert_eq!(container_name("ovms"), "npu-ovms");
+    fn container_name_is_the_backend_identifier_behind_the_gko_prefix() {
+        assert_eq!(container_name("ovms"), "gko-ovms");
     }
 
     /// A `.` is legal in a backend identifier and is a regex metacharacter
-    /// for `docker ps --filter`: unescaped, `npu-a.b` would be answered by
-    /// `npu-axb`.
+    /// for `docker ps --filter`: unescaped, `gko-a.b` would be answered by
+    /// `gko-axb`.
     #[test]
     fn name_filter_escapes_the_dot_of_an_identifier() {
-        assert_eq!(name_filter("npu-a.b"), "name=^npu-a\\.b$");
+        assert_eq!(name_filter("gko-a.b"), "name=^gko-a\\.b$");
     }
 
     /// `state` speaks about the CONTAINER, not about the report: an absent
@@ -573,13 +573,13 @@ mod tests {
     fn state_of_an_unreachable_runtime_carries_the_runtime_message() {
         let state = state("ovms", &|_args| {
             Err(crate::Error::backend(
-                "cannot reach the daemon serving \"npu-ovms\"",
+                "cannot reach the daemon serving \"gko-ovms\"",
             ))
         })
         .expect("an unreachable runtime must still produce a state");
         // The container name, not the prose around it: what must survive is
         // that the runtime's own message reaches the report naming what it
         // could not be asked about.
-        assert!(state.contains("npu-ovms"), "got: {state}");
+        assert!(state.contains("gko-ovms"), "got: {state}");
     }
 }

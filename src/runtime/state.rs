@@ -1,11 +1,11 @@
-//! Where `npu` remembers what it started, and how that memory is written.
+//! Where `gko` remembers what it started, and how that memory is written.
 //!
 //! Docker IS its own registry: `docker ps` answers "is it still up?" and
 //! `docker port` answers "on which port?", which is why the Docker runtime
 //! persists nothing (see the rationale on the ephemeral port allocation in
 //! `config::port`). A process runtime has no such
-//! registry — once `npu serve` exits, nothing but a file remembers the pid
-//! it spawned — so `npu` keeps its own.
+//! registry — once `gko serve` exits, nothing but a file remembers the pid
+//! it spawned — so `gko` keeps its own.
 //!
 //! This module is that persistence and NOTHING else: it locates the state
 //! directory, and it writes, reads and removes one record per backend FILE.
@@ -27,12 +27,12 @@ use std::path::{Path, PathBuf};
 ///
 /// Bumped when the SHAPE of [`State`] changes. A file carrying any other
 /// value is reported, never guessed at and never deleted: the alternative is
-/// reading a record written by a different `npu` and killing whatever pid it
+/// reading a record written by a different `gko` and killing whatever pid it
 /// happens to hold.
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// Directory name `npu` owns under the platform's state root.
-const STATE_LEAF: &str = "npu";
+/// Directory name `gko` owns under the platform's state root.
+const STATE_LEAF: &str = "gko";
 
 /// The environment inputs the state directory depends on, isolated so the
 /// resolution stays a pure, testable function.
@@ -81,8 +81,8 @@ impl StateEnv {
     }
 }
 
-/// The Linux state directory: `$XDG_STATE_HOME/npu`, else
-/// `$HOME/.local/state/npu`.
+/// The Linux state directory: `$XDG_STATE_HOME/gko`, else
+/// `$HOME/.local/state/gko`.
 ///
 /// `None` when neither variable is set — there is no third place to try, and
 /// inventing one (`/tmp`, the cwd) would put a file that outlives the
@@ -100,7 +100,7 @@ fn linux_state_dir(env: &StateEnv) -> Option<PathBuf> {
     )
 }
 
-/// The macOS state directory: `$HOME/Library/Application Support/npu/state`.
+/// The macOS state directory: `$HOME/Library/Application Support/gko/state`.
 ///
 /// No `XDG_STATE_HOME` branch: the variable has no meaning on macOS, and
 /// honouring it there would scatter the state of one machine over two
@@ -126,7 +126,7 @@ fn macos_state_dir(env: &StateEnv) -> Option<PathBuf> {
 /// # Errors
 ///
 /// `Error::Io` (exit `1`) when the environment names no home at all. Not
-/// `Error::Config` (exit `2`): nothing in the user's `.npu` files is wrong,
+/// `Error::Config` (exit `2`): nothing in the user's `.gko` files is wrong,
 /// so sending a calling program to go fix a configuration file would be a
 /// lie about the remedy.
 pub fn state_dir(env: &StateEnv) -> crate::Result<PathBuf> {
@@ -138,7 +138,7 @@ pub fn state_dir(env: &StateEnv) -> crate::Result<PathBuf> {
 
     resolved.ok_or_else(|| {
         crate::Error::Io(std::io::Error::other(
-            "no state directory: neither $XDG_STATE_HOME nor $HOME is set, so npu has nowhere \
+            "no state directory: neither $XDG_STATE_HOME nor $HOME is set, so gko has nowhere \
              to remember what it started",
         ))
     })
@@ -149,8 +149,8 @@ pub fn state_dir(env: &StateEnv) -> crate::Result<PathBuf> {
 ///
 /// Takes the ORIGIN as well as the identifier because this directory is
 /// machine-global while backend identifiers are per-scope: two projects
-/// each declaring `llamacpp` in their own `./.npu` would otherwise share
-/// one record and one log, and the second project's `npu logs` would hand
+/// each declaring `llamacpp` in their own `./.gko` would otherwise share
+/// one record and one log, and the second project's `gko logs` would hand
 /// back the first one's output.
 ///
 /// `source` is the backend file as `config.rs` recorded it — canonicalized
@@ -299,7 +299,7 @@ fn source_digest(source: &Path) -> String {
     encoded
 }
 
-/// What `npu` persisted about a runtime it started.
+/// What `gko` persisted about a runtime it started.
 ///
 /// `(pid, process_start_time)` is the pair that survives PID reuse, and the
 /// WHOLE of the identity check: a pid alone can, after a reboot or enough
@@ -307,7 +307,7 @@ fn source_digest(source: &Path) -> String {
 /// state file must never be a kill. `executable` and `arguments` are not
 /// part of it — they are what an operator reading this file needs in order
 /// to know what was started (see `runtime::process::verdict` for why
-/// comparing either would reject `npu`'s own child after an `exec`).
+/// comparing either would reject `gko`'s own child after an `exec`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct State {
@@ -321,9 +321,9 @@ pub struct State {
     pub version: u32,
     /// Identifier of the backend this record belongs to, also its file name.
     pub backend: String,
-    /// Pid of the process `npu serve` spawned.
+    /// Pid of the process `gko serve` spawned.
     pub pid: u32,
-    /// Executable that pid was started from — what `npu` launched, for
+    /// Executable that pid was started from — what `gko` launched, for
     /// whoever reads this file. NOT an identity token: after an `exec` the
     /// running image is another one, and the process is still ours.
     pub executable: PathBuf,
@@ -331,7 +331,7 @@ pub struct State {
     /// the same status: they say what was launched, and the configuration
     /// they were rendered from may have changed since.
     pub arguments: Vec<String>,
-    /// When `npu` started it, in seconds since the Unix epoch.
+    /// When `gko` started it, in seconds since the Unix epoch.
     pub started_at: u64,
     /// `sysinfo`'s `Process::start_time()`, also in seconds since the Unix
     /// epoch: the anti-PID-reuse token.
@@ -344,14 +344,14 @@ pub struct State {
     ///
     /// Part of the identity, and for a reason `pid` cannot cover: this
     /// directory is machine-global while backend identifiers are per-scope,
-    /// so two projects each declaring `.npu/backends/llamacpp.toml` would
+    /// so two projects each declaring `.gko/backends/llamacpp.toml` would
     /// otherwise land on the same record.
     ///
     /// What keeps them apart is the file NAME, which carries a digest of
     /// this very path (see [`SOURCE_DIGEST_HEX`]). The field itself is what
     /// catches the residual case that digest cannot: 32 bits can collide,
     /// two sources can meet on one name, and the pid behind such a record is
-    /// a genuine npu-started process with a genuinely matching birth. Only
+    /// a genuine gko-started process with a genuinely matching birth. Only
     /// the origin, compared in full by `runtime::process::presence`, tells
     /// that it is the wrong BACKEND — on the one path where being wrong is a
     /// SIGKILL against another project's server.
@@ -385,10 +385,10 @@ fn invalid_at(path: &Path, detail: &str) -> crate::Error {
 /// `<id>-<digest>.json.tmp` -> write -> `flush` -> `sync_all` -> close ->
 /// `rename`.
 /// Every step earns its place: a truncate-in-place would leave a half
-/// written record readable by the `npu stop` running in another process, and
+/// written record readable by the `gko stop` running in another process, and
 /// deciding which process to kill from a truncated file is how the wrong one
 /// dies. The temporary file is named after the BACKEND, not shared: two
-/// `npu serve` on two backends run concurrently and a single `state.json.tmp`
+/// `gko serve` on two backends run concurrently and a single `state.json.tmp`
 /// would have them overwrite each other. The handle is dropped before the
 /// rename, which Windows requires to replace an existing file.
 ///
@@ -435,10 +435,10 @@ pub fn save(env: &StateEnv, state: &State) -> crate::Result<PathBuf> {
 /// The version field alone, parsed WITHOUT `deny_unknown_fields`.
 ///
 /// The whole point of a schema version is to diagnose a file this binary
-/// does not understand — and a newer `npu` adding a field is exactly that
+/// does not understand — and a newer `gko` adding a field is exactly that
 /// file. Parsing it straight into [`State`] would fail on the unknown key
 /// FIRST, reporting a malformed file instead of a version mismatch and
-/// sending its reader looking for a typo in something `npu` itself wrote.
+/// sending its reader looking for a typo in something `gko` itself wrote.
 #[derive(Debug, Deserialize)]
 struct VersionProbe {
     version: u32,
@@ -476,7 +476,7 @@ pub fn load(env: &StateEnv, backend_id: &str, source: &Path) -> crate::Result<Op
 
     if probe.version != SCHEMA_VERSION {
         // The pid, when the file still spells one: this record may be the
-        // only thing that knows about a RUNNING server (an `npu update`
+        // only thing that knows about a RUNNING server (a `gko update`
         // while something was served produces exactly this file), and
         // "remove the file" alone is an instruction to delete that.
         let describes = probe.pid.map_or_else(
@@ -491,7 +491,7 @@ pub fn load(env: &StateEnv, backend_id: &str, source: &Path) -> crate::Result<Op
         return Err(invalid_at(
             &path,
             &format!(
-                "state schema version {} is unknown to this npu (which writes \
+                "state schema version {} is unknown to this gko (which writes \
                  {SCHEMA_VERSION}){describes}",
                 probe.version
             ),
@@ -528,7 +528,7 @@ pub fn clear(env: &StateEnv, backend_id: &str, source: &Path) -> crate::Result<(
 /// moment one of its failure paths gives up, a second `serve` on the same
 /// backend may have replaced that record with its own. An unconditional
 /// removal there deletes the record of a process that is running — leaving a
-/// server holding its port with nothing left that can stop it, and `npu
+/// server holding its port with nothing left that can stop it, and `gko
 /// status` reporting `not started`. A caller abandoning its own child says
 /// which pid it is abandoning, and a record naming another one is left alone.
 ///
@@ -585,7 +585,7 @@ mod tests {
 
     /// The backend FILE every record of this module pretends to come from,
     /// and the second key of every state file name.
-    const SOURCE: &str = "/home/alice/projA/.npu/backends/llamacpp.toml";
+    const SOURCE: &str = "/home/alice/projA/.gko/backends/llamacpp.toml";
 
     fn source() -> PathBuf {
         PathBuf::from(SOURCE)
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn linux_state_dir_uses_xdg_state_home_verbatim() {
         let e = env(Some("/xdg-state"), Some("/home/alice"));
-        assert_eq!(linux_state_dir(&e), Some(PathBuf::from("/xdg-state/npu")));
+        assert_eq!(linux_state_dir(&e), Some(PathBuf::from("/xdg-state/gko")));
     }
 
     #[test]
@@ -616,7 +616,7 @@ mod tests {
         let e = env(None, Some("/home/alice"));
         assert_eq!(
             linux_state_dir(&e),
-            Some(PathBuf::from("/home/alice/.local/state/npu"))
+            Some(PathBuf::from("/home/alice/.local/state/gko"))
         );
     }
 
@@ -631,7 +631,7 @@ mod tests {
         assert_eq!(
             macos_state_dir(&e),
             Some(PathBuf::from(
-                "/Users/alice/Library/Application Support/npu/state"
+                "/Users/alice/Library/Application Support/gko/state"
             ))
         );
     }
@@ -644,7 +644,7 @@ mod tests {
         assert_eq!(
             macos_state_dir(&e),
             Some(PathBuf::from(
-                "/Users/alice/Library/Application Support/npu/state"
+                "/Users/alice/Library/Application Support/gko/state"
             ))
         );
     }
@@ -713,13 +713,13 @@ mod tests {
         let a = state_path(
             &e,
             "llamacpp",
-            Path::new("/projA/.npu/backends/llamacpp.toml"),
+            Path::new("/projA/.gko/backends/llamacpp.toml"),
         )
         .expect("a valid identifier");
         let b = state_path(
             &e,
             "llamacpp",
-            Path::new("/projB/.npu/backends/llamacpp.toml"),
+            Path::new("/projB/.gko/backends/llamacpp.toml"),
         )
         .expect("a valid identifier");
 
@@ -885,9 +885,9 @@ mod tests {
         assert!(err.to_string().contains("31337"), "{err}");
     }
 
-    /// A newer `npu` adding a field must still be diagnosed as a VERSION
+    /// A newer `gko` adding a field must still be diagnosed as a VERSION
     /// mismatch: `deny_unknown_fields` on `State` would otherwise report a
-    /// malformed file and send its reader hunting a typo in something `npu`
+    /// malformed file and send its reader hunting a typo in something `gko`
     /// itself wrote.
     #[test]
     fn a_future_version_with_an_extra_field_is_still_a_version_error() {

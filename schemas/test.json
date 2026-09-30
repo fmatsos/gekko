@@ -25,7 +25,7 @@
       "type": "object"
     }
   },
-  "description": "Structural schema: `npu config check` is authoritative.",
+  "description": "Structural schema: `gko config check` is authoritative.",
   "properties": {
     "args": {
       "additionalProperties": {
@@ -46,6 +46,6 @@
     "input",
     "expect"
   ],
-  "title": "npu test case file",
+  "title": "gko test case file",
   "type": "object"
 }
