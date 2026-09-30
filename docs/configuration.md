@@ -16,7 +16,7 @@
 Configuration is split by concern rather than kept in one monolithic file:
 
 ```text
-.gko/
+.gekko/
 ├── backends/
 │   └── *.toml      # where to send requests, and how
 ├── models/
@@ -37,41 +37,41 @@ The same layout can exist at three levels. They are read from broadest to most l
 most local wins**:
 
 ```text
-/etc/gko                                  system-wide
+/etc/gekko                                           system-wide
       ↓
-$XDG_CONFIG_HOME/gko   (or $HOME/.config/gko)    per user
+$XDG_CONFIG_HOME/gekko   (or $HOME/.config/gekko)    per user
       ↓
-<walk-up>/.gko                            per project
+<walk-up>/.gekko                                     per project
 ```
 
 If `XDG_CONFIG_HOME` is set and non-empty it replaces the `$HOME`-derived path; it does not add to
 it. On macOS, where XDG is not a native convention, the effective path is normally
-`~/.config/gko`. A scope directory that does not exist is skipped silently.
+`~/.config/gekko`. A scope directory that does not exist is skipped silently.
 
 ### The project scope
 
-The project scope is a `.gko` directory found by walking UP from the current directory — not only
-`./.gko` any more: running `gko` from a subdirectory of a project still finds that project's
-`.gko`. The walk stops, without going any higher, at the first directory whose `.git` `exists()`
+The project scope is a `.gekko` directory found by walking UP from the current directory — not only
+`./.gekko` any more: running `gko` from a subdirectory of a project still finds that project's
+`.gekko`. The walk stops, without going any higher, at the first directory whose `.git` `exists()`
 (a file in a worktree, a directory otherwise: either way, that is the project's own boundary) or
-at `$HOME` (checked for its own `.gko` before the walk stops there, but never searched above).
+at `$HOME` (checked for its own `.gekko` before the walk stops there, but never searched above).
 
 `--config-dir <DIR>` or `$GKO_CONFIG_DIR` (the flag wins when both are set) name the project scope
 directly and skip the walk-up entirely:
 
 ```console
-$ gko --config-dir /path/to/.gko config models
+$ gko --config-dir /path/to/.gekko config models
 ```
 
 `gko doctor` reports the project scope it actually resolved, as an `Ok` line naming the directory.
 
 On Windows, the same three tiers use their own environment variables instead:
-`%ProgramData%\gko` (system-wide; omitted entirely when `%ProgramData%` is unset — there is no
-hardcoded fallback path for it), then `%APPDATA%\gko` if set, else `%USERPROFILE%\.config\gko` if
-set, else `%HOME%\.config\gko` as a last resort (a manual override, not `%USERPROFILE%` read again
+`%ProgramData%\gekko` (system-wide; omitted entirely when `%ProgramData%` is unset — there is no
+hardcoded fallback path for it), then `%APPDATA%\gekko` if set, else `%USERPROFILE%\.config\gekko` if
+set, else `%HOME%\.config\gekko` as a last resort (a manual override, not `%USERPROFILE%` read again
 under another name).
 
-This lets a repository ship its own `.gko/` with project-specific commands, model aliases and
+This lets a repository ship its own `.gekko/` with project-specific commands, model aliases and
 backend overrides, without touching the machine or the user setup.
 
 ---
@@ -86,14 +86,14 @@ Merging is **replacement, not deep merge**. The replacement key is:
 | Models | the `id` field inside the file |
 | Commands | the full command path (`git/review`), derived from the file path |
 
-A backend with `id = "ovms"` defined in `./.gko` replaces the `/etc/gko` one **entirely**. A field
+A backend with `id = "ovms"` defined in `./.gekko` replaces the `/etc/gekko` one **entirely**. A field
 present in the broader definition and absent from the local one is *not* inherited — you get the
 local file, whole.
 
 Entries whose keys differ simply accumulate, so a system-wide command and a project command coexist.
 
 Resolution happens *after* merging, so a model defined in your project can reference a backend
-declared only in `/etc/gko`.
+declared only in `/etc/gekko`.
 
 ### Duplicate ids within one scope
 
@@ -111,7 +111,7 @@ that of a model file; see [`gko config schema`](cli.md#gko-config-schema) to hav
 validate them as you type.
 
 ```toml
-# .gko/backends/ovms.toml
+# .gekko/backends/ovms.toml
 id = "ovms"
 type = "openai-compatible"
 base_url = "http://127.0.0.1:8000"
@@ -327,7 +327,7 @@ that `gko` never has to guess which shape it is looking at.
 **optional** one: nothing changes for a configuration without this table.
 
 ```toml
-# .gko/backends/ovms.toml, continued
+# .gekko/backends/ovms.toml, continued
 [runtime]
 type = "docker"
 image = "openvino/model_server:latest"
@@ -400,7 +400,7 @@ daemon: `llama.cpp`'s `llama-server`, an MLX server, a shell script of your own.
 `gko backend serve` / `stop` / `status` / `logs`, different `type`.
 
 ```toml
-# .gko/backends/llamacpp.toml, continued
+# .gekko/backends/llamacpp.toml, continued
 [runtime]
 type = "process"
 command = "llama-server"
@@ -478,14 +478,14 @@ Docker is its own registry, so a Docker runtime needs nothing persisted. A proce
 registry: `gko backend serve` therefore writes a small JSON record, plus a `.log` file it redirects the
 server's **two** streams into. `stop` deletes the record; `logs` reads the file. Both are named
 `<backend id>-<digest>`, the digest being the first eight hex characters of the SHA-256 of the
-backend **file** the runtime was declared in. They live in `$XDG_STATE_HOME/gko/`, or
-`$HOME/.local/state/gko/` when that variable is unset — and on macOS in
-`$HOME/Library/Application Support/gko/state/`, with no `XDG_STATE_HOME` branch at all: the
+backend **file** the runtime was declared in. They live in `$XDG_STATE_HOME/gekko/`, or
+`$HOME/.local/state/gekko/` when that variable is unset — and on macOS in
+`$HOME/Library/Application Support/gekko/state/`, with no `XDG_STATE_HOME` branch at all: the
 variable has no meaning there, and honouring it would scatter one machine's state over two places
 depending on which shell exported what.
 
 That directory is **machine-global** while backend identifiers are per-scope, which is what the
-digest is for: two projects each declaring `llamacpp` in their own `./.gko` get two records, two
+digest is for: two projects each declaring `llamacpp` in their own `./.gekko` get two records, two
 logs and two servers, and neither one's `gko backend stop` or `gko backend logs` can reach the other's.
 
 The record **also** holds the backend file it was served from, and that is not a duplicate of the
@@ -536,7 +536,7 @@ The record is plain JSON and holds the pid, so a forgotten one is still recovera
 A model is the bridge between a command and a backend capability.
 
 ```toml
-# .gko/models/qwen-fast.toml
+# .gekko/models/qwen-fast.toml
 id = "qwen-fast"
 backend = "ovms"
 operation = "chat"
@@ -672,7 +672,7 @@ column so the routing is never invisible.
 
 ## When a broader scope is broken
 
-A broken file in `/etc/gko` must not disable your project. `/etc` may belong to root and be out of
+A broken file in `/etc/gekko` must not disable your project. `/etc` may belong to root and be out of
 your reach, which is exactly the case a local override is meant to solve. So a broadly-scoped
 entry that is **entirely shadowed** by a more local one does not break anything.
 

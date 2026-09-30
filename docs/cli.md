@@ -133,7 +133,7 @@ derived from the structures `gko` deserializes, so they list exactly the keys it
 reject any other one, like `gko` itself.
 
 ```console
-$ gko config schema backend > .gko/backend.schema.json
+$ gko config schema backend > .gekko/backend.schema.json
 ```
 
 A schema checks structure: the keys, their types, and the few literal values that are fixed
@@ -587,7 +587,7 @@ for programs driving the CLI. The path is given as words, like the command itsel
 
 ```console
 $ gko describe translate
-{"name":"translate","kind":"command","description":"Translate input text","model":"qwen3-8b","backend":"ovms","fallback":"qwen3-8b-gpu","source":{"file":"/home/…/gko/.gko/commands/translate.md","scope":"/home/…/gko/.gko"},"input":"stdin_or_file","args":{"language":{"short":"l","required":true,"description":"Target language"}},"output":{"format":"text","schema":null,"max_lines":null}}
+{"name":"translate","kind":"command","description":"Translate input text","model":"qwen3-8b","backend":"ovms","fallback":"qwen3-8b-gpu","source":{"file":"/home/…/gekko/.gekko/commands/translate.md","scope":"/home/…/gekko/.gekko"},"input":"stdin_or_file","args":{"language":{"short":"l","required":true,"description":"Target language"}},"output":{"format":"text","schema":null,"max_lines":null}}
 ```
 
 Pipe it through `jq` to read it:
@@ -602,8 +602,8 @@ $ gko describe commit-message | jq .
   "backend": "ovms",
   "fallback": "qwen3-8b-gpu",
   "source": {
-    "file": "/home/…/gko/.gko/commands/commit-message.md",
-    "scope": "/home/…/gko/.gko"
+    "file": "/home/…/gekko/.gekko/commands/commit-message.md",
+    "scope": "/home/…/gekko/.gekko"
   },
   "input": "stdin",
   "args": {},
@@ -729,7 +729,7 @@ scope directly, skipping the walk-up search entirely. Read from the raw command 
 for the walk-up itself.
 
 ```console
-$ gko --config-dir /path/to/.gko config models
+$ gko --config-dir /path/to/.gekko config models
 ```
 
 `config-dir` is consequently a reserved argument name: a command declaring `[args."config-dir"]`
@@ -751,7 +751,7 @@ Once registered, `<TAB>` completes business commands, built-in group names (`bac
 ...) and the global flags — never the HIDDEN top-level built-ins themselves (`doctor`, `describe`,
 `update`; `gko --help` shows them in their own section, but `clap` never lists a hidden subcommand
 as a completion candidate). Completion is resolved from the SAME `clap` tree `gko` itself runs
-against, discovered fresh on every request, so it reflects the current `.gko/` — including
+against, discovered fresh on every request, so it reflects the current `.gekko/` — including
 `--config-dir`/`GKO_CONFIG_DIR`.
 
 ---
@@ -817,8 +817,8 @@ subcommand since the argument is global:
 
 ```console
 $ echo "texte" | gko classify --verbose info > /dev/null
-gko: info: scopes: /home/…/gko/.gko, /home/…/.config/gko
-gko: info: command "classify" -> model "qwen-fast" (backend "ovms", operation "chat") from /home/…/gko/.gko/commands/classify.md
+gko: info: scopes: /home/…/gekko/.gekko, /home/…/.config/gekko
+gko: info: command "classify" -> model "qwen-fast" (backend "ovms", operation "chat") from /home/…/gekko/.gekko/commands/classify.md
 gko: info: input: 6 characters read from stdin
 gko: info: prompt rendered: 125 characters
 gko: info: POST http://127.0.0.1:8000/v3/chat/completions (model "OpenVINO/Qwen3-8B-int4-ov", timeout 30 s)
@@ -954,7 +954,7 @@ Exit code `0`, and on **stderr**:
 
 ```text
 gko: warn: invalid configuration (configuration error: invalid TOML in
-/tmp/…/.gko/backends/k.toml: TOML parse error at line 1, column 2
+/tmp/…/.gekko/backends/k.toml: TOML parse error at line 1, column 2
   |
 1 | x{[
   |  ^

@@ -669,7 +669,7 @@ pub(crate) const POST_UPDATE_CHECK: &[&str] = &["--verbose", "error", "config", 
 /// running invocation carried one: the new binary must judge the SAME
 /// scope this one resolved, not fall back to its own default walk-up,
 /// which would run `config models` in degraded mode's shadow — checking
-/// the wrong `.gko` and reporting nothing about the one actually in use.
+/// the wrong `.gekko` and reporting nothing about the one actually in use.
 /// A pure function (owns no process) so it is testable without spawning
 /// the freshly installed binary.
 fn post_update_check_args(config_dir: Option<&std::path::Path>) -> Vec<String> {
@@ -718,7 +718,7 @@ mod tests {
 
     #[test]
     fn post_update_check_args_appends_config_dir_when_given() {
-        let args = post_update_check_args(Some(std::path::Path::new("/custom/.gko")));
+        let args = post_update_check_args(Some(std::path::Path::new("/custom/.gekko")));
         assert_eq!(
             args,
             vec![
@@ -727,7 +727,7 @@ mod tests {
                 "config",
                 "models",
                 "--config-dir",
-                "/custom/.gko",
+                "/custom/.gekko",
             ]
         );
     }

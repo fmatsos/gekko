@@ -35,7 +35,7 @@ impl std::fmt::Debug for Probes<'_> {
 /// Check: the project scope actually used to load the configuration — an
 /// `Ok` line naming the directory when
 /// [`crate::scope::resolved_project_scope`] found one (an override or a
-/// `.gko` found by walking up from `cwd`), absent entirely otherwise (no
+/// `.gekko` found by walking up from `cwd`), absent entirely otherwise (no
 /// line rather than a line claiming "none": a project with no local scope
 /// at all is not a failure, cf. this module's "deliberate omission" doc).
 fn check_project_scope(project_scope: Option<&std::path::Path>) -> Option<Check> {

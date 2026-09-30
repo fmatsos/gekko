@@ -35,8 +35,8 @@ pub use error::{Error, Result};
 /// Entry point of the library, called by `main`.
 ///
 /// Pipeline: resolving the scope roots
-/// (`scope::roots()`, from the most general to the most local — `/etc/gko`,
-/// then `$XDG_CONFIG_HOME/gko` or `$HOME/.config/gko`, then `./.gko`),
+/// (`scope::roots()`, from the most general to the most local — `/etc/gekko`,
+/// then `$XDG_CONFIG_HOME/gekko` or `$HOME/.config/gekko`, then `./.gekko`),
 /// loading and merging the configuration across these roots
 /// (`config::load_scopes`), discovering and merging the commands
 /// (`command::discover_scopes`), building the `clap` tree, resolving the
@@ -545,10 +545,10 @@ mod first_word_tests {
 
     #[test]
     fn a_completion_request_keeps_the_config_dir_of_the_completed_line() {
-        let argv = ["gko", "--", "gko", "--config-dir", "/custom/.gko", "cl"].map(String::from);
+        let argv = ["gko", "--", "gko", "--config-dir", "/custom/.gekko", "cl"].map(String::from);
         assert_eq!(
             crate::scope::config_dir_from_args(super::completed_line(argv)),
-            Some(std::path::PathBuf::from("/custom/.gko"))
+            Some(std::path::PathBuf::from("/custom/.gekko"))
         );
     }
 

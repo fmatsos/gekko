@@ -1,6 +1,6 @@
 ---
 name: gko-model
-description: Writes and fixes `gko` model files (`.gko/models/*.toml`) — the `id`, `backend`, `operation`, `model`, optional `fallback` and optional `[generation]` fields that bridge a command to a backend capability. Covers resolution errors (unknown backend, operation the backend does not expose), the single-hop `fallback` retry that moves an over-long prompt from an NPU-served model to a GPU-served one, the fact that omitted generation fields are not sent at all, and replacement-by-id across configuration scopes. Use it whenever a model alias is created, renamed, retuned or rejected.
+description: Writes and fixes `gko` model files (`.gekko/models/*.toml`) — the `id`, `backend`, `operation`, `model`, optional `fallback` and optional `[generation]` fields that bridge a command to a backend capability. Covers resolution errors (unknown backend, operation the backend does not expose), the single-hop `fallback` retry that moves an over-long prompt from an NPU-served model to a GPU-served one, the fact that omitted generation fields are not sent at all, and replacement-by-id across configuration scopes. Use it whenever a model alias is created, renamed, retuned or rejected.
 when_to_use: >
   Trigger on "add a gko model", "point this command at another model",
   "change temperature / max_tokens", "gko config models", or on any gko error
@@ -20,7 +20,7 @@ command never needs to know the endpoint or the protocol.
 ## The file
 
 ```toml
-# .gko/models/qwen-fast.toml
+# .gekko/models/qwen-fast.toml
 id = "qwen-fast"
 backend = "ovms"
 operation = "chat"
@@ -117,8 +117,8 @@ Configuration errors (exit `2`), each naming what *is* available:
   carrying a TOML datetime or a non-finite float anywhere in its structure;
 - two files in the same scope sharing an `id`.
 
-Resolution runs **after** the scopes are merged, so a model in `./.gko` may
-reference a backend declared only in `/etc/gko`. A model whose file is
+Resolution runs **after** the scopes are merged, so a model in `./.gekko` may
+reference a backend declared only in `/etc/gekko`. A model whose file is
 replaced by a more local one with the same `id` is replaced whole — no field
 is inherited.
 

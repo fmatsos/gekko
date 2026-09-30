@@ -1733,9 +1733,9 @@ mod tests {
     }
 
     #[test]
-    fn real_gko_fixture_still_parses() {
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".gko");
-        let config = load(&root).expect("the real .gko/ fixture must always load");
+    fn real_gekko_fixture_still_parses() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".gekko");
+        let config = load(&root).expect("the real .gekko/ fixture must always load");
 
         let backend = config
             .backends

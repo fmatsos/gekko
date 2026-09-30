@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 pub const SCHEMA_VERSION: u32 = 1;
 
 /// Directory name `gko` owns under the platform's state root.
-const STATE_LEAF: &str = "gko";
+const STATE_LEAF: &str = "gekko";
 
 /// The environment inputs the state directory depends on, isolated so the
 /// resolution stays a pure, testable function.
@@ -81,8 +81,8 @@ impl StateEnv {
     }
 }
 
-/// The Linux state directory: `$XDG_STATE_HOME/gko`, else
-/// `$HOME/.local/state/gko`.
+/// The Linux state directory: `$XDG_STATE_HOME/gekko`, else
+/// `$HOME/.local/state/gekko`.
 ///
 /// `None` when neither variable is set — there is no third place to try, and
 /// inventing one (`/tmp`, the cwd) would put a file that outlives the
@@ -100,7 +100,7 @@ fn linux_state_dir(env: &StateEnv) -> Option<PathBuf> {
     )
 }
 
-/// The macOS state directory: `$HOME/Library/Application Support/gko/state`.
+/// The macOS state directory: `$HOME/Library/Application Support/gekko/state`.
 ///
 /// No `XDG_STATE_HOME` branch: the variable has no meaning on macOS, and
 /// honouring it there would scatter the state of one machine over two
@@ -126,7 +126,7 @@ fn macos_state_dir(env: &StateEnv) -> Option<PathBuf> {
 /// # Errors
 ///
 /// `Error::Io` (exit `1`) when the environment names no home at all. Not
-/// `Error::Config` (exit `2`): nothing in the user's `.gko` files is wrong,
+/// `Error::Config` (exit `2`): nothing in the user's `.gekko` files is wrong,
 /// so sending a calling program to go fix a configuration file would be a
 /// lie about the remedy.
 pub fn state_dir(env: &StateEnv) -> crate::Result<PathBuf> {
@@ -149,7 +149,7 @@ pub fn state_dir(env: &StateEnv) -> crate::Result<PathBuf> {
 ///
 /// Takes the ORIGIN as well as the identifier because this directory is
 /// machine-global while backend identifiers are per-scope: two projects
-/// each declaring `llamacpp` in their own `./.gko` would otherwise share
+/// each declaring `llamacpp` in their own `./.gekko` would otherwise share
 /// one record and one log, and the second project's `gko logs` would hand
 /// back the first one's output.
 ///
@@ -344,7 +344,7 @@ pub struct State {
     ///
     /// Part of the identity, and for a reason `pid` cannot cover: this
     /// directory is machine-global while backend identifiers are per-scope,
-    /// so two projects each declaring `.gko/backends/llamacpp.toml` would
+    /// so two projects each declaring `.gekko/backends/llamacpp.toml` would
     /// otherwise land on the same record.
     ///
     /// What keeps them apart is the file NAME, which carries a digest of
@@ -585,7 +585,7 @@ mod tests {
 
     /// The backend FILE every record of this module pretends to come from,
     /// and the second key of every state file name.
-    const SOURCE: &str = "/home/alice/projA/.gko/backends/llamacpp.toml";
+    const SOURCE: &str = "/home/alice/projA/.gekko/backends/llamacpp.toml";
 
     fn source() -> PathBuf {
         PathBuf::from(SOURCE)
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn linux_state_dir_uses_xdg_state_home_verbatim() {
         let e = env(Some("/xdg-state"), Some("/home/alice"));
-        assert_eq!(linux_state_dir(&e), Some(PathBuf::from("/xdg-state/gko")));
+        assert_eq!(linux_state_dir(&e), Some(PathBuf::from("/xdg-state/gekko")));
     }
 
     #[test]
@@ -616,7 +616,7 @@ mod tests {
         let e = env(None, Some("/home/alice"));
         assert_eq!(
             linux_state_dir(&e),
-            Some(PathBuf::from("/home/alice/.local/state/gko"))
+            Some(PathBuf::from("/home/alice/.local/state/gekko"))
         );
     }
 
@@ -631,7 +631,7 @@ mod tests {
         assert_eq!(
             macos_state_dir(&e),
             Some(PathBuf::from(
-                "/Users/alice/Library/Application Support/gko/state"
+                "/Users/alice/Library/Application Support/gekko/state"
             ))
         );
     }
@@ -644,7 +644,7 @@ mod tests {
         assert_eq!(
             macos_state_dir(&e),
             Some(PathBuf::from(
-                "/Users/alice/Library/Application Support/gko/state"
+                "/Users/alice/Library/Application Support/gekko/state"
             ))
         );
     }
@@ -713,13 +713,13 @@ mod tests {
         let a = state_path(
             &e,
             "llamacpp",
-            Path::new("/projA/.gko/backends/llamacpp.toml"),
+            Path::new("/projA/.gekko/backends/llamacpp.toml"),
         )
         .expect("a valid identifier");
         let b = state_path(
             &e,
             "llamacpp",
-            Path::new("/projB/.gko/backends/llamacpp.toml"),
+            Path::new("/projB/.gekko/backends/llamacpp.toml"),
         )
         .expect("a valid identifier");
 

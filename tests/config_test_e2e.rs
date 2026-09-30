@@ -17,7 +17,7 @@ fn scope(name: &str) -> PathBuf {
         let path = fixtures.join(format!("config-test-{name}-{n}"));
         match std::fs::create_dir(&path) {
             Ok(()) => {
-                std::fs::create_dir(path.join(".gko")).expect("create scope");
+                std::fs::create_dir(path.join(".gekko")).expect("create scope");
                 return path;
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -27,7 +27,7 @@ fn scope(name: &str) -> PathBuf {
 }
 
 fn write(root: &Path, name: &str, text: &str) {
-    let path = root.join(".gko").join(name);
+    let path = root.join(".gekko").join(name);
     std::fs::create_dir_all(path.parent().expect("parent")).expect("create directory");
     std::fs::write(path, text).expect("write fixture");
 }
@@ -306,7 +306,7 @@ fn local_case_replaces_same_named_user_case() {
         "tests/git/review/b.toml",
         "args = { kind = \"ticket\" }\ninput = \"other\"\n[expect]\ncontains = [\"other\"]\n",
     );
-    std::fs::rename(user.join(".gko"), user.join("gko")).expect("make XDG user scope");
+    std::fs::rename(user.join(".gekko"), user.join("gekko")).expect("make XDG user scope");
     let mut command = Command::new(env!("CARGO_BIN_EXE_gko"));
     command
         .args(["config", "test", "--dry-run", "--json"])

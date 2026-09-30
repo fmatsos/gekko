@@ -2,7 +2,7 @@
 //! `docs/configuration.md`): resolved at preflight, never leaked on stderr.
 //!
 //! Same idiom as `tests/output_contract_e2e.rs`: a fake local HTTP backend,
-//! a temporary `.gko/` scope, the real binary launched as a child process.
+//! a temporary `.gekko/` scope, the real binary launched as a child process.
 
 #![allow(clippy::expect_used)] // tolerated in tests (cf. Cargo.toml [lints.clippy]).
 
@@ -34,7 +34,7 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 fn write_scope(scope: &Path, addr: std::net::SocketAddr, headers_table: &str) {
     write(
         scope,
-        ".gko/backends/stub.toml",
+        ".gekko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -52,7 +52,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, headers_table: &str) {
     );
     write(
         scope,
-        ".gko/models/test-model.toml",
+        ".gekko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -62,7 +62,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, headers_table: &str) {
     );
     write(
         scope,
-        ".gko/commands/e2e-cmd.md",
+        ".gekko/commands/e2e-cmd.md",
         "---\nmodel = \"test-model\"\n---\n{{ input }}\n",
     );
 }
