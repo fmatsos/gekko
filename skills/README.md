@@ -12,7 +12,7 @@ offers for installation.
 
 | Skill | Covers |
 | --- | --- |
-| [`gko-config`](gko-config/SKILL.md) | the `.gko/` layout, scope precedence, merge semantics, bootstrapping a project |
+| [`gko-config`](gko-config/SKILL.md) | the `.gekko/` layout, scope precedence, merge semantics, bootstrapping a project |
 | [`gko-backend`](gko-backend/SKILL.md) | `backends/*.toml` — `id`, `type`, `base_url`, `[operations.*]`, `[runtime]` (`type = "docker"` or `"process"`) |
 | [`gko-model`](gko-model/SKILL.md) | `models/*.toml` — `id`, `backend`, `operation`, `model`, `[generation]` |
 | [`gko-command`](gko-command/SKILL.md) | `commands/*.md` — frontmatter, input modes, `[args.*]`, templating, `[output]` |
@@ -63,7 +63,7 @@ cp -r skills/gko-* ~/.claude/skills/
 Or for one project only, so teammates get them with the repository:
 
 ```sh
-mkdir -p .claude/skills && cp -r /path/to/gko/skills/gko-* .claude/skills/
+mkdir -p .claude/skills && cp -r /path/to/gekko/skills/gko-* .claude/skills/
 ```
 
 Claude picks them up on the next session. `/gko-doctor` invokes one

@@ -1,6 +1,6 @@
 ---
 name: gko-backend
-description: Writes and fixes `gko` backend files (`.gko/backends/*.toml`) — the `id`, `type`, `base_url` and `[operations.<name>]` tables that tell `gko` where to send requests and on which HTTP path, plus the optional `[runtime]` table `gko backend serve` uses to start the runtime — as a Docker container (`type = "docker"`, whose untagged `[docker]` spelling of earlier versions is still accepted) or as a local process (`type = "process"`), and the optional `[timeouts]` table that overrides the request timeout. Covers the constraints enforced at load time — `openai-compatible` is the only supported type, `POST` the only supported method, and unknown keys are rejected rather than ignored. Use it whenever a backend declaration is created, changed or rejected.
+description: Writes and fixes `gko` backend files (`.gekko/backends/*.toml`) — the `id`, `type`, `base_url` and `[operations.<name>]` tables that tell `gko` where to send requests and on which HTTP path, plus the optional `[runtime]` table `gko backend serve` uses to start the runtime — as a Docker container (`type = "docker"`, whose untagged `[docker]` spelling of earlier versions is still accepted) or as a local process (`type = "process"`), and the optional `[timeouts]` table that overrides the request timeout. Covers the constraints enforced at load time — `openai-compatible` is the only supported type, `POST` the only supported method, and unknown keys are rejected rather than ignored. Use it whenever a backend declaration is created, changed or rejected.
 when_to_use: >
   Trigger on "add a gko backend", "point gko at my model server / OVMS /
   llama.cpp / Ollama", "change the base_url", "add an operation", "make gko
@@ -21,7 +21,7 @@ commands never see it.
 ## The file
 
 ```toml
-# .gko/backends/ovms.toml
+# .gekko/backends/ovms.toml
 id = "ovms"
 type = "openai-compatible"
 base_url = "http://127.0.0.1:8000"
@@ -175,7 +175,7 @@ server exits, or the budget runs out — so a `serve` that printed a pid means a
 answers. It prints the pid; `gko backend stop` prints the backend id and escalates `SIGTERM` → `SIGKILL`.
 
 `gko backend serve` writes a JSON state record and a `.log` file (both streams) under
-`$XDG_STATE_HOME/gko/`, named `<backend id>-<digest of the backend file>` — that is how `stop`,
+`$XDG_STATE_HOME/gekko/`, named `<backend id>-<digest of the backend file>` — that is how `stop`,
 `status` and `logs` find the process again, Docker's name registry having no equivalent here, and
 why two projects each declaring `llamacpp` get two records rather than fighting over one. The
 record's `(pid, birth time)` pair is the identity check that keeps `stop` from killing a recycled
@@ -251,8 +251,8 @@ rejected at load time naming the file.
 
 ## Overriding a backend from a broader scope
 
-Merging is **replacement**: a file in `./.gko` with the same `id` as one in
-`/etc/gko` replaces it whole. Copy every field you still need — nothing is
+Merging is **replacement**: a file in `./.gekko` with the same `id` as one in
+`/etc/gekko` replaces it whole. Copy every field you still need — nothing is
 inherited, `[runtime]` included.
 
 ## Verifying

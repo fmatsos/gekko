@@ -1,7 +1,7 @@
 # Testing configured prompts
 
 `gko config test` runs regression cases for configured commands. A case is a TOML file at
-`.gko/tests/<command path>/<case>.toml`. For example, `tests/git/review/hardware.toml`
+`.gekko/tests/<command path>/<case>.toml`. For example, `tests/git/review/hardware.toml`
 tests `gko git review`. Cases from system, user and project scopes are combined; a more local
 case replaces one with the same command path and case name. A selection with no cases is an
 error (exit `2`). `gko config schema test` prints the JSON Schema of a case file; see

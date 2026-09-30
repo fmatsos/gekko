@@ -18,7 +18,7 @@ backends  = configuration
 ```
 
 Adding, changing or removing a command never requires recompiling. A repository can ship its own
-`.gko/` directory and get project-specific AI tooling without shipping any executable code.
+`.gekko/` directory and get project-specific AI tooling without shipping any executable code.
 
 > [!NOTE]
 > Not published to crates.io — grab a binary from the
@@ -59,7 +59,7 @@ The Rust core understands execution mechanics, not AI business semantics. `model
 enough to help prepare a configuration, but they never run a command themselves, and everything
 they know lives under `src/vendor/`, never in the engine that does.
 
-A shared `.gko/` directory cannot launch a program as a side effect of running a business
+A shared `.gekko/` directory cannot launch a program as a side effect of running a business
 command. Runtime startup is an explicit operator action (`gko backend serve`), not part of the
 business pipeline. Treat command prompts and backend endpoints from a shared repository as
 untrusted configuration nonetheless.
@@ -114,8 +114,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 . "$HOME/.cargo/env"
 
 # 2. Build and install gko
-git clone <repository-url> gko
-cd gko
+git clone <repository-url> gekko
+cd gekko
 cargo install --path .
 ```
 
@@ -131,15 +131,15 @@ cargo install --path .
 # 1. Install rustup from https://rustup.rs (rustup-init.exe)
 
 # 2. Build and install gko
-git clone <repository-url> gko
-cd gko
+git clone <repository-url> gekko
+cd gekko
 cargo install --path .
 ```
 
 > [!WARNING]
 > **Windows support is partial.** Configuration scopes follow Windows conventions: the system
-> scope is `%ProgramData%\gko`, the user scope `%APPDATA%\gko` (see
-> [configuration](docs/configuration.md)), and the project `.gko` is found as on Unix. The runtime
+> scope is `%ProgramData%\gekko`, the user scope `%APPDATA%\gekko` (see
+> [configuration](docs/configuration.md)), and the project `.gekko` is found as on Unix. The runtime
 > lifecycle is split: `type = "docker"` works (Docker Desktop is its prerequisite, not `gko`'s
 > code), while a backend declaring `type = "process"` is
 > rejected at load time naming the file — that family needs a `$XDG_STATE_HOME`/`$HOME` state
@@ -150,22 +150,6 @@ cargo install --path .
 declares `gko model discover` and `gko backend tune` (see [How it works](#how-it-works) and
 [`docs/cli.md`](docs/cli.md#cargo-feature-hardware-tooling)). Build with `--no-default-features`
 for a smaller, engine-only CLI without them.
-
-### Upgrading from `npu`
-
-Up to 0.8.0 the project and its executable were both called `npu`. `npu update` still reaches the
-latest `gko` release, but it replaces the executable where it stands, so the file keeps its old
-name: rename it to `gko`. Nothing reads the old locations any more — move them by hand:
-
-| Up to 0.8.0 | From 0.9.0 |
-| --- | --- |
-| `./.npu`, `$XDG_CONFIG_HOME/npu`, `/etc/npu` (Windows: `%APPDATA%\npu`, `%ProgramData%\npu`) | `./.gko`, `$XDG_CONFIG_HOME/gko`, `/etc/gko` (Windows: `%APPDATA%\gko`, `%ProgramData%\gko`) |
-| `NPU_CONFIG_DIR`, `NPU_STATS_FILE` | `GKO_CONFIG_DIR`, `GKO_STATS_FILE` |
-| container `npu-<backend-id>`, state under `$XDG_STATE_HOME/npu` | container `gko-<backend-id>`, state under `$XDG_STATE_HOME/gko` |
-
-Stop every running backend with `npu backend stop <model>` **before** upgrading: `gko` looks for
-`gko-<backend-id>` containers and `gko` state records, so it neither sees nor stops what `npu`
-started.
 
 ### Verify the installation
 
@@ -181,10 +165,10 @@ see [Exit codes](#exit-codes).
 
 ## Quick start
 
-Create a `.gko/` directory in your project:
+Create a `.gekko/` directory in your project:
 
 ```text
-.gko/
+.gekko/
 ├── backends/
 │   └── ovms.toml
 ├── models/
@@ -193,7 +177,7 @@ Create a `.gko/` directory in your project:
     └── commit-message.md
 ```
 
-**`.gko/backends/ovms.toml`** — where to send requests:
+**`.gekko/backends/ovms.toml`** — where to send requests:
 
 ```toml
 id = "ovms"
@@ -205,7 +189,7 @@ method = "POST"
 path = "/v3/chat/completions"
 ```
 
-**`.gko/models/qwen-fast.toml`** — which model, on which backend operation:
+**`.gekko/models/qwen-fast.toml`** — which model, on which backend operation:
 
 ```toml
 id = "qwen-fast"
@@ -218,7 +202,7 @@ temperature = 0.0
 max_tokens = 512
 ```
 
-**`.gko/commands/commit-message.md`** — the command itself. TOML frontmatter between `---`
+**`.gekko/commands/commit-message.md`** — the command itself. TOML frontmatter between `---`
 fences, and the prompt as the body:
 
 ```markdown

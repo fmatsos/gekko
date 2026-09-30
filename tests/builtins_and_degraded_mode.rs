@@ -24,10 +24,10 @@
 //! `builtin::tests::tcp_probe_fails_against_a_closed_port`), never a
 //! hardcoded port number.
 //!
-//! `HOME` is redirected to a temporary directory without `.config/gko` for
+//! `HOME` is redirected to a temporary directory without `.config/gekko` for
 //! each invocation, `$XDG_CONFIG_HOME` points to the temporary scope written
 //! by the test: only that scope root is taken into account by
-//! `scope::roots()`, never the real `$HOME` nor an `/etc/gko` that might
+//! `scope::roots()`, never the real `$HOME` nor an `/etc/gekko` that might
 //! otherwise exist on the machine. `Command::env`/`env_remove` only touch
 //! the CHILD PROCESS's environment: no test mutates the real environment
 //! variables (`std::env::set_var` is `unsafe` in edition 2024, forbidden by
@@ -63,7 +63,7 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 }
 
 /// Runs the REAL `gko` binary with `$XDG_CONFIG_HOME` pointed at
-/// `xdg_config_home` and `cwd` (deliberately without a local `.gko`) as the
+/// `xdg_config_home` and `cwd` (deliberately without a local `.gekko`) as the
 /// current directory — same idiom as `run_gko_xdg` in
 /// `tests/output_contract_e2e.rs`.
 fn run_gko(cwd: &Path, xdg_config_home: &Path, args: &[&str]) -> Output {
@@ -91,26 +91,26 @@ fn stderr_of(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-/// Writes a `$XDG_CONFIG_HOME/gko` scope whose `backends/ovms.toml` is
+/// Writes a `$XDG_CONFIG_HOME/gekko` scope whose `backends/ovms.toml` is
 /// unreadable TOML (a PARSING failure, therefore fatal even when masked:
 /// unlike a command, a broken backend has no knowable identity before it
 /// is parsed).
 fn write_broken_scope(xdg_root: &Path) {
     write(
         xdg_root,
-        "gko/backends/ovms.toml",
+        "gekko/backends/ovms.toml",
         "this is not valid TOML { { {\n",
     );
 }
 
-/// Writes a HEALTHY `$XDG_CONFIG_HOME/gko` scope: an `ovms` backend pointing
+/// Writes a HEALTHY `$XDG_CONFIG_HOME/gekko` scope: an `ovms` backend pointing
 /// at `base_url`, a `qwen-fast` model, and the `commit-message` command
 /// (text format, no schema — `doctor`'s check (e) must not produce anything
 /// for it).
 fn write_healthy_scope(xdg_root: &Path, base_url: &str) {
     write(
         xdg_root,
-        "gko/backends/ovms.toml",
+        "gekko/backends/ovms.toml",
         &format!(
             r#"
             id = "ovms"
@@ -125,7 +125,7 @@ fn write_healthy_scope(xdg_root: &Path, base_url: &str) {
     );
     write(
         xdg_root,
-        "gko/models/qwen-fast.toml",
+        "gekko/models/qwen-fast.toml",
         r#"
         id = "qwen-fast"
         backend = "ovms"
@@ -135,7 +135,7 @@ fn write_healthy_scope(xdg_root: &Path, base_url: &str) {
     );
     write(
         xdg_root,
-        "gko/commands/commit-message.md",
+        "gekko/commands/commit-message.md",
         "---\ndescription = \"Generate a commit message\"\nmodel = \"qwen-fast\"\n---\n\
          {{ input }}\n",
     );
@@ -424,7 +424,7 @@ fn healthy_config_describe_produces_parsable_json_for_a_known_command() {
     assert!(file.ends_with("commit-message.md"), "got: {file}");
     assert_eq!(
         value["source"]["scope"].as_str(),
-        Some(xdg.join("gko").display().to_string().as_str())
+        Some(xdg.join("gekko").display().to_string().as_str())
     );
 }
 
@@ -617,7 +617,7 @@ fn a_command_named_status_is_a_business_command() {
     write_healthy_scope(&xdg, &closed_port_base_url());
     write(
         &xdg,
-        "gko/commands/status.md",
+        "gekko/commands/status.md",
         "---\ndescription = \"Summarize a status\"\nmodel = \"qwen-fast\"\n---\n{{ input }}\n",
     );
 
@@ -826,7 +826,7 @@ fn tune_writes_the_graph_and_max_tokens_unless_dry_run() {
     write_npu_export(&models);
     let dir = models.to_string_lossy().into_owned();
     let graph = models.join("qwen-fast-underlying/graph.pbtxt");
-    let model_file = xdg.join("gko/models/qwen-fast.toml");
+    let model_file = xdg.join("gekko/models/qwen-fast.toml");
     let before = std::fs::read_to_string(&graph).expect("graph");
 
     let dry = run_gko(

@@ -5,7 +5,7 @@ schemas are **configuration**, never code. The core understands execution
 mechanics, not AI business semantics — adding a command must never require a
 rebuild.
 
-A shared `.gko/` directory must never launch a program as a side effect of
+A shared `.gekko/` directory must never launch a program as a side effect of
 running a business command. Runtime startup is an explicit built-in action,
 not part of the command execution pipeline or MCP tool calls.
 

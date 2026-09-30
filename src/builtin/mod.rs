@@ -734,7 +734,7 @@ mod tests {
             system: None,
             examples: Vec::new(),
             generation: None,
-            file: std::path::PathBuf::from(".gko/commands/translate.md"),
+            file: std::path::PathBuf::from(".gekko/commands/translate.md"),
         }
     }
 

@@ -178,7 +178,7 @@ Two files, not one — a primary on the NPU declaring the fallback, and the GPU 
 Only after step 3.6 passes:
 
 ```toml
-# ~/.config/gko/models/<id>.toml
+# ~/.config/gekko/models/<id>.toml
 id = "<id>"
 backend = "<npu-backend-id>"
 operation = "chat"
@@ -190,7 +190,7 @@ temperature = 0.0
 ```
 
 ```toml
-# ~/.config/gko/models/<id>-gpu.toml
+# ~/.config/gekko/models/<id>-gpu.toml
 id = "<id>-gpu"
 backend = "<gpu-backend-id>"
 operation = "chat"
@@ -202,9 +202,9 @@ temperature = 0.0
 
 No `fallback` on the twin: the retry is single hop, so a chain would not be followed anyway.
 
-**Write both to the user scope (`$XDG_CONFIG_HOME/gko`, usually `~/.config/gko`), not the
-project's `./.gko`, unless the user explicitly asks otherwise.** The export is tied to this
-machine's NPU and its local `~/models` path — committing that into a project's `.gko/` would break
+**Write both to the user scope (`$XDG_CONFIG_HOME/gekko`, usually `~/.config/gekko`), not the
+project's `./.gekko`, unless the user explicitly asks otherwise.** The export is tied to this
+machine's NPU and its local `~/models` path — committing that into a project's `.gekko/` would break
 the next person who runs it without this hardware. See **gko-config** for the scope reasoning in
 full.
 

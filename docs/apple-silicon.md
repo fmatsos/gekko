@@ -81,7 +81,7 @@ its absolute path in `command`.
 ## 3. The backend and the model
 
 ```toml
-# .gko/backends/llamacpp.toml
+# .gekko/backends/llamacpp.toml
 id = "llamacpp"
 type = "openai-compatible"
 port = 8080
@@ -105,7 +105,7 @@ startup_timeout_secs = 120
 ```
 
 ```toml
-# .gko/models/qwen-local.toml
+# .gekko/models/qwen-local.toml
 id = "qwen-local"
 backend = "llamacpp"
 operation = "chat"
@@ -175,7 +175,7 @@ lines are the quickest way to confirm that Metal was actually used:
 gko backend logs qwen-local | grep -i -e metal -e offloaded
 ```
 
-The record and the log live in `$HOME/Library/Application Support/gko/state/`. See
+The record and the log live in `$HOME/Library/Application Support/gekko/state/`. See
 [What `gko` remembers](configuration.md#what-gko-remembers).
 
 ---

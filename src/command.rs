@@ -105,7 +105,7 @@ pub struct CommandSpec {
     /// doc) — the one field-by-field merge in the project, an explicit
     /// exception to "replacement, never merge".
     pub generation: Option<crate::config::Generation>,
-    /// Path of the source command file (e.g. `.gko/commands/classify.md`)
+    /// Path of the source command file (e.g. `.gekko/commands/classify.md`)
     /// this `CommandSpec` was parsed from. Needed by `output::finalize`
     /// to name, at real execution time, the command
     /// file that requests a schema that is not found/readable/invalid —
@@ -966,7 +966,7 @@ const LEGACY_FRONTMATTER_DELIMITER: &str = "+++";
 ///
 /// The frontmatter is delimited by `---` lines; the header is TOML, the
 /// body (after the second delimiter) is the prompt. `scope_root` is the
-/// scope root (e.g. `./.gko`) this command file comes
+/// scope root (e.g. `./.gekko`) this command file comes
 /// from: it is used ONLY to resolve a possible relative
 /// `[output].schema`, never for anything
 /// else here. Resolving the schema path needs
@@ -2060,7 +2060,7 @@ mod tests {
     #[test]
     fn output_section_is_accepted_and_now_interpreted() {
         // `[output]` already exists
-        // in the versioned fixture `.gko/commands/commit-message.md`
+        // in the versioned fixture `.gekko/commands/commit-message.md`
         // (format = "text", max_lines = 1). The three keys must be EFFECTIVE, not just
         // accepted by `deny_unknown_fields`.
         let source = "---\nmodel = \"qwen-fast\"\n\n[output]\nformat = \"text\"\nmax_lines = 1\n\
@@ -2426,11 +2426,11 @@ mod tests {
     #[test]
     fn real_commit_message_fixture_output_section_is_now_effective() {
         // The versioned
-        // fixture `.gko/commands/commit-message.md` declares
+        // fixture `.gekko/commands/commit-message.md` declares
         // `[output]` (format = "text", max_lines = 1). It must parse AND
         // yield max_lines = Some(1).
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".gko");
-        let commands = discover(&root).expect("the real .gko/ fixture should always load");
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".gekko");
+        let commands = discover(&root).expect("the real .gekko/ fixture should always load");
 
         let commit_message = commands
             .iter()

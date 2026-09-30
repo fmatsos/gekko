@@ -1,5 +1,5 @@
 //! End-to-end verification of `--dry-run`: same idiom as
-//! `tests/backend_headers_e2e.rs` — a temporary `.gko/` scope, the real
+//! `tests/backend_headers_e2e.rs` — a temporary `.gekko/` scope, the real
 //! binary launched as a child process.
 
 #![allow(clippy::expect_used)] // tolerated in tests (cf. Cargo.toml [lints.clippy]).
@@ -56,7 +56,7 @@ fn run_gko(scope: &Path, args: &[&str]) -> Output {
 fn write_scope(scope: &Path, header_secret_env: &str) {
     write(
         scope,
-        ".gko/backends/stub.toml",
+        ".gekko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -80,7 +80,7 @@ fn write_scope(scope: &Path, header_secret_env: &str) {
     );
     write(
         scope,
-        ".gko/models/test-model.toml",
+        ".gekko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -90,7 +90,7 @@ fn write_scope(scope: &Path, header_secret_env: &str) {
     );
     write(
         scope,
-        ".gko/commands/e2e-cmd.md",
+        ".gekko/commands/e2e-cmd.md",
         "---\nmodel = \"test-model\"\n---\n{{ input }}\n",
     );
 }
@@ -208,20 +208,20 @@ fn dry_run_shows_the_inserted_partial_and_doctor_flags_a_missing_one() {
     // Without the header, whose variable this test does not set.
     write(
         &scope,
-        ".gko/backends/stub.toml",
+        ".gekko/backends/stub.toml",
         "id = \"stub\"\nbase_url = \"http://127.0.0.1:9\"\ntype = \"openai-compatible\"\n\
          [operations.chat]\nmethod = \"POST\"\npath = \"/v1/chat/completions\"\n",
     );
     write(
         &scope,
-        ".gko/commands/styled.md",
+        ".gekko/commands/styled.md",
         "---\nmodel = \"test-model\"\n[partials]\nstyle = \"style\"\n---\n\
          {{ partials.style }} {{ input }}\n",
     );
-    write(&scope, ".gko/partials/style.md", "Be terse.");
+    write(&scope, ".gekko/partials/style.md", "Be terse.");
     write(
         &scope,
-        ".gko/commands/orphan.md",
+        ".gekko/commands/orphan.md",
         "---\nmodel = \"test-model\"\n[partials]\nstyle = \"gone\"\n---\n\
          {{ partials.style }}\n",
     );

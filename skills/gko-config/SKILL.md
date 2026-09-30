@@ -1,9 +1,9 @@
 ---
 name: gko-config
-description: Sets up and maintains a `gko` configuration directory — the `.gko/` layout (backends, models, commands, schemas), scope precedence between `/etc/gko`, `$XDG_CONFIG_HOME/gko` and `./.gko`, and how entries from different scopes replace one another. Use it to bootstrap a project's `.gko/` from nothing, to decide which scope a piece of configuration belongs in, or to understand why a local file is (or is not) overriding a broader one. Delegates the file formats themselves to gko-backend, gko-model and gko-command.
+description: Sets up and maintains a `gko` configuration directory — the `.gekko/` layout (backends, models, commands, schemas), scope precedence between `/etc/gekko`, `$XDG_CONFIG_HOME/gekko` and `./.gekko`, and how entries from different scopes replace one another. Use it to bootstrap a project's `.gekko/` from nothing, to decide which scope a piece of configuration belongs in, or to understand why a local file is (or is not) overriding a broader one. Delegates the file formats themselves to gko-backend, gko-model and gko-command.
 when_to_use: >
   Trigger on "set up gko in this project", "add gko configuration", "create a
-  .gko directory", "where should this gko config live", "why is my local gko
+  .gekko directory", "where should this gko config live", "why is my local gko
   config not winning", "gko scopes", or any gko request that spans more than
   one of backends / models / commands.
 model: sonnet
@@ -20,7 +20,7 @@ never requires rebuilding the binary.
 ## The layout
 
 ```text
-.gko/
+.gekko/
 ├── backends/*.toml   # where to send requests, and how      → gko-backend
 ├── models/*.toml     # which model, on which backend op     → gko-model
 ├── commands/*.md     # the commands themselves              → gko-command
@@ -36,27 +36,27 @@ The same layout may exist at three levels, read broadest first, **most local
 wins**:
 
 ```text
-/etc/gko                                        system-wide
+/etc/gekko                                          system-wide
       ↓
-$XDG_CONFIG_HOME/gko  (or $HOME/.config/gko)    per user
+$XDG_CONFIG_HOME/gekko  (or $HOME/.config/gekko)    per user
       ↓
-./.gko                                          per project
+./.gekko                                            per project
 ```
 
 `XDG_CONFIG_HOME`, when set and non-empty, **replaces** the `$HOME`-derived
 path rather than adding to it. A scope directory that does not exist is
 skipped silently.
 
-On Windows only `.\.gko` works out of the box: `/etc/gko` is a hard-coded Unix
+On Windows only `.\.gekko` works out of the box: `/etc/gekko` is a hard-coded Unix
 path and the user scope is read from `$HOME`, never `%USERPROFILE%`.
 
 ### Which scope for what
 
 | Put it in | When |
 | --- | --- |
-| `./.gko` | anything specific to this repository — commit it, teammates get the tooling |
-| `$XDG_CONFIG_HOME/gko` | your personal backend, your machine's model aliases |
-| `/etc/gko` | a shared machine-wide backend, managed by whoever owns the box |
+| `./.gekko` | anything specific to this repository — commit it, teammates get the tooling |
+| `$XDG_CONFIG_HOME/gekko` | your personal backend, your machine's model aliases |
+| `/etc/gekko` | a shared machine-wide backend, managed by whoever owns the box |
 
 ## Merge semantics — replacement, never deep merge
 
@@ -66,12 +66,12 @@ path and the user scope is read from `$HOME`, never `%USERPROFILE%`.
 | Models | the `id` field inside the file |
 | Commands | the full command path (`git/review`), derived from the file path |
 
-A backend with `id = "ovms"` in `./.gko` replaces the `/etc/gko` one
+A backend with `id = "ovms"` in `./.gekko` replaces the `/etc/gekko` one
 **entirely**. A field present in the broader file and absent from the local
 one is *not* inherited. Entries whose keys differ accumulate.
 
 Resolution happens *after* merging, so a model defined in your project may
-reference a backend declared only in `/etc/gko`.
+reference a backend declared only in `/etc/gekko`.
 
 Two files in the **same** scope declaring the same `id` is an error naming
 both paths. Across scopes an override is the feature; within one scope it is
@@ -79,7 +79,7 @@ ambiguity resolved by filesystem ordering, which is nobody's decision.
 
 ## Bootstrapping a project
 
-1. `mkdir -p .gko/{backends,models,commands}` (add `schemas/` when a command
+1. `mkdir -p .gekko/{backends,models,commands}` (add `schemas/` when a command
    needs structured output).
 2. Declare the backend → **gko-backend**.
 3. Declare a model on one of its operations → **gko-model**.

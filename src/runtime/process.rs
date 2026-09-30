@@ -231,7 +231,7 @@ pub enum Presence {
     ///
     /// The state directory is machine-global while backend identifiers are
     /// per-scope, so two projects each declaring `llamacpp` in their own
-    /// `./.gko` would land on one record. What keeps them apart is the file
+    /// `./.gekko` would land on one record. What keeps them apart is the file
     /// NAME, which carries a digest of the backend file (see
     /// `state::SOURCE_DIGEST_HEX`): the digest ISOLATES.
     ///
@@ -1146,7 +1146,7 @@ mod tests {
     /// The backend FILE every fixture of this module pretends to come from.
     /// `record` and `backend` share it, so a record is OURS unless a test
     /// deliberately moves one of the two (cf. the `Foreign` tests).
-    const SOURCE: &str = "/projA/.gko/backends/qwen-fast.toml";
+    const SOURCE: &str = "/projA/.gekko/backends/qwen-fast.toml";
 
     fn record(backend: &str, pid: u32) -> state::State {
         state::State {
@@ -1242,7 +1242,7 @@ mod tests {
 
     /// The blocker this variant exists for: the state directory is
     /// machine-global while backend identifiers are per-scope, so two
-    /// projects each declaring `qwen-fast` in their own `./.gko` land on the
+    /// projects each declaring `qwen-fast` in their own `./.gekko` land on the
     /// same record. The pid is a genuine gko-started process with a matching
     /// birth — `verdict` sees nothing wrong with it — and it belongs to the
     /// other project.
@@ -1250,7 +1250,7 @@ mod tests {
     fn a_live_record_written_by_another_backend_file_is_foreign() {
         let env = state_env("foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
 
         let host = Host {
@@ -1272,7 +1272,7 @@ mod tests {
     fn a_dead_record_written_by_another_backend_file_has_merely_exited() {
         let env = state_env("foreign-dead");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
 
         let host = Host {
@@ -1294,7 +1294,7 @@ mod tests {
     fn stopping_a_foreign_record_signals_nothing_and_keeps_it() {
         let env = state_env("stop-foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let sent: std::sync::Mutex<Vec<Signal>> = std::sync::Mutex::new(Vec::new());
         let host = Host {
@@ -1325,7 +1325,7 @@ mod tests {
     fn the_foreign_refusal_names_both_backend_files() {
         let env = state_env("foreign-named");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let host = Host {
             env: &|_| None,
@@ -1339,7 +1339,7 @@ mod tests {
         let message = err.to_string();
         assert!(message.contains(SOURCE), "{message}");
         assert!(
-            message.contains("/projB/.gko/backends/qwen-fast.toml"),
+            message.contains("/projB/.gekko/backends/qwen-fast.toml"),
             "{message}"
         );
         assert!(message.contains("qwen-fast"), "{message}");
@@ -1352,7 +1352,7 @@ mod tests {
     fn serving_over_a_foreign_record_is_refused() {
         let env = state_env("serve-foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let host = Host {
             env: &|_| None,
@@ -1384,7 +1384,7 @@ mod tests {
     fn a_foreign_record_is_reported_as_such() {
         let env = state_env("report-foreign");
         let mut other = record("qwen-fast", 4242);
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
         plant(&env, &backend("qwen-fast"), &other);
         let host = Host {
             env: &|_| None,
@@ -2031,7 +2031,7 @@ mod tests {
             probe: &|_| Ok(()),
         };
         let mut other = backend("qwen-fast");
-        other.source = PathBuf::from("/projB/.gko/backends/qwen-fast.toml");
+        other.source = PathBuf::from("/projB/.gekko/backends/qwen-fast.toml");
 
         let ours = log_path(&backend("qwen-fast"), &host).expect("a valid identifier");
         let theirs = log_path(&other, &host).expect("a valid identifier");

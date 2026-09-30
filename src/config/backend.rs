@@ -142,7 +142,7 @@ pub struct Backend {
     /// so a file spelling `source = "..."` is rejected by
     /// `deny_unknown_fields` instead of forging the value. It is the
     /// discriminator [`crate::runtime::state`] records, because backend
-    /// identifiers are per-scope (`./.gko` is a documented scope) while the
+    /// identifiers are per-scope (`./.gekko` is a documented scope) while the
     /// state directory is machine-global: two projects naming a backend
     /// `llamacpp` would otherwise share one record, and `gko stop` in one
     /// would signal the other's server.
