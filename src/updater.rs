@@ -19,8 +19,8 @@ use sha2::{Digest, Sha256};
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const MANIFEST_URL: &str =
-    "https://github.com/fmatsos/npu/releases/latest/download/gko-update.json";
-const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/fmatsos/npu/releases/download";
+    "https://github.com/fmatsos/gekko/releases/latest/download/gko-update.json";
+const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/fmatsos/gekko/releases/download";
 const MANIFEST_LIMIT: u64 = 1024 * 1024;
 const BINARY_LIMIT: u64 = 100 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(
             requested.borrow()[1],
             (
-                "https://github.com/fmatsos/npu/releases/download/v0.2.0/gko-x86_64-unknown-linux-gnu"
+                "https://github.com/fmatsos/gekko/releases/download/v0.2.0/gko-x86_64-unknown-linux-gnu"
                     .to_string(),
                 BINARY_LIMIT,
             )

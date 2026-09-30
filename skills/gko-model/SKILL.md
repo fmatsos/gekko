@@ -148,10 +148,10 @@ behaviour it describes does not match what the binary does, the repository
 documentation is authoritative. The exact set of keys the binary accepts is
 `gko config schema model` (a JSON Schema derived from the parser itself):
 
-- [Models](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#models)
-- [Merge semantics](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#merge-semantics)
-- [`gko config schema`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-schema)
-- [`gko config models`](https://github.com/fmatsos/npu/blob/main/docs/cli.md#gko-config-models)
+- [Models](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#models)
+- [Merge semantics](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#merge-semantics)
+- [`gko config schema`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-config-schema)
+- [`gko config models`](https://github.com/fmatsos/gekko/blob/main/docs/cli.md#gko-config-models)
 
 Related skills: **gko-backend**, **gko-command**, **gko-doctor**.
 

@@ -25,7 +25,7 @@ local path — **gko-discover** lists ids already known to be compatible when on
 picked yet.
 
 This skill is the executor for
-[`docs/intel-npu.md`](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md); it does not
+[`docs/intel-npu.md`](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md); it does not
 duplicate the reasoning there, it runs the procedure and reports the result.
 
 ## 0. Confirm there is an Intel NPU to export for
@@ -40,7 +40,7 @@ lsmod 2>/dev/null | grep -i intel_vpu
 ```
 
 No device node: say so plainly and stop rather than exporting blindly — see
-[Detecting an Intel NPU on the host](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md#0-detecting-an-intel-npu-on-the-host)
+[Detecting an Intel NPU on the host](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md#0-detecting-an-intel-npu-on-the-host)
 for the driver-vs-hardware distinction before concluding "no NPU". If the user explicitly wants a
 GPU/CPU export instead, `optimum-cli` in step 2 is identical — only the `--target_device` passed
 to `--configure` (step 3.5) changes, since that is what bakes the device into the export. Step 3.6,
@@ -79,7 +79,7 @@ optimum-cli export openvino \
 `<basename>` is the last path segment of `<model-id>`, lowercased, `/` dropped. **`--sym` and
 `--group-size 128` are not negotiable defaults** — `--group-size -1` compiles and serves fine and
 silently produces degenerate output; see the pitfall documented in
-[docs/intel-npu.md §2](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md#2-choosing-quantization-parameters).
+[docs/intel-npu.md §2](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md#2-choosing-quantization-parameters).
 Lower `--ratio` (e.g. `0.8`) only if step 3 below shows a quality problem `--group-size 128`
 doesn't fix — it trades export size for accuracy, so it is a fallback, not a default.
 
@@ -219,7 +219,7 @@ Two coupling facts worth stating when reporting:
 
 - Re-exporting **in place** (same directory) invalidates the OVMS compilation cache silently —
   clear the stale blob per
-  [docs/intel-npu.md §4](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md#4-persisting-the-compilation-cache)
+  [docs/intel-npu.md §4](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md#4-persisting-the-compilation-cache)
   before the next `gko backend serve` — **and** it changes the twin too, whose `graph.pbtxt` then describes
   weights that no longer exist. Re-run step 3.6's `--configure` after any re-export.
 - The twin shares the primary's `config.json`, hence its context length. It lifts the NPU's
@@ -296,9 +296,9 @@ State plainly:
 This skill is a summary. When a case is not covered here, or when the behaviour it describes does
 not match what actually happens, the repository documentation is authoritative:
 
-- [Deploying on an Intel NPU](https://github.com/fmatsos/npu/blob/main/docs/intel-npu.md) — the
+- [Deploying on an Intel NPU](https://github.com/fmatsos/gekko/blob/main/docs/intel-npu.md) — the
   full procedure this skill executes, including the quantization pitfall and troubleshooting table
-- [Configuration scopes](https://github.com/fmatsos/npu/blob/main/docs/configuration.md#scopes-and-precedence)
+- [Configuration scopes](https://github.com/fmatsos/gekko/blob/main/docs/configuration.md#scopes-and-precedence)
 
 Related skills: **gko-discover** to pick a model before exporting one, **gko-backend** for the two
 `[docker]` tables this skill's models depend on, **gko-model** for the file format it generates and

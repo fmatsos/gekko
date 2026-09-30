@@ -1,6 +1,6 @@
 # Gekko
 
-[![QA](https://github.com/fmatsos/npu/actions/workflows/qa.yml/badge.svg)](https://github.com/fmatsos/npu/actions/workflows/qa.yml)
+[![QA](https://github.com/fmatsos/gekko/actions/workflows/qa.yml/badge.svg)](https://github.com/fmatsos/gekko/actions/workflows/qa.yml)
 
 Gekko (`gko` on the command line) is a generic CLI engine for running local AI commands, written
 in Rust, against any OpenAI-compatible model server — OVMS on an Intel NPU, `llama-server` on
@@ -22,7 +22,7 @@ Adding, changing or removing a command never requires recompiling. A repository 
 
 > [!NOTE]
 > Not published to crates.io — grab a binary from the
-> [releases](https://github.com/fmatsos/npu/releases) or build from source (see below).
+> [releases](https://github.com/fmatsos/gekko/releases) or build from source (see below).
 
 ---
 
@@ -96,7 +96,7 @@ all — it spawns the server the backend names directly on this machine.
 Each `vX.Y.Z` tag publishes a stripped binary per target — `x86_64-unknown-linux-gnu`,
 `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`,
 `x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc` — on the
-[releases page](https://github.com/fmatsos/npu/releases), together with the changelog for that
+[releases page](https://github.com/fmatsos/gekko/releases), together with the changelog for that
 version. The Linux binaries link only glibc and run on any glibc-based distribution. Each platform ships
 twice: an archive (`gko-vX.Y.Z-<platform>.tar.gz` or `.zip`)
 containing the executable and the README, and a raw, uncompressed executable
