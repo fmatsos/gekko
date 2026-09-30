@@ -30,7 +30,7 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 fn write_scope(scope: &Path) {
     write(
         scope,
-        ".gko/backends/stub.toml",
+        ".gekko/backends/stub.toml",
         r#"
         id = "stub"
         base_url = "http://127.0.0.1:0"
@@ -43,7 +43,7 @@ fn write_scope(scope: &Path) {
     );
     write(
         scope,
-        ".gko/models/primary.toml",
+        ".gekko/models/primary.toml",
         r#"
         id = "primary"
         backend = "stub"
@@ -53,7 +53,7 @@ fn write_scope(scope: &Path) {
     );
     write(
         scope,
-        ".gko/models/secondary.toml",
+        ".gekko/models/secondary.toml",
         r#"
         id = "secondary"
         backend = "stub"
@@ -63,7 +63,7 @@ fn write_scope(scope: &Path) {
     );
     write(
         scope,
-        ".gko/commands/e2e-cmd.md",
+        ".gekko/commands/e2e-cmd.md",
         "---\nmodel = \"primary\"\n---\n{{ input }}\n",
     );
 }

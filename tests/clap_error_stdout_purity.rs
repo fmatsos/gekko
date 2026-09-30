@@ -14,10 +14,10 @@
 //! mixed with command output.
 //!
 //! Uses the REAL compiled `gko` binary (`env!("CARGO_BIN_EXE_gko")`),
-//! run with the repo's versioned `.gko/` fixture (current directory =
+//! run with the repo's versioned `.gekko/` fixture (current directory =
 //! crate root, cf. `CARGO_MANIFEST_DIR`) as the local scope — the same
 //! fixture as `tests/cli.rs`. `HOME` is redirected to a
-//! temporary directory without `.config/gko` and `XDG_CONFIG_HOME` is removed, so that
+//! temporary directory without `.config/gekko` and `XDG_CONFIG_HOME` is removed, so that
 //! only this local fixture is taken into account (same isolation
 //! idiom as `tests/output_contract_e2e.rs`); no network is
 //! ever contacted by these three scenarios, `clap` failing (or `--help`

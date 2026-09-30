@@ -31,9 +31,9 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 
 /// A project scope with just the `qwen-fast` model configured (no backend,
 /// no command needed: `config models` is enough to prove which scope won).
-fn write_scope(gko_dir: &Path) {
+fn write_scope(gekko_dir: &Path) {
     write(
-        gko_dir,
+        gekko_dir,
         "backends/ovms.toml",
         r#"
         id = "ovms"
@@ -46,7 +46,7 @@ fn write_scope(gko_dir: &Path) {
         "#,
     );
     write(
-        gko_dir,
+        gekko_dir,
         "models/qwen-fast.toml",
         r#"
         id = "qwen-fast"
@@ -60,7 +60,7 @@ fn write_scope(gko_dir: &Path) {
 fn run(cwd: &Path, empty_xdg: &Path, args: &[&str], extra_env: &[(&str, &str)]) -> Output {
     // `HOME` deliberately UNRELATED to `cwd`'s ancestry: `HOME == cwd` (or
     // an ancestor of it) would make the walk-up's home boundary stop the
-    // search before it ever reaches the fixture's own `.gko` — these tests
+    // search before it ever reaches the fixture's own `.gekko` — these tests
     // are about the walk-up itself, not about the home boundary.
     Command::new(env!("CARGO_BIN_EXE_gko"))
         .args(args)
@@ -79,12 +79,12 @@ fn run(cwd: &Path, empty_xdg: &Path, args: &[&str], extra_env: &[(&str, &str)]) 
         .expect("waiting for gko")
 }
 
-/// A `.gko` found by walking up from a NESTED cwd (no `.gko` at cwd
+/// A `.gekko` found by walking up from a NESTED cwd (no `.gekko` at cwd
 /// itself) is picked up: `config models` lists the model it declares.
 #[test]
-fn a_gko_directory_in_a_parent_of_cwd_is_found_by_walking_up() {
+fn a_gekko_directory_in_a_parent_of_cwd_is_found_by_walking_up() {
     let root = fixture_dir("walkup-root");
-    write_scope(&root.join(".gko"));
+    write_scope(&root.join(".gekko"));
     let nested = root.join("src").join("deep");
     std::fs::create_dir_all(&nested).expect("nested dir");
     let empty_xdg = fixture_dir("walkup-empty-xdg");
@@ -100,12 +100,12 @@ fn a_gko_directory_in_a_parent_of_cwd_is_found_by_walking_up() {
 }
 
 /// A `.git` boundary (as a FILE, the worktree case) stops the walk-up: a
-/// `.gko` further up must stay invisible, and `config models` then lists
+/// `.gekko` further up must stay invisible, and `config models` then lists
 /// no model at all.
 #[test]
 fn a_git_boundary_stops_the_walk_up_even_when_git_is_a_file() {
     let outer = fixture_dir("git-boundary-outer");
-    write_scope(&outer.join(".gko"));
+    write_scope(&outer.join(".gekko"));
     let project = outer.join("project");
     std::fs::create_dir_all(&project).expect("project dir");
     std::fs::write(project.join(".git"), "gitdir: /elsewhere\n").expect(".git file");
@@ -118,7 +118,7 @@ fn a_git_boundary_stops_the_walk_up_even_when_git_is_a_file() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         !stdout.contains("qwen-fast"),
-        "the outer .gko must stay invisible past the .git boundary, got: {stdout}"
+        "the outer .gekko must stay invisible past the .git boundary, got: {stdout}"
     );
 }
 
@@ -126,7 +126,7 @@ fn a_git_boundary_stops_the_walk_up_even_when_git_is_a_file() {
 #[test]
 fn gko_config_dir_env_var_overrides_the_walk_up() {
     let elsewhere = fixture_dir("env-override-elsewhere");
-    write_scope(&elsewhere.join("the-gko-dir"));
+    write_scope(&elsewhere.join("the-gekko-dir"));
     let cwd = fixture_dir("env-override-cwd");
     let empty_xdg = fixture_dir("env-override-empty-xdg");
 
@@ -136,7 +136,10 @@ fn gko_config_dir_env_var_overrides_the_walk_up() {
         &["config", "models"],
         &[(
             "GKO_CONFIG_DIR",
-            elsewhere.join("the-gko-dir").to_str().expect("utf-8 path"),
+            elsewhere
+                .join("the-gekko-dir")
+                .to_str()
+                .expect("utf-8 path"),
         )],
     );
     assert!(
@@ -152,9 +155,9 @@ fn gko_config_dir_env_var_overrides_the_walk_up() {
 #[test]
 fn config_dir_flag_wins_over_the_environment_variable() {
     let env_target = fixture_dir("flag-wins-env-target");
-    write_scope(&env_target.join(".gko"));
+    write_scope(&env_target.join(".gekko"));
     let flag_target = fixture_dir("flag-wins-flag-target");
-    write_scope(&flag_target.join(".gko"));
+    write_scope(&flag_target.join(".gekko"));
     let cwd = fixture_dir("flag-wins-cwd");
     let empty_xdg = fixture_dir("flag-wins-empty-xdg");
 
@@ -163,13 +166,13 @@ fn config_dir_flag_wins_over_the_environment_variable() {
         &empty_xdg,
         &[
             "--config-dir",
-            flag_target.join(".gko").to_str().expect("utf-8 path"),
+            flag_target.join(".gekko").to_str().expect("utf-8 path"),
             "config",
             "models",
         ],
         &[(
             "GKO_CONFIG_DIR",
-            env_target.join(".gko").to_str().expect("utf-8 path"),
+            env_target.join(".gekko").to_str().expect("utf-8 path"),
         )],
     );
     assert!(
@@ -185,7 +188,7 @@ fn config_dir_flag_wins_over_the_environment_variable() {
 #[test]
 fn doctor_names_the_resolved_project_scope() {
     let root = fixture_dir("doctor-names-scope");
-    write_scope(&root.join(".gko"));
+    write_scope(&root.join(".gekko"));
     let empty_xdg = fixture_dir("doctor-names-scope-empty-xdg");
 
     let output = run(&root, &empty_xdg, &["doctor", "--json"], &[]);

@@ -94,7 +94,7 @@ stderr, then run `gko doctor`.
 | `gko --help` lists no business command | configuration failed to load; stderr names the file |
 | a command you wrote is missing from `--help` | wrong directory, not `.md`, or its first path segment is a reserved name (`backend`, `config`, `doctor`, `describe`, `update`, `help`) |
 | `unknown command: "x" (available commands: …)` | the command was never discovered — check the path under `commands/` |
-| exit `2` naming a file in `/etc/gko` you cannot edit | override it in `./.gko` with the same `id` (backends/models) or the same command path |
+| exit `2` naming a file in `/etc/gekko` you cannot edit | override it in `./.gekko` with the same `id` (backends/models) or the same command path |
 | a local override is ignored | replacement is keyed by `id` for backends and models, by full path for commands — a different `id` creates a second entry instead of replacing |
 | a broken file in a broad scope kills everything | **parse errors on backends/models are always fatal**, even when shadowed: an unparseable file has no knowable identity, so nothing can tell whether it is shadowed. Commands are keyed by path, so a shadowed broken command file is never opened. |
 | exit `3` with everything green in `doctor` | reachable socket, wrong `path` on the operation, or a non-2xx response — `doctor` never sends an HTTP request |

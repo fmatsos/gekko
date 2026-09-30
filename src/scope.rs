@@ -1,16 +1,16 @@
 //! Resolution of layered configuration scopes.
 //!
-//! General -> local precedence, Unix: `/etc/gko`, then `$XDG_CONFIG_HOME/gko`
-//! (falling back to `$HOME/.config/gko`), then the project scope. Windows
-//! (see [`Platform::Windows`]): `%ProgramData%\gko`, then `%APPDATA%\gko`
-//! (falling back to `%USERPROFILE%\.config\gko`, then `$HOME\.config\gko`),
+//! General -> local precedence, Unix: `/etc/gekko`, then `$XDG_CONFIG_HOME/gekko`
+//! (falling back to `$HOME/.config/gekko`), then the project scope. Windows
+//! (see [`Platform::Windows`]): `%ProgramData%\gekko`, then `%APPDATA%\gekko`
+//! (falling back to `%USERPROFILE%\.config\gekko`, then `$HOME\.config\gekko`),
 //! then the project scope. Consumers (`config.rs`, `command.rs`) apply "last
 //! one wins" to this list.
 
 use std::path::PathBuf;
 
-/// `/etc/gko` root, hardcoded: this is not an environment variable.
-const ETC_ROOT: &str = "/etc/gko";
+/// `/etc/gekko` root, hardcoded: this is not an environment variable.
+const ETC_ROOT: &str = "/etc/gekko";
 
 /// Which OS family's scope layout applies: a parameter, never `cfg!`
 /// inside [`candidate_roots`]/[`user_scope_root`], so the Windows order is
@@ -39,7 +39,7 @@ impl Platform {
 /// core stays a pure, testable function without touching real variables.
 #[derive(Debug, Clone)]
 pub(crate) struct ScopeEnv {
-    /// `/etc/gko` (Unix system scope).
+    /// `/etc/gekko` (Unix system scope).
     pub etc: PathBuf,
     /// `$XDG_CONFIG_HOME`, if set and non-empty (Unix user scope).
     pub xdg_config_home: Option<PathBuf>,
@@ -154,18 +154,18 @@ where
 }
 
 /// The project scope directory `--config-dir`/`GKO_CONFIG_DIR` names, when
-/// either is set (the CLI flag wins), OR the `.gko` directory found by
-/// walking up from `env.cwd`: check the current directory's `.gko` FIRST,
+/// either is set (the CLI flag wins), OR the `.gekko` directory found by
+/// walking up from `env.cwd`: check the current directory's `.gekko` FIRST,
 /// then stop the climb (without going any higher) at a directory whose
 /// `.git` `exists()` (a file in a worktree, a directory otherwise — either
-/// way, that is this project's root, so no `.gko` above it belongs to it)
+/// way, that is this project's root, so no `.gekko` above it belongs to it)
 /// or at `env.home` — climbing PAST `$HOME` would make an unrelated
-/// ancestor's `.gko` visible to every project on the machine, but `$HOME`
-/// itself is still checked for its own `.gko` before the climb stops there.
+/// ancestor's `.gekko` visible to every project on the machine, but `$HOME`
+/// itself is still checked for its own `.gekko` before the climb stops there.
 ///
 /// `None` when no override is set and the walk-up finds nothing: exactly
-/// the previous behaviour (only `cwd/.gko` — now the walk-up's very first
-/// step) for a project with no parent `.gko` and no `.git` boundary.
+/// the previous behaviour (only `cwd/.gekko` — now the walk-up's very first
+/// step) for a project with no parent `.gekko` and no `.git` boundary.
 #[must_use]
 pub(crate) fn project_root(env: &ScopeEnv) -> Option<PathBuf> {
     if let Some(over) = &env.config_dir_override {
@@ -176,9 +176,9 @@ pub(crate) fn project_root(env: &ScopeEnv) -> Option<PathBuf> {
     loop {
         // Checked BEFORE the `$HOME` boundary below: `cwd` starting exactly
         // at `$HOME` (or `$HOME` itself, reached while climbing) still gets
-        // its own `.gko` looked up — "exclusive" means the climb never goes
+        // its own `.gekko` looked up — "exclusive" means the climb never goes
         // ABOVE `$HOME`, not that `$HOME` itself is skipped.
-        let candidate = dir.join(".gko");
+        let candidate = dir.join(".gekko");
         if candidate.is_dir() {
             return Some(candidate);
         }
@@ -189,11 +189,11 @@ pub(crate) fn project_root(env: &ScopeEnv) -> Option<PathBuf> {
     }
 }
 
-/// The user scope root: `env.xdg_config_home/gko` if set (replaces the
-/// `HOME`-derived path, does not add to it), else `env.home/.config/gko` —
-/// on [`Platform::Unix`]. On [`Platform::Windows`]: `env.appdata/gko` if
-/// set, else `env.userprofile/.config/gko` if set, else
-/// `env.home/.config/gko` — the same `.config` leaf as Unix's fallback,
+/// The user scope root: `env.xdg_config_home/gekko` if set (replaces the
+/// `HOME`-derived path, does not add to it), else `env.home/.config/gekko` —
+/// on [`Platform::Unix`]. On [`Platform::Windows`]: `env.appdata/gekko` if
+/// set, else `env.userprofile/.config/gekko` if set, else
+/// `env.home/.config/gekko` — the same `.config` leaf as Unix's fallback,
 /// since `$HOME` there is a manual override (cf. this module's doc),
 /// not `%USERPROFILE%` read again under another name.
 fn user_scope_root(env: &ScopeEnv, platform: Platform) -> Option<PathBuf> {
@@ -202,29 +202,29 @@ fn user_scope_root(env: &ScopeEnv, platform: Platform) -> Option<PathBuf> {
             || {
                 env.home
                     .as_ref()
-                    .map(|home| home.join(".config").join("gko"))
+                    .map(|home| home.join(".config").join("gekko"))
             },
-            |xdg| Some(xdg.join("gko")),
+            |xdg| Some(xdg.join("gekko")),
         ),
         Platform::Windows => env
             .appdata
             .as_ref()
-            .map(|appdata| appdata.join("gko"))
+            .map(|appdata| appdata.join("gekko"))
             .or_else(|| {
                 env.userprofile
                     .as_ref()
-                    .map(|profile| profile.join(".config").join("gko"))
+                    .map(|profile| profile.join(".config").join("gekko"))
             })
             .or_else(|| {
                 env.home
                     .as_ref()
-                    .map(|home| home.join(".config").join("gko"))
+                    .map(|home| home.join(".config").join("gekko"))
             }),
     }
 }
 
-/// The system scope root: `env.etc` (`/etc/gko`) on [`Platform::Unix`],
-/// `env.program_data/gko` on [`Platform::Windows`] — `None` there when
+/// The system scope root: `env.etc` (`/etc/gekko`) on [`Platform::Unix`],
+/// `env.program_data/gekko` on [`Platform::Windows`] — `None` there when
 /// `%ProgramData%` is unset, which `filter_existing_dirs` then simply never
 /// sees (no hardcoded Windows fallback path: unlike `/etc`, which this
 /// binary can assume exists on every Unix host, a Windows host without
@@ -233,7 +233,7 @@ fn user_scope_root(env: &ScopeEnv, platform: Platform) -> Option<PathBuf> {
 fn system_scope_root(env: &ScopeEnv, platform: Platform) -> Option<PathBuf> {
     match platform {
         Platform::Unix => Some(env.etc.clone()),
-        Platform::Windows => env.program_data.as_ref().map(|pd| pd.join("gko")),
+        Platform::Windows => env.program_data.as_ref().map(|pd| pd.join("gekko")),
     }
 }
 
@@ -244,7 +244,7 @@ fn system_scope_root(env: &ScopeEnv, platform: Platform) -> Option<PathBuf> {
 /// 1. [`system_scope_root`];
 /// 2. [`user_scope_root`];
 /// 3. the project scope, if [`project_root`] finds one (an override, or a
-///    `.gko` found by walking up from `env.cwd`).
+///    `.gekko` found by walking up from `env.cwd`).
 ///
 /// Deduplicates while preserving order: if two entries resolve to the same
 /// path (e.g. `cwd` is `/etc`), only the first occurrence is kept.
@@ -347,23 +347,24 @@ mod tests {
         }
     }
 
-    /// A real `<dir>/.gko` directory on disk: `project_root` (unlike the
-    /// old unconditional `cwd.join(".gko")`) must actually find it during
+    /// A real `<dir>/.gekko` directory on disk: `project_root` (unlike the
+    /// old unconditional `cwd.join(".gekko")`) must actually find it during
     /// the walk-up, so these tests can no longer use a purely notional
     /// path like the other `env(...)` fixtures below still do for
     /// `etc`/`xdg`/`home` (which `candidate_roots` never checks for
     /// existence itself — that is `filter_existing_dirs`' job downstream).
-    fn work_dir_with_gko(name: &str) -> PathBuf {
+    fn work_dir_with_gekko(name: &str) -> PathBuf {
         let work = fixture_dir(name);
-        std::fs::create_dir_all(work.join(".gko")).expect("creating the fixture .gko directory");
+        std::fs::create_dir_all(work.join(".gekko"))
+            .expect("creating the fixture .gekko directory");
         work
     }
 
     #[test]
     fn xdg_config_home_present_is_used_verbatim() {
-        let work = work_dir_with_gko("xdg-present");
+        let work = work_dir_with_gekko("xdg-present");
         let e = env(
-            "/etc/gko",
+            "/etc/gekko",
             Some("/xdg"),
             Some("/home/alice"),
             &work.display().to_string(),
@@ -372,18 +373,18 @@ mod tests {
         assert_eq!(
             roots,
             vec![
-                PathBuf::from("/etc/gko"),
-                PathBuf::from("/xdg/gko"),
-                work.join(".gko"),
+                PathBuf::from("/etc/gekko"),
+                PathBuf::from("/xdg/gekko"),
+                work.join(".gekko"),
             ]
         );
     }
 
     #[test]
     fn xdg_absent_falls_back_to_home_dot_config() {
-        let work = work_dir_with_gko("xdg-absent");
+        let work = work_dir_with_gekko("xdg-absent");
         let e = env(
-            "/etc/gko",
+            "/etc/gekko",
             None,
             Some("/home/alice"),
             &work.display().to_string(),
@@ -392,72 +393,80 @@ mod tests {
         assert_eq!(
             roots,
             vec![
-                PathBuf::from("/etc/gko"),
-                PathBuf::from("/home/alice/.config/gko"),
-                work.join(".gko"),
+                PathBuf::from("/etc/gekko"),
+                PathBuf::from("/home/alice/.config/gekko"),
+                work.join(".gekko"),
             ]
         );
     }
 
     #[test]
     fn xdg_and_home_both_absent_yields_only_etc_and_cwd() {
-        let work = work_dir_with_gko("xdg-and-home-absent");
-        let e = env("/etc/gko", None, None, &work.display().to_string());
+        let work = work_dir_with_gekko("xdg-and-home-absent");
+        let e = env("/etc/gekko", None, None, &work.display().to_string());
         let roots = candidate_roots(&e, Platform::Unix);
-        assert_eq!(roots, vec![PathBuf::from("/etc/gko"), work.join(".gko")]);
+        assert_eq!(
+            roots,
+            vec![PathBuf::from("/etc/gekko"), work.join(".gekko")]
+        );
     }
 
     #[test]
     fn xdg_present_replaces_home_derivation_rather_than_adding_to_it() {
         // HOME is also set, but XDG_CONFIG_HOME takes priority: only one
         // user path should appear, not both.
-        let work = work_dir_with_gko("xdg-replaces-home");
+        let work = work_dir_with_gekko("xdg-replaces-home");
         let e = env(
-            "/etc/gko",
+            "/etc/gekko",
             Some("/xdg"),
             Some("/home/alice"),
             &work.display().to_string(),
         );
         let roots = candidate_roots(&e, Platform::Unix);
-        assert!(!roots.contains(&PathBuf::from("/home/alice/.config/gko")));
-        assert_eq!(roots.iter().filter(|p| p.ends_with("gko")).count(), 2);
+        assert!(!roots.contains(&PathBuf::from("/home/alice/.config/gekko")));
+        assert_eq!(roots.iter().filter(|p| p.ends_with("gekko")).count(), 2);
     }
 
     #[test]
     fn order_is_general_to_local() {
-        let work = work_dir_with_gko("order-general-to-local");
+        let work = work_dir_with_gekko("order-general-to-local");
         let e = env(
-            "/etc/gko",
+            "/etc/gekko",
             Some("/xdg"),
             Some("/home/alice"),
             &work.display().to_string(),
         );
         let roots = candidate_roots(&e, Platform::Unix);
-        assert_eq!(roots[0], PathBuf::from("/etc/gko"));
-        assert_eq!(roots[1], PathBuf::from("/xdg/gko"));
-        assert_eq!(roots[2], work.join(".gko"));
+        assert_eq!(roots[0], PathBuf::from("/etc/gekko"));
+        assert_eq!(roots[1], PathBuf::from("/xdg/gekko"));
+        assert_eq!(roots[2], work.join(".gekko"));
     }
 
     #[test]
     fn duplicate_resolved_paths_keep_only_first_occurrence() {
         // Direct collision: xdg_config_home already equals the etc root —
         // a real case mentioned in the contract (e.g. cwd = /etc).
-        let work = work_dir_with_gko("dup-xdg-collides-etc");
-        let etc = PathBuf::from("/etc/gko");
-        let e = env("/etc/gko", Some("/etc"), None, &work.display().to_string());
+        let work = work_dir_with_gekko("dup-xdg-collides-etc");
+        let etc = PathBuf::from("/etc/gekko");
+        let e = env(
+            "/etc/gekko",
+            Some("/etc"),
+            None,
+            &work.display().to_string(),
+        );
         let roots = candidate_roots(&e, Platform::Unix);
         assert_eq!(
             roots,
-            vec![etc, work.join(".gko")],
-            "the second occurrence of /etc/gko (via xdg) must be deduplicated, the first kept"
+            vec![etc, work.join(".gekko")],
+            "the second occurrence of /etc/gekko (via xdg) must be deduplicated, the first kept"
         );
 
         // Collision between the etc root and the cwd root itself: `etc`
-        // and `cwd` resolve to the SAME directory, so `<cwd>/.gko` remains
+        // and `cwd` resolve to the SAME directory, so `<cwd>/.gekko` remains
         // distinct from it, but the general->local order must be preserved
         // even in this edge case.
         let dup_root = fixture_dir("dup-cwd-equals-etc");
-        std::fs::create_dir_all(dup_root.join(".gko")).expect("creating .gko");
+        std::fs::create_dir_all(dup_root.join(".gekko")).expect("creating .gekko");
         let e2 = env(
             &dup_root.display().to_string(),
             None,
@@ -465,7 +474,7 @@ mod tests {
             &dup_root.display().to_string(),
         );
         let roots2 = candidate_roots(&e2, Platform::Unix);
-        assert_eq!(roots2, vec![dup_root.clone(), dup_root.join(".gko")]);
+        assert_eq!(roots2, vec![dup_root.clone(), dup_root.join(".gekko")]);
     }
 
     /// Creates a unique fixture directory under `target/`, so as not to
@@ -529,27 +538,27 @@ mod tests {
     // -- project_root: the walk-up search -----------------------------------
 
     #[test]
-    fn project_root_finds_gko_at_cwd_itself() {
-        let cwd = work_dir_with_gko("walkup-at-cwd");
-        let e = env("/etc/gko", None, None, &cwd.display().to_string());
-        assert_eq!(project_root(&e), Some(cwd.join(".gko")));
+    fn project_root_finds_gekko_at_cwd_itself() {
+        let cwd = work_dir_with_gekko("walkup-at-cwd");
+        let e = env("/etc/gekko", None, None, &cwd.display().to_string());
+        assert_eq!(project_root(&e), Some(cwd.join(".gekko")));
     }
 
     #[test]
-    fn project_root_walks_up_to_a_parent_gko() {
+    fn project_root_walks_up_to_a_parent_gekko() {
         let root = fixture_dir("walkup-parent");
-        std::fs::create_dir_all(root.join(".gko")).expect(".gko");
+        std::fs::create_dir_all(root.join(".gekko")).expect(".gekko");
         let nested = root.join("src").join("deep");
         std::fs::create_dir_all(&nested).expect("nested dir");
 
-        let e = env("/etc/gko", None, None, &nested.display().to_string());
-        assert_eq!(project_root(&e), Some(root.join(".gko")));
+        let e = env("/etc/gekko", None, None, &nested.display().to_string());
+        assert_eq!(project_root(&e), Some(root.join(".gekko")));
     }
 
     #[test]
     fn project_root_stops_at_a_git_boundary_and_never_looks_above_it() {
         let outer = fixture_dir("walkup-git-boundary-outer");
-        std::fs::create_dir_all(outer.join(".gko")).expect("outer .gko");
+        std::fs::create_dir_all(outer.join(".gekko")).expect("outer .gekko");
         let project = outer.join("project");
         std::fs::create_dir_all(&project).expect("project dir");
         // `.git` as a FILE (the worktree case), not a directory: `exists()`
@@ -558,11 +567,11 @@ mod tests {
         let nested = project.join("src");
         std::fs::create_dir_all(&nested).expect("nested dir");
 
-        let e = env("/etc/gko", None, None, &nested.display().to_string());
+        let e = env("/etc/gekko", None, None, &nested.display().to_string());
         assert_eq!(
             project_root(&e),
             None,
-            "the outer .gko must stay invisible past the .git boundary"
+            "the outer .gekko must stay invisible past the .git boundary"
         );
     }
 
@@ -570,31 +579,31 @@ mod tests {
     fn project_root_never_searches_above_home() {
         // `home`'s PARENT is private to this test (a fresh fixture
         // directory, never `target/test-fixtures` itself, which every
-        // fixture shares): writing `.gko` there must not leak into any
+        // fixture shares): writing `.gekko` there must not leak into any
         // other test's walk-up.
         let isolated_parent = fixture_dir("walkup-home-exclusive");
         let home = isolated_parent.join("home");
         std::fs::create_dir_all(&home).expect("home dir");
-        // `.gko` sits ABOVE home: only visible if the climb were allowed to
+        // `.gekko` sits ABOVE home: only visible if the climb were allowed to
         // go past `$HOME`, which it must never do.
-        std::fs::create_dir_all(isolated_parent.join(".gko")).expect("above-home .gko");
+        std::fs::create_dir_all(isolated_parent.join(".gekko")).expect("above-home .gekko");
         let nested = home.join("projects").join("x");
         std::fs::create_dir_all(&nested).expect("nested dir");
 
-        // Starting exactly AT home with no `.gko` there: the climb must
+        // Starting exactly AT home with no `.gekko` there: the climb must
         // stop, never look at home's own parent.
         let at_home = env(
-            "/etc/gko",
+            "/etc/gekko",
             None,
             Some(&home.display().to_string()),
             &home.display().to_string(),
         );
         assert_eq!(project_root(&at_home), None);
 
-        // Starting below home, with no `.gko` between `nested` and `home`:
+        // Starting below home, with no `.gekko` between `nested` and `home`:
         // the climb must stop AT home, never search above it.
         let below_home = env(
-            "/etc/gko",
+            "/etc/gekko",
             None,
             Some(&home.display().to_string()),
             &nested.display().to_string(),
@@ -604,28 +613,28 @@ mod tests {
 
     /// `$HOME` itself is not excluded from the search: only climbing PAST
     /// it is refused. A `cwd` that happens to equal `$HOME` (or reaches it
-    /// while climbing) still gets its own `.gko` looked up there.
+    /// while climbing) still gets its own `.gekko` looked up there.
     #[test]
-    fn project_root_still_finds_gko_at_home_itself() {
+    fn project_root_still_finds_gekko_at_home_itself() {
         let home = fixture_dir("walkup-home-not-skipped");
-        std::fs::create_dir_all(home.join(".gko")).expect("home .gko");
+        std::fs::create_dir_all(home.join(".gekko")).expect("home .gekko");
 
         let at_home = env(
-            "/etc/gko",
+            "/etc/gekko",
             None,
             Some(&home.display().to_string()),
             &home.display().to_string(),
         );
-        assert_eq!(project_root(&at_home), Some(home.join(".gko")));
+        assert_eq!(project_root(&at_home), Some(home.join(".gekko")));
     }
 
     #[test]
     fn project_root_config_dir_override_wins_and_skips_the_walk() {
         let cwd = fixture_dir("walkup-override");
-        // Deliberately no `.gko` anywhere near `cwd`: the override alone
+        // Deliberately no `.gekko` anywhere near `cwd`: the override alone
         // decides the result.
-        let mut e = env("/etc/gko", None, None, &cwd.display().to_string());
-        let overridden = PathBuf::from("/somewhere/declared/.gko");
+        let mut e = env("/etc/gekko", None, None, &cwd.display().to_string());
+        let overridden = PathBuf::from("/somewhere/declared/.gekko");
         e.config_dir_override = Some(overridden.clone());
         assert_eq!(project_root(&e), Some(overridden));
     }
@@ -652,11 +661,11 @@ mod tests {
         );
         assert_eq!(
             system_scope_root(&e, Platform::Windows),
-            Some(PathBuf::from(r"C:\ProgramData").join("gko"))
+            Some(PathBuf::from(r"C:\ProgramData").join("gekko"))
         );
         assert_eq!(
             user_scope_root(&e, Platform::Windows),
-            Some(PathBuf::from(r"C:\Users\alice\AppData\Roaming").join("gko"))
+            Some(PathBuf::from(r"C:\Users\alice\AppData\Roaming").join("gekko"))
         );
     }
 
@@ -671,7 +680,11 @@ mod tests {
         );
         assert_eq!(
             user_scope_root(&e, Platform::Windows),
-            Some(PathBuf::from(r"C:\Users\alice").join(".config").join("gko"))
+            Some(
+                PathBuf::from(r"C:\Users\alice")
+                    .join(".config")
+                    .join("gekko")
+            )
         );
     }
 
@@ -686,7 +699,11 @@ mod tests {
         );
         assert_eq!(
             user_scope_root(&e, Platform::Windows),
-            Some(PathBuf::from(r"C:\Users\alice").join(".config").join("gko"))
+            Some(
+                PathBuf::from(r"C:\Users\alice")
+                    .join(".config")
+                    .join("gekko")
+            )
         );
     }
 
@@ -710,7 +727,7 @@ mod tests {
         // walk-up genuinely finding nothing here.
         let cwd = fixture_dir("windows-candidate-roots");
         // `home` pinned to `cwd` itself: bounds the walk-up so it never
-        // climbs into this repository's OWN real `.gko`/`.git` above
+        // climbs into this repository's OWN real `.gekko`/`.git` above
         // `target/test-fixtures` — the point of this test is the ORDER of
         // the two Windows scope roots, not the walk-up.
         let e = windows_env(
@@ -723,8 +740,8 @@ mod tests {
         assert_eq!(
             candidate_roots(&e, Platform::Windows),
             vec![
-                PathBuf::from(r"C:\ProgramData").join("gko"),
-                PathBuf::from(r"C:\Users\alice\AppData\Roaming").join("gko"),
+                PathBuf::from(r"C:\ProgramData").join("gekko"),
+                PathBuf::from(r"C:\Users\alice\AppData\Roaming").join("gekko"),
             ]
         );
     }

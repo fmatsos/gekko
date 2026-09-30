@@ -139,7 +139,7 @@ fn free_port() -> u16 {
 }
 
 /// Everything one scenario needs: a scope, a state directory, a home with no
-/// local `.gko`, and the port its fake server was told to bind.
+/// local `.gekko`, and the port its fake server was told to bind.
 struct Fixture {
     scope: PathBuf,
     state: PathBuf,
@@ -188,7 +188,7 @@ impl Fixture {
 
         write(
             &scope,
-            "gko/backends/local.toml",
+            "gekko/backends/local.toml",
             &format!(
                 r#"
 id = "local"
@@ -216,7 +216,7 @@ startup_timeout_secs = {startup_timeout_secs}
 
         write(
             &scope,
-            "gko/models/qwen.toml",
+            "gekko/models/qwen.toml",
             r#"
 id = "qwen"
 backend = "local"
@@ -256,7 +256,7 @@ model = "qwen3-4b"
     /// The same backend identifier in ANOTHER project: its own scope, the
     /// machine's ONE state directory and one home.
     ///
-    /// Backend identifiers are per-scope and `./.gko` is a documented scope,
+    /// Backend identifiers are per-scope and `./.gekko` is a documented scope,
     /// so `llamacpp` declared by two projects is ordinary, not pathological
     /// — while the state directory they share is machine-global. The home is
     /// shared with the state directory on purpose: macOS derives the state
@@ -285,15 +285,15 @@ model = "qwen3-4b"
     /// without it — which is the whole point: the same identifier in
     /// another project is another file and another record.
     fn backend_source(&self) -> PathBuf {
-        let declared = self.scope.join("gko").join("backends").join("local.toml");
+        let declared = self.scope.join("gekko").join("backends").join("local.toml");
         std::fs::canonicalize(&declared).unwrap_or(declared)
     }
 
     /// The state record `gko serve` writes.
     ///
     /// Derived through the library's own resolver rather than by restating
-    /// the Linux convention: the directory is `$XDG_STATE_HOME/gko` on Linux
-    /// and `$HOME/Library/Application Support/gko/state` on macOS, and a
+    /// the Linux convention: the directory is `$XDG_STATE_HOME/gekko` on Linux
+    /// and `$HOME/Library/Application Support/gekko/state` on macOS, and a
     /// hard-coded path here would make every assertion below fail on the
     /// second platform for a reason that has nothing to do with the runtime.
     /// The file NAME is resolved the same way, and for the same reason: it
@@ -765,7 +765,7 @@ fn doctor_reports_a_missing_runtime_command_as_unreachable() {
 
     write(
         &scope,
-        "gko/backends/local.toml",
+        "gekko/backends/local.toml",
         &format!(
             r#"
 id = "local"
@@ -814,7 +814,7 @@ fn port_auto_with_a_process_runtime_is_rejected_end_to_end() {
 
     write(
         &scope,
-        "gko/backends/local.toml",
+        "gekko/backends/local.toml",
         r#"
 id = "local"
 base_url = "http://127.0.0.1:{{ backend.port }}"
@@ -833,7 +833,7 @@ arguments = ["--port", "{{ backend.port }}"]
     );
     write(
         &scope,
-        "gko/models/qwen.toml",
+        "gekko/models/qwen.toml",
         r#"
 id = "qwen"
 backend = "local"

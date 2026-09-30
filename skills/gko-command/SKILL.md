@@ -1,6 +1,6 @@
 ---
 name: gko-command
-description: Writes and fixes `gko` command files (`.gko/commands/*.md`) — the Markdown file whose TOML frontmatter is fenced by three dashes (the `+++` of earlier versions is rejected) and whose path becomes the CLI command name. Covers frontmatter keys, input modes, `[args.*]` flags, the five prompt placeholders (`{{ input }}`, `{{ args.x }}`, `{{ env.X }}`, `{{ schemas.id }}`, `{{ partials.id }}`), the `[output]` contract with JSON Schema, reserved command names, and the load-time rejections that catch a typo before it silently reaches the model.
+description: Writes and fixes `gko` command files (`.gekko/commands/*.md`) — the Markdown file whose TOML frontmatter is fenced by three dashes (the `+++` of earlier versions is rejected) and whose path becomes the CLI command name. Covers frontmatter keys, input modes, `[args.*]` flags, the five prompt placeholders (`{{ input }}`, `{{ args.x }}`, `{{ env.X }}`, `{{ schemas.id }}`, `{{ partials.id }}`), the `[output]` contract with JSON Schema, reserved command names, and the load-time rejections that catch a typo before it silently reaches the model.
 when_to_use: >
   Trigger on "add a gko command", "write a prompt for gko", "add a flag to
   this command", "make this command return JSON", "nest gko commands", or on
@@ -19,7 +19,7 @@ prompt as the body. There is no registration step — **the path under
 `commands/` is the command name**.
 
 After changing a prompt, add a regression case under
-`.gko/tests/<command path>/<case>.toml` and run `gko config test`. See
+`.gekko/tests/<command path>/<case>.toml` and run `gko config test`. See
 `docs/testing.md` for the case format and report contract.
 
 | File | Command |

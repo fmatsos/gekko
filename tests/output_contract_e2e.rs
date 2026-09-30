@@ -7,17 +7,17 @@
 //!    same idiom as
 //!    `backend::tests::chat_end_to_end_against_stubbed_http_server`) that
 //!    answers with a fixed `chat/completions` response;
-//! 2. writes a temporary `.gko/` scope under `target/` (backend, model and
+//! 2. writes a temporary `.gekko/` scope under `target/` (backend, model and
 //!    command) pointing at that fake backend;
 //! 3. runs the REAL `gko` binary (`env!("CARGO_BIN_EXE_gko")`, never a
 //!    function called directly in this test process) with that scope as
 //!    the current directory, and checks the exit code, stdout and stderr.
 //!
 //! `HOME` is redirected to the temporary scope itself (which never contains
-//! `.config/gko`) and `XDG_CONFIG_HOME` is removed from the child's
-//! environment: only the temporary scope root (`<scope>/.gko`, via the
+//! `.config/gekko`) and `XDG_CONFIG_HOME` is removed from the child's
+//! environment: only the temporary scope root (`<scope>/.gekko`, via the
 //! current directory) must be taken into account by `scope::roots()`, never
-//! the real `$HOME` nor an `/etc/gko` that might otherwise exist on the
+//! the real `$HOME` nor an `/etc/gekko` that might otherwise exist on the
 //! machine. `Command::env`/`env_remove` only touch the CHILD PROCESS's
 //! environment: no test mutates the real environment variables
 //! (`std::env::set_var` is `unsafe` in edition 2024, forbidden by
@@ -35,7 +35,7 @@ use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Creates a unique temporary scope directory under `target/`, distinct
-/// from the versioned `.gko/` fixture — same idiom as the
+/// from the versioned `.gekko/` fixture — same idiom as the
 /// `command::tests`/`config::tests`/`tests/cli.rs` fixtures.
 fn fixture_scope(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -56,7 +56,7 @@ fn write(dir: &Path, rel: &str, contents: &str) {
     std::fs::write(path, contents).expect("writing the fixture");
 }
 
-/// Writes a complete `.gko` scope (backend + model) pointing at the fake
+/// Writes a complete `.gekko` scope (backend + model) pointing at the fake
 /// HTTP backend `addr`, plus the `e2e-cmd` fixture command whose `[output]`
 /// section is `output_section` (its TOML content, WITHOUT the `[output]`
 /// brackets themselves — every caller of this module supplies a non-empty
@@ -64,15 +64,15 @@ fn write(dir: &Path, rel: &str, contents: &str) {
 ///
 /// `scope` is the current directory the binary receives (`run_gko`), NOT
 /// the scope root itself: `scope::roots()` (`src/scope.rs`) computes the
-/// local root as `<cwd>/.gko`, never `<cwd>` directly — every path written
-/// here must therefore be prefixed with `.gko/`, or the binary will find
+/// local root as `<cwd>/.gekko`, never `<cwd>` directly — every path written
+/// here must therefore be prefixed with `.gekko/`, or the binary will find
 /// neither backend, model, nor command (an exact bug reproduced and fixed
 /// while writing this test: an earlier version wrote directly under
 /// `<scope>/backends/...`, which `scope::roots()` ignores).
 fn write_scope(scope: &Path, addr: std::net::SocketAddr, output_section: &str) {
     write(
         scope,
-        ".gko/backends/stub.toml",
+        ".gekko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -87,7 +87,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, output_section: &str) {
     );
     write(
         scope,
-        ".gko/models/test-model.toml",
+        ".gekko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -97,7 +97,7 @@ fn write_scope(scope: &Path, addr: std::net::SocketAddr, output_section: &str) {
     );
     write(
         scope,
-        ".gko/commands/e2e-cmd.md",
+        ".gekko/commands/e2e-cmd.md",
         &format!(
             "---\nmodel = \"test-model\"\n\n[output]\n{output_section}\n---\n{{{{ input }}}}\n"
         ),
@@ -302,9 +302,9 @@ fn run_gko_with_env(
         .envs(vars.iter().copied())
         .current_dir(scope)
         // Configuration scope isolation: only
-        // <scope>/.gko (via the current directory) must be visible. `HOME`
+        // <scope>/.gekko (via the current directory) must be visible. `HOME`
         // is redirected to `scope` itself (which never contains
-        // `.config/gko`) and `XDG_CONFIG_HOME` is removed, so that neither
+        // `.config/gekko`) and `XDG_CONFIG_HOME` is removed, so that neither
         // the real $HOME nor an XDG_CONFIG_HOME inherited from the test's
         // environment introduce a stray scope root. This only touches the
         // CHILD PROCESS's environment, never the real environment
@@ -335,11 +335,11 @@ fn run_gko_with_env(
         .expect("waiting for the gko process to finish")
 }
 
-/// Writes a GENERAL scope (via `$XDG_CONFIG_HOME/gko`, never `<cwd>/.gko`)
+/// Writes a GENERAL scope (via `$XDG_CONFIG_HOME/gekko`, never `<cwd>/.gekko`)
 /// containing a `never-invoked` command whose `[output].schema` points at
 /// `schemas/broken-or-missing.json` — cf. `src/scope.rs::candidate_roots`:
-/// `$XDG_CONFIG_HOME/gko` is a scope root in its own right, more general
-/// than `<cwd>/.gko`, exactly the level where a
+/// `$XDG_CONFIG_HOME/gekko` is a scope root in its own right, more general
+/// than `<cwd>/.gekko`, exactly the level where a
 /// broken schema belonging to a command nobody invokes must not disable
 /// the whole CLI.
 ///
@@ -353,7 +353,7 @@ fn write_general_scope_with_never_invoked_command(
 ) {
     write(
         xdg_root,
-        "gko/backends/stub.toml",
+        "gekko/backends/stub.toml",
         &format!(
             r#"
             id = "stub"
@@ -368,7 +368,7 @@ fn write_general_scope_with_never_invoked_command(
     );
     write(
         xdg_root,
-        "gko/models/test-model.toml",
+        "gekko/models/test-model.toml",
         r#"
         id = "test-model"
         backend = "stub"
@@ -378,22 +378,22 @@ fn write_general_scope_with_never_invoked_command(
     );
     write(
         xdg_root,
-        "gko/commands/never-invoked.md",
+        "gekko/commands/never-invoked.md",
         "---\nmodel = \"test-model\"\n\n[output]\nformat = \"json\"\n\
          schema = \"schemas/broken-or-missing.json\"\n---\n{{ input }}\n",
     );
     if let Some(body) = schema_body {
-        write(xdg_root, "gko/schemas/broken-or-missing.json", body);
+        write(xdg_root, "gekko/schemas/broken-or-missing.json", body);
     }
 }
 
 /// Runs the REAL `gko` binary with `$XDG_CONFIG_HOME` pointed at
 /// `xdg_config_home` (the GENERAL scope written by
 /// `write_general_scope_with_never_invoked_command`) and `cwd` as the
-/// current directory — a directory deliberately WITHOUT a local `.gko`, so
-/// that the only scope root taken into account is `$XDG_CONFIG_HOME/gko`
+/// current directory — a directory deliberately WITHOUT a local `.gekko`, so
+/// that the only scope root taken into account is `$XDG_CONFIG_HOME/gekko`
 /// (cf. `src/scope.rs::candidate_roots`). `HOME` is redirected to `cwd`
-/// (which never contains `.config/gko`) for the same isolation reason as
+/// (which never contains `.config/gekko`) for the same isolation reason as
 /// `run_gko`.
 fn run_gko_xdg(cwd: &Path, xdg_config_home: &Path, args: &[&str], stdin_data: &str) -> Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_gko"))
@@ -422,8 +422,8 @@ fn run_gko_xdg(cwd: &Path, xdg_config_home: &Path, args: &[&str], stdin_data: &s
         .expect("waiting for the gko process to finish")
 }
 
-/// Creates a temporary working directory without a local `.gko`, distinct
-/// from the general `$XDG_CONFIG_HOME/gko` scope — same idiom as
+/// Creates a temporary working directory without a local `.gekko`, distinct
+/// from the general `$XDG_CONFIG_HOME/gekko` scope — same idiom as
 /// `fixture_scope`.
 fn fixture_cwd_without_local_scope(name: &str) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -583,7 +583,7 @@ fn json_wrapped_in_fence_and_schema_satisfied_succeeds_end_to_end() {
         },
         "additionalProperties": false
     }"#;
-    write(&scope, ".gko/schemas/classification.json", schema);
+    write(&scope, ".gekko/schemas/classification.json", schema);
     write_scope(
         &scope,
         addr,
@@ -625,7 +625,7 @@ fn json_violating_schema_fails_with_exit_code_four_end_to_end() {
         },
         "additionalProperties": false
     }"#;
-    write(&scope, ".gko/schemas/classification.json", schema);
+    write(&scope, ".gekko/schemas/classification.json", schema);
     write_scope(
         &scope,
         addr,

@@ -204,25 +204,6 @@ jobs:
             '{schema_version: 1, version: $version, assets: $assets}' \
             > dist/gko-update.json
 
-      # ponytail: every binary up to 0.8.0 is `npu`: it fetches
-      # `npu-update.json` and accepts only an asset named `npu-*`. Publishing
-      # the same bytes a second time under that prefix, with a manifest that
-      # differs only by the names, keeps `npu update` a way to reach `gko`.
-      # Ceiling: six extra raw binaries per release. Upgrade path: drop this
-      # step once no 0.8.0 install is left to migrate.
-      - name: Publish the legacy npu update channel
-        shell: bash
-        run: |
-          set -euo pipefail
-          for path in dist/gko-*; do
-            case "$path" in
-              *.tar.gz|*.zip|*.json) continue ;;
-            esac
-            name="$(basename "$path")"
-            cp "$path" "dist/npu-${name#gko-}"
-          done
-          jq '.assets |= with_entries(.value.name |= "npu-" + ltrimstr("gko-"))' \
-            dist/gko-update.json > dist/npu-update.json
 
       # The notes come from CHANGELOG.md, written by the `release` skill and
       # reviewed in the commit that bumped the version: the published notes are

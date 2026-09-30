@@ -70,7 +70,7 @@ A schema is declared in one of three forms:
 A value without a `/` and without a `.json` suffix is a name; anything else is a path. A relative
 path resolves against the **scope root** of the command file, not against the current directory
 and not against the command file itself — `schemas/` is a sibling of `commands/`. A command coming
-from `/etc/gko` therefore looks in `/etc/gko/schemas/`. The depth of the command path makes no
+from `/etc/gekko` therefore looks in `/etc/gekko/schemas/`. The depth of the command path makes no
 difference: `commands/git/review.md` still resolves against the scope root.
 
 ### Sending the schema to the model

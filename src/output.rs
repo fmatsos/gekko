@@ -436,7 +436,7 @@ mod tests {
     /// only to CITE it in the error message, never to open it).
     fn test_command_file() -> std::path::PathBuf {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(".gko")
+            .join(".gekko")
             .join("commands")
             .join("test-command-placeholder.md")
     }
