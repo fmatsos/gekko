@@ -77,15 +77,14 @@
     veilLine.textContent = "$ cd " + (part === parts[0] ? "~" : part.id);
     veil.classList.add("on");
     const ease = "cubic-bezier(.65, 0, .35, 1)";
+    // timers drive the steps, the animations only draw them: a hidden tab holds animation events back
     const cover = veil.animate({ clipPath: inn }, { duration: 420, easing: ease, fill: "forwards" });
-    cover.onfinish = () => {
-      scrollTo({ top: y, behavior: "instant" });
-      setTimeout(() => {
-        const reveal = veil.animate({ clipPath: out }, { duration: 480, easing: ease, fill: "forwards" });
-        cover.cancel();
-        reveal.onfinish = () => { reveal.cancel(); veil.classList.remove("on"); lock = 0; };
-      }, 160);
-    };
+    setTimeout(() => scrollTo({ top: y, behavior: "instant" }), 420);
+    setTimeout(() => {
+      const reveal = veil.animate({ clipPath: out }, { duration: 480, easing: ease, fill: "forwards" });
+      cover.cancel();
+      setTimeout(() => { reveal.cancel(); veil.classList.remove("on"); lock = 0; }, 480);
+    }, 580);
   };
   // the in-page links to a part (the nodes, "Get Gekko") travel the same way
   document.querySelectorAll("a[href^='#']").forEach(a => {
@@ -105,10 +104,20 @@
     const now = performance.now(), fresh = now - last > 200;
     last = now;
     if (!fresh || now < lock) return;
-    const y = scrollY, s = stops();
-    const to = e.deltaY > 0 ? s.find(v => v > y + 4) : s.findLast(v => v < y - 4);
-    if (to !== undefined) go(to);
+    step(Math.sign(e.deltaY));
   }, { passive: false });
+  const step = dir => {
+    const y = scrollY, s = stops();
+    const to = dir > 0 ? s.find(v => v > y + 4) : s.findLast(v => v < y - 4);
+    if (to !== undefined) go(to);
+  };
+  // the arrow keys step the same way, except in a form field or a region that scrolls on its own
+  addEventListener("keydown", e => {
+    if (!parts.length || html.dataset.motion !== "on" || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.target.closest("input, textarea, select, [contenteditable], .table")) return;
+    e.preventDefault();
+    if (performance.now() >= lock) step(e.key === "ArrowDown" ? 1 : -1);
+  });
 
   let fromRail = false;
   const settle = () => {

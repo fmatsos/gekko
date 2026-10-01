@@ -264,11 +264,11 @@ footer a { color: var(--dune); }
   html { scrollbar-width: none; }
   html::-webkit-scrollbar { display: none; }
   .rail, .rail-nav { display: block; position: fixed; right: 6px; top: calc(var(--hh, 0px) + 14px); bottom: 14px; width: 24px; }
-  .rail { z-index: 41; cursor: pointer; }
+  .rail { z-index: 40; cursor: pointer; }
   .rail::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; border-radius: 2px; background: linear-gradient(#3ee6c400, var(--circuit) 6%, var(--circuit) 94%, #3ee6c400); opacity: .45; }
   .rail-thumb { position: absolute; left: 50%; top: 0; width: 8px; height: var(--th, 40px); margin-left: -4px; border-radius: 99px; background: linear-gradient(var(--dune), var(--gecko) 45%, #e8692a); box-shadow: 0 0 0 2px var(--night), 0 0 12px #fb903baa; transition: width .2s, margin-left .2s; }
   .rail:hover .rail-thumb, html.dragging .rail-thumb { width: 12px; margin-left: -6px; }
-  .rail-nav { z-index: 40; pointer-events: none; }
+  .rail-nav { z-index: 41; pointer-events: none; }   /* above the track: only its nodes take the pointer */
   .rail-nav ol { list-style: none; margin: 0; padding: 0; position: relative; height: 100%; }
   .rail-nav li { position: absolute; right: 0; top: calc(var(--at, 0) * (100% - var(--th, 40px)) + var(--th, 40px) / 2); }
   .rail-nav a { pointer-events: auto; display: flex; align-items: center; gap: .5rem; min-height: 24px; transform: translateY(-50%); text-decoration: none; }
@@ -916,15 +916,14 @@ it is only discovered when the command runs.</p>
     veilLine.textContent = "$ cd " + (part === parts[0] ? "~" : part.id);
     veil.classList.add("on");
     const ease = "cubic-bezier(.65, 0, .35, 1)";
+    // timers drive the steps, the animations only draw them: a hidden tab holds animation events back
     const cover = veil.animate({ clipPath: inn }, { duration: 420, easing: ease, fill: "forwards" });
-    cover.onfinish = () => {
-      scrollTo({ top: y, behavior: "instant" });
-      setTimeout(() => {
-        const reveal = veil.animate({ clipPath: out }, { duration: 480, easing: ease, fill: "forwards" });
-        cover.cancel();
-        reveal.onfinish = () => { reveal.cancel(); veil.classList.remove("on"); lock = 0; };
-      }, 160);
-    };
+    setTimeout(() => scrollTo({ top: y, behavior: "instant" }), 420);
+    setTimeout(() => {
+      const reveal = veil.animate({ clipPath: out }, { duration: 480, easing: ease, fill: "forwards" });
+      cover.cancel();
+      setTimeout(() => { reveal.cancel(); veil.classList.remove("on"); lock = 0; }, 480);
+    }, 580);
   };
   // the in-page links to a part (the nodes, "Get Gekko") travel the same way
   document.querySelectorAll("a[href^='#']").forEach(a => {
@@ -944,10 +943,20 @@ it is only discovered when the command runs.</p>
     const now = performance.now(), fresh = now - last > 200;
     last = now;
     if (!fresh || now < lock) return;
-    const y = scrollY, s = stops();
-    const to = e.deltaY > 0 ? s.find(v => v > y + 4) : s.findLast(v => v < y - 4);
-    if (to !== undefined) go(to);
+    step(Math.sign(e.deltaY));
   }, { passive: false });
+  const step = dir => {
+    const y = scrollY, s = stops();
+    const to = dir > 0 ? s.find(v => v > y + 4) : s.findLast(v => v < y - 4);
+    if (to !== undefined) go(to);
+  };
+  // the arrow keys step the same way, except in a form field or a region that scrolls on its own
+  addEventListener("keydown", e => {
+    if (!parts.length || html.dataset.motion !== "on" || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.target.closest("input, textarea, select, [contenteditable], .table")) return;
+    e.preventDefault();
+    if (performance.now() >= lock) step(e.key === "ArrowDown" ? 1 : -1);
+  });
 
   let fromRail = false;
   const settle = () => {
