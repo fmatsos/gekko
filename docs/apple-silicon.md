@@ -13,7 +13,7 @@
 
 ## Overview
 
-`gko` knows nothing about Apple hardware. On a Mac it drives the same thing as anywhere else, an
+`gko` needs nothing Apple-specific. On a Mac it drives the same thing as anywhere else, an
 OpenAI-compatible server, and the piece that uses the hardware is that server. This guide uses
 [llama.cpp](https://github.com/ggml-org/llama.cpp)'s `llama-server`, started and stopped by `gko`
 itself through a [process runtime](configuration.md#starting-a-backend-as-a-process), with no
@@ -35,7 +35,7 @@ An Apple Silicon chip has two accelerators, and they are not interchangeable:
 - the **GPU**, programmed through **Metal**. This is what `llama-server` uses (as does MLX), and
   what this guide sets up;
 - the **Neural Engine** (ANE), which is reachable only through Core ML. `llama-server` does not
-  use it, and neither does anything `gko` starts today.
+  use it, and neither does the server this guide starts.
 
 So, despite the name, nothing on a Mac runs on an NPU in the sense of
 [the Intel guide](intel-npu.md). The model runs on the GPU, in the unified memory the CPU shares,
@@ -135,8 +135,8 @@ Every key is described in
 
 ## 4. `gko backend serve`, `status`, `stop`
 
-The blocks below were captured by running the binary. Pids differ from run to run, and so do the
-OS error numbers: macOS reports "connection refused" as `os error 61`.
+Pids differ from run to run, and so do the OS error numbers: macOS reports "connection refused" as
+`os error 61`.
 
 `serve` returns only once the server answers on its port, and prints its pid:
 

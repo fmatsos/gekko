@@ -1,10 +1,10 @@
 # Built-in commands
 
-`gko` ships its built-in commands under seven names: three groups, `backend` (the runtime
-lifecycle), `config` (inspection) and `model` (`discover`), plus `doctor`, `describe`, `update`
-and `help`. They are not AI commands, and these seven names are reserved: a command file whose
-first path segment is one of them is rejected at load time, naming the file. Any other name,
-`status` or `logs` included, is yours.
+`gko` ships its built-in commands under eight names: four groups, `backend` (the runtime
+lifecycle), `config` (inspection), `model` (`discover`) and `mcp` (`serve`, see
+[MCP server](mcp.md)), plus `doctor`, `describe`, `update` and `help`. They are not AI commands,
+and these eight names are reserved: a command file whose first path segment is one of them is
+rejected at load time, naming the file. Any other name, `status` or `logs` included, is yours.
 
 `gko --help` lists your commands under `Commands:` and the built-ins under `Built-ins:`, `help`
 included: `gko help backend serve` is `gko backend serve --help`.
@@ -36,7 +36,7 @@ anything written to a pipe or a file.
 - [`gko backend tune`](#gko-backend-tune)
 - [`gko model discover`](#gko-model-discover)
 - [`gko describe`](#gko-describe)
-- [`gko --version`](#gko-version)
+- [`gko --version`](#gko---version)
 - [`gko update`](#gko-update)
 - [Verbosity](#verbosity)
 - [Execution statistics](#execution-statistics)
@@ -47,8 +47,7 @@ anything written to a pipe or a file.
 ## `gko doctor`
 
 Validates the runtime environment and reports on stdout. Its report *is* its result.
-`gko config check` is the same command under its grouped name; `doctor` stays at the top level
-because it is what you type when nothing else works.
+`gko config check` is the same command under its grouped name.
 
 ```console
 $ gko doctor
@@ -71,16 +70,14 @@ What it checks, in order:
    machine that never asked for a container is never penalized for not having one.
 4. **Each runtime command is runnable** — one check per distinct `command` declared by a
    [process runtime](configuration.md#starting-a-backend-as-a-process), named, and again **only**
-   if at least one backend declares one. Named rather than folded into a single line for the
-   family, because unlike Docker's fixed binary this one is whatever the backend's author wrote,
-   and a report that did not name it would send its reader through every backend file.
+   if at least one backend declares one.
 5. **Each model** names a backend that exists and an operation that backend exposes.
 6. **Each command** names a model that exists.
 7. **Each declared output schema** exists, is readable, is valid JSON and compiles as a schema.
 
-Step 7 is the exhaustive pass that normal execution deliberately skips: at runtime only the
-invoked command's schema is compiled, so that a broken schema elsewhere cannot disable the CLI.
-`doctor` is where every schema in every scope gets checked.
+Step 7 covers every schema in every scope. Running a command compiles only that command's
+schema, so a broken schema elsewhere does not stop your other commands; `doctor` is where every
+schema gets checked.
 
 ### Exit codes
 
@@ -90,22 +87,17 @@ invoked command's schema is compiled, so that a broken schema elsewhere cannot d
 | `2` | at least one **configuration** check failed (1, 5, 6, 7) |
 | `3` | **only** reachability failed (2, 3, 4) |
 
-Configuration takes priority: an unreachable backend *and* a broken configuration gives `2`.
-The rationale is that a calling program can distinguish *fix your files* from *start your
-runtime*. Code `3` here means the same thing it means everywhere else in the CLI — a backend
-problem.
+Configuration takes priority: an unreachable backend *and* a broken configuration gives `2`, so
+a calling program can tell *fix your files* from *start your runtime*. Code `3` here means the
+same thing it means everywhere else in the CLI — a backend problem.
 
-### What `doctor` deliberately does not check
+### What `doctor` does not check
 
-The original specification's example output includes a line for NPU availability. **It is not
-implemented and not displayed.** This CLI is deliberately agnostic of the inference runtime and
-has no way to observe whether an NPU is present; printing a checkmark for a check that never ran
-would be a lie, and a diagnostic tool is the worst possible place for one.
+`doctor` does not report whether an NPU is present: `gko` does not observe the inference hardware.
 
-For the same reason, the reachability probe opens a TCP connection and closes it — it never sends
-an HTTP request. A `POST` to the `chat` operation would genuinely invoke the model, which is an
-unacceptable side effect for a diagnostic command. The label therefore says *reachable*, not
-*available*: a socket accepted, and that is all that was established.
+The reachability probe opens a TCP connection and closes it — it never sends an HTTP request, so it
+never invokes a model. The label therefore says *reachable*, not *available*: a socket accepted,
+and that is all that was established.
 
 ---
 
@@ -128,9 +120,8 @@ qwen3-8b-gpu               ovms-gpu  chat       -
 ## `gko config schema`
 
 Prints the JSON Schema (draft-07) of one configuration format: `backend`, `model`, `command`
-(the frontmatter of a command file) or `test` (a [test case](testing.md)). The schemas are
-derived from the structures `gko` deserializes, so they list exactly the keys it accepts and
-reject any other one, like `gko` itself.
+(the frontmatter of a command file) or `test` (a [test case](testing.md)). Each schema lists
+exactly the keys `gko` accepts and rejects any other one, like `gko` itself.
 
 ```console
 $ gko config schema backend > .gekko/backend.schema.json
@@ -177,9 +168,8 @@ $ gko backend serve qwen-fast
 
 The argument is a **model**, not a backend: a model already names exactly one backend
 (`backend = "ovms"`), so there is nothing to disambiguate, and several served backends coexist
-without ceremony. What gets run comes entirely from that backend's `[runtime]` table — `gko` knows
-the shape of a `docker run` invocation, or how to spawn a child process, never which server you
-run.
+without ceremony. What gets run comes entirely from that backend's `[runtime]` table: image,
+options, command and arguments are configuration.
 
 ### The Docker family
 
@@ -201,15 +191,14 @@ on stderr and nothing on stdout.
 The declared `command` is spawned directly, with the declared `arguments`, its two streams
 redirected into a log file beside the state record `gko` writes, and `[runtime.env]` layered over
 the environment `gko` itself runs in. Serving the same backend twice is refused before anything is
-spawned, naming the backend and the pid already holding it — the state record is what makes that
-possible, Docker's name registry having no equivalent here.
+spawned, naming the backend and the pid already holding it.
 
 Then, unlike the Docker family, `gko backend serve` **waits**: it polls the backend's `base_url` until
 something answers, the server exits, or `startup_timeout_secs` runs out. The poll is a TCP
 connection and nothing more — no byte is sent, no protocol is spoken — so a `serve` that printed a
 pid means *something accepted a connection on that address*, which a server still loading its
 model already does. Use `gko doctor` or the runtime's own readiness endpoint for anything
-stronger; teaching this engine an HTTP readiness path would bake a protocol assumption into it.
+stronger.
 
 Every failure after the spawn terminates the child and deletes the record, but **keeps the log** —
 the only place the server explained itself. The
@@ -235,7 +224,7 @@ log. It is the same `3` as everywhere else in this CLI — a backend problem. To
 calling program, *the runtime could not be brought up* and *the backend is unreachable* call for
 the same reaction.
 
-### What `gko backend serve` deliberately does not do
+### What `gko backend serve` does not do
 
 For a Docker backend it does not wait for the server to be ready: `docker run -d` returns as soon
 as the container is created, long before a model is loaded. Use `gko doctor`, `gko backend status`, or the
@@ -268,10 +257,9 @@ For a Docker backend it **removes** the container rather than merely stopping it
 name: a stopped container still owns that name, so `gko backend serve` would then fail on a conflict and
 the lifecycle would be a one-way trip.
 
-For a process backend it prints the **backend identifier**, not the pid `serve` returned. By the
-time `stop` answers, that pid names nothing, and a command printing a pid when it killed one and
-something else when there was nothing to kill would force its caller to branch on which. The pid,
-while it exists, is [`gko backend status`](#gko-backend-status)'s `INSTANCE` column. Termination escalates:
+For a process backend it prints the **backend identifier**, not the pid `serve` returned: by the
+time `stop` answers, that pid names nothing. The pid, while it exists, is
+[`gko backend status`](#gko-backend-status)'s `INSTANCE` column. Termination escalates:
 `SIGTERM`, a bounded wait, then `SIGKILL`.
 
 Stopping a backend that was never started is not an error in either family — the command prints
@@ -281,8 +269,7 @@ never signalled, because the pid it holds may belong to anybody by now.
 
 Exit codes are `gko backend serve`'s: `2` for an unknown model or a backend without a `[runtime]` table,
 `3` when the runtime itself refuses — including a process that survived both signals, in which
-case the record is deliberately **kept**, since forgetting a running server would leave it
-unreachable to `gko`.
+case the record is **kept**, so `gko` can still find that server.
 
 ---
 
@@ -311,10 +298,8 @@ there is nothing running.
 `URL` is the backend's resolved `base_url` — the only place a
 [`port = "auto"`](configuration.md#port-optional) shows up, since Docker allocates that number and
 nothing else in the CLI would reveal it. A backend whose port cannot be read back (not started,
-Docker unusable) shows `-` there: a report that died on its first unreadable line would not be a
-report. A **served process** backend shows the URL its own record holds — the address it was
-actually started on, and the one its state was decided against, so that editing `port` without
-restarting can never print a new URL beside a verdict reached on the old one.
+Docker unusable) shows `-` there. A **served process** backend shows the URL its own record
+holds — the address it was actually started on, even if `port` was edited since.
 
 `STATE` is whatever the runtime says. For Docker that is Docker's own wording (`Up 3 minutes`,
 `Exited (0) 2 minutes ago`); for a process it is one of `running` (the pid is ours and something
@@ -324,14 +309,12 @@ somebody else) or `foreign state` (a live runtime recorded by another backend fi
 sharing an identifier in a machine-global state directory). Every family prints `not started` when
 nothing was started.
 
-`status` reports without repairing: a stale record is named as such and left alone, because a
-report that silently deleted what it describes could not be run twice. `serve` and `stop` are what
-clear it.
+`status` reports without repairing: a stale record is named as such and left alone. `serve` and
+`stop` are what clear it.
 
 A backend the runtime cannot even be asked about — a Docker daemon that will not answer, one
-unreadable state file — gets that failure as its own state and costs nothing but its own row:
-`status` is a report, and a report that dies on its first unknown line is not a report. It
-therefore exits `0` as long as the configuration loads, and prints its header even when no backend
+unreadable state file — gets that failure as its own state and costs nothing but its own row.
+`status` exits `0` as long as the configuration loads, and prints its header even when no backend
 declares a runtime at all.
 
 ---
@@ -349,12 +332,11 @@ $ gko backend logs qwen-fast
 `--follow` (`-f`) keeps streaming as new lines arrive, until you interrupt it.
 
 For a Docker backend the container's two streams are passed through untouched — its stdout on
-`gko`'s stdout, its stderr on `gko`'s stderr, in the order the runtime wrote them. Capturing and
-reprinting them would reorder the interleaving, and most servers log to stderr.
+`gko`'s stdout, its stderr on `gko`'s stderr, in the order the runtime wrote them.
 
 For a process backend both streams were already redirected, at `serve` time, into a single log
-file beside the state record — interleaved there in the order the server wrote them, for the same
-reason — and this command hands that file back byte for byte. It therefore still works after the
+file beside the state record — interleaved there in the order the server wrote them — and this
+command hands that file back byte for byte. It therefore still works after the
 server has exited, which is exactly when its last lines matter; `--follow` is a read to end of
 file and then a poll, so it also works on a server that has not written anything yet. A backend
 `gko` never served has no such file: that is exit `3`, naming the backend and the path that was
@@ -366,15 +348,13 @@ The logs *are* this command's result. Exit codes are `gko backend serve`'s.
 
 ## Cargo feature: `hardware-tooling`
 
-`gko backend tune` and `gko model discover` (below) are the one deliberate exception to "the core
-understands execution mechanics, not AI business semantics": they know Intel/OpenVINO and Hugging
-Face well enough to help prepare a configuration. Everything they know lives under `src/vendor/`,
-never in the engine, and the whole seam is gated by a Cargo feature, `hardware-tooling`, **on by
-default**.
+`gko backend tune` and `gko model discover` (below) help prepare a configuration for
+Intel/OpenVINO and Hugging Face. They never run a command themselves, and they come with the
+`hardware-tooling` Cargo feature, **on by default**.
 
 Building with `--no-default-features` drops both commands, and the `model` group along with
-`discover` (the group would otherwise be empty), from the CLI tree — `backend`'s own `about` text
-drops `tune` too:
+`discover` (the group would otherwise be empty), from the CLI — `backend`'s own description drops
+`tune` too:
 
 ```console
 $ gko --help
@@ -409,10 +389,8 @@ Options:
   -V, --version                Print version
 ```
 
-`model` stays in `builtin::RESERVED` either way — a reserved name is part of the contract, not a
-feature — so a command file still cannot be placed at `commands/model/*.md`. No dependency becomes
-optional: `sysinfo` also serves the process runtime and `ureq` the backend, so this is a
-compile-time seam on the engine/hardware-tooling boundary, never a smaller dependency graph.
+`model` stays a reserved name either way, so a command file still cannot be placed at
+`commands/model/*.md`.
 
 ---
 
@@ -475,8 +453,7 @@ calibration: activation_tenths=62 activation_tenths_long=90 long_context=24576 s
 ```
 
 `--dry-run` additionally prints the calibration constants the NPU column above was computed
-from (see `vendor::openvino::graph`'s module documentation for what they were measured against
-and on what hardware): `activation_tenths` and `activation_tenths_long` are the tenths of
+from: `activation_tenths` and `activation_tenths_long` are the tenths of
 `hidden_size x layers` bytes of static buffers charged per token below and above
 `long_context`, and `step` is the token granularity the context is rounded to.
 
@@ -542,7 +519,7 @@ configuration error (`2`) naming it, and so is a name that is neither an engine 
 
 | `--backend` | Keeps only |
 | --- | --- |
-| `openvino` | An architecture `optimum-intel` exports for `--task`, read at run time from its own registry (`model_configs.py` on `main`), never frozen in the binary. The original weights, not an already-quantized repository (AWQ, GPTQ, FP8, etc.): `optimum-cli export --weight-format int4` starts from those. Open weights, unless `HF_TOKEN` is set (it is then sent to the Hub). |
+| `openvino` | An architecture `optimum-intel` exports for `--task`, read at run time from its own registry (`model_configs.py` on `main`). The original weights, not an already-quantized repository (AWQ, GPTQ, FP8, etc.): `optimum-cli export --weight-format int4` starts from those. Open weights, unless `HF_TOKEN` is set (it is then sent to the Hub). |
 | `llamacpp` | GGUF repositories, searched by their Hub tag and sized from the parameter count in their GGUF header. A GGUF repository llmfit lists among a model's `gguf_sources` gets that model's score and fit. |
 | `mlx` | MLX repositories, searched by their Hub tag. They are already quantized: the size is read from the bit width in the name (`-4bit`, `-8bit`), 4 bits when it gives none. |
 
@@ -560,8 +537,9 @@ filters, before `-n` keeps the first ones:
 ```sh
 gko model discover qwen3 --sort score              # best score first
 gko model discover qwen3 --sort fit,params:asc     # Perfect fits, smallest first
-``` The `mem GB` column is llmfit's figure when it sized the
-model, and `~` marks the INT4 estimate otherwise. The `score`, `fit`, `on` and `use case` columns
+```
+
+The `mem GB` column is llmfit's figure when it sized the model, and `~` marks the INT4 estimate otherwise. The `score`, `fit`, `on` and `use case` columns
 appear only with llmfit. On a terminal the report is coloured: model ids stand out, a `~` estimate
 and a non-permissive licence are yellow, and a `Perfect` fit and a score of 75 or more are green.
 Through a pipe the table is plain.
@@ -695,20 +673,17 @@ $ gko doctor --json | jq .
 ]
 ```
 
-`kind` and `status` are the machine contract (`CheckKind` — `"config"`/`"reachability"` —, and
-`"ok"`/`"failed"` with a `message` when failed): a calling agent reads those, never `label`'s text,
-to tell a configuration failure (exit `2`) apart from a reachability one (exit `3`).
+`kind` (`"config"` or `"reachability"`) and `status` (`"ok"`, or `"failed"` with a `message`)
+are the machine contract: a calling agent reads those, never `label`'s text, to tell a
+configuration failure (exit `2`) apart from a reachability one (exit `3`).
 
 ## `--error-format`
 
-`--error-format <text|json>` (default `text`) changes how errors are rendered on
-stderr — both `clap` usage errors and pipeline failures. The latter include `kind`,
-`message`, `exit_code`, and the available family-specific fields (for example `backend`,
-`status`, or `file`). It is read
-from the raw command line, before `clap` parses anything, the same way `--verbose` is (a usage
-error is raised by `clap` itself while parsing, before any declared argument's value could be read
-back). `--help` and `--version` are never affected: they stay `clap`'s own rendering on stdout,
-exit `0`, whatever this flag says.
+`--error-format <text|json>` (default `text`) changes how errors are rendered on stderr — both
+usage errors and command failures. The latter include `kind`, `message`, `exit_code`, and the
+available family-specific fields (for example `backend`, `status`, or `file`). Usage errors honour
+it too, wherever the flag sits on the command line. `--help` and `--version` are never affected:
+they print their usual text on stdout and exit `0`, whatever this flag says.
 
 ```console
 $ gko does-not-exist --error-format json
@@ -723,10 +698,8 @@ $ gko does-not-exist --error-format json
 ## `--config-dir`
 
 `--config-dir <DIR>` (or `$GKO_CONFIG_DIR`, the flag winning when both are set) names the project
-scope directly, skipping the walk-up search entirely. Read from the raw command line, before
-`clap` parses anything — the project scope is resolved to LOAD the configuration, before the
-`clap` tree (built from it) even exists. See [Scopes and precedence](configuration.md#scopes-and-precedence)
-for the walk-up itself.
+scope directly, skipping the walk-up search entirely. See
+[Scopes and precedence](configuration.md#scopes-and-precedence) for the walk-up itself.
 
 ```console
 $ gko --config-dir /path/to/.gekko config models
@@ -737,9 +710,9 @@ is rejected at load time, naming the file.
 
 ## Shell completions
 
-`gko` supports dynamic shell completions through `clap_complete::CompleteEnv` — no `completions`
-subcommand, no reserved name: setting `COMPLETE=<shell>` makes the binary print the shell's
-registration script instead of running as usual.
+`gko` supports dynamic shell completions, with no `completions` subcommand: setting
+`COMPLETE=<shell>` makes the binary print the shell's registration script instead of running as
+usual.
 
 ```console
 $ eval "$(COMPLETE=bash gko)"       # bash, once per shell session (or in ~/.bashrc)
@@ -748,17 +721,15 @@ $ COMPLETE=fish gko | source        # fish
 ```
 
 Once registered, `<TAB>` completes business commands, built-in group names (`backend`, `config`,
-...) and the global flags — never the HIDDEN top-level built-ins themselves (`doctor`, `describe`,
-`update`; `gko --help` shows them in their own section, but `clap` never lists a hidden subcommand
-as a completion candidate). Completion is resolved from the SAME `clap` tree `gko` itself runs
-against, discovered fresh on every request, so it reflects the current `.gekko/` — including
-`--config-dir`/`GKO_CONFIG_DIR`.
+...) and the global flags — but not the top-level built-ins `doctor`, `describe` and `update`.
+Completions are computed on every request from the configuration in effect, so they reflect the
+current `.gekko/` — including `--config-dir`/`GKO_CONFIG_DIR`.
 
 ---
 
 ## `gko --version`
 
-Prints the program name and the release number embedded from `Cargo.toml`:
+Prints the program name and its version:
 
 ```console
 $ gko --version
@@ -794,8 +765,7 @@ platform detection, or replacement fails. The executable's directory must theref
 by the current user.
 
 The manifest and the binaries come from the same GitHub release: the SHA-256 check protects
-against a corrupted download, not against a compromised release. A detached signature is
-planned.
+against a corrupted download, not against a compromised release.
 
 Like `--version`, `update` does not depend on the AI configuration and remains available in degraded
 mode. After a successful update, the **new** binary is asked whether it accepts your configuration;
@@ -831,7 +801,7 @@ every level — `--verbose error` silences the engine's commentary, never the er
 ### `--dry-run`
 
 Every business command leaf accepts `--dry-run`: it builds the exact request `gko` would send —
-url, headers, body — through the same constructor the real call uses, and prints it as JSON
+url, headers, body — exactly as the real call would, and prints it as JSON
 instead of sending it. Nothing is written or read but the terminal: the runtime is never resolved
 (a `port = "auto"` backend keeps its `{{ backend.port }}` placeholder verbatim, since resolving it
 means asking Docker), only the primary model is shown (never the fallback), and header VALUES are
@@ -842,17 +812,16 @@ $ echo "texte" | gko classify --dry-run
 {"body":{"messages":[{"content":"Classify: texte\n","role":"user"}],"model":"OpenVINO/Qwen3-8B-int4-ov"},"headers":{},"url":"http://127.0.0.1:8000/v3/chat/completions"}
 ```
 
-`--dry-run` is declared only on business command leaves (`build_clap_node`), never on a built-in:
-`gko doctor --dry-run` is a `clap` usage error (exit `2`, empty stdout), the same path as any other
-unrecognized flag. `dry-run` is consequently a reserved argument name: a command declaring
+`--dry-run` exists only on business command leaves, never on a built-in: `gko doctor --dry-run`
+is a usage error (exit `2`, empty stdout), like any other unrecognized flag. `dry-run` is consequently a reserved argument name: a command declaring
 `[args."dry-run"]` is rejected at load time, naming the file.
 
 ### `--model`
 
 Every business command leaf also accepts `--model <ID>`, to use a model other than the command
-file's own for this one call. The override replaces `spec.model` before the model is resolved and
-before the input is read: an unknown id fails exactly like an unknown model in the command file
-would (`Error::Config`, exit `2`, the id named in the message), and nothing is sent to the network.
+file's own for this one call. The override applies before the model is resolved and before the
+input is read: an unknown id fails exactly like an unknown model in the command file would (a
+configuration error, exit `2`, the id named in the message), and nothing is sent to the network.
 
 ```console
 $ echo "texte" | gko classify --model qwen-fast --dry-run
@@ -921,9 +890,8 @@ stdout stay what they would have been.
 
 ## Degraded mode
 
-A broken configuration must not leave you without the tools to diagnose it. When loading fails,
-`gko` keeps the error instead of giving up, builds its command tree with the built-ins **always**
-present, and adds your commands only if loading succeeded.
+A broken configuration does not leave you without the tools to diagnose it. When loading fails,
+the built-ins stay available and your commands are left out.
 
 ```console
 $ gko --help
@@ -961,9 +929,6 @@ gko: warn: invalid configuration (configuration error: invalid TOML in
 key with no value, expected `=`
 ); run "gko doctor" for details on the failed checks
 ```
-
-The warning matters as much as the help itself. Help listing zero business commands with no
-explanation would be its own kind of lie.
 
 From there:
 

@@ -40,8 +40,8 @@ Options:
   -h, --help             Print help
 ```
 
-Seven names are reserved by the built-ins and rejected at load time: `backend`, `config`, `model`,
-`doctor`, `describe`, `update` and `help`. The reservation applies to the **first segment only**,
+Eight names are reserved by the built-ins and rejected at load time: `backend`, `config`, `model`,
+`doctor`, `describe`, `update`, `help` and `mcp`. The reservation applies to the **first segment only**,
 so `commands/git/describe.md` is perfectly valid.
 
 ---
@@ -49,12 +49,10 @@ so `commands/git/describe.md` is perfectly valid.
 ## Anatomy of a command file
 
 A command is a Markdown file: TOML frontmatter between `---` fences, then the prompt as the body.
-The prompt is the content of the file, not a string squeezed into a config value.
 
 > [!NOTE]
-> The fence is `---`, not `+++`. A file still opening with `+++` is rejected at load time with a
-> message saying so — never diagnosed as having no frontmatter at all, which would send you
-> looking for a line that is right there.
+> The fence is `---`, not `+++`. A file opening with `+++` is rejected at load time with a message
+> naming both delimiters.
 
 ```markdown
 ---
@@ -161,28 +159,27 @@ description = "Target language"
 The table key is the long flag: `--language`. Rejected at load time, each naming the file:
 
 - a `short` of more than one character (never silently truncated);
-- `short = "-"`, which clap itself rejects;
+- `short = "-"`;
 - two arguments sharing the same `short` letter;
 - a name that is empty, contains a space, starts with `-`, or uses characters a placeholder could
   never reference;
 - the reserved names `help`, `version`, `FILE` and `verbose`;
-- the short letters `-h` (clap's help) and `-v` (the global `--verbose`).
+- the short letters `-h` (`--help`) and `-v` (the global `--verbose`).
 
-`enum` values are checked by clap, as are `integer` syntax and bounds (usage error, exit 2).
+`enum` values, `integer` syntax and bounds are checked before anything runs (usage error, exit 2).
 For `file`, the CLI flag names a UTF-8 file whose content replaces `{{ args.<name> }}`;
 the file is read after preflight and before stdin. MCP callers pass the content directly.
 
 Values become available to the prompt as `{{ args.<name> }}`.
 
-Default values and repeated or boolean flags are not supported in 0.1.0.
+Default values and repeated or boolean flags are not supported.
 
 ---
 
 ## Prompt templating
 
-Templating is deliberately minimal. There are no conditions, no loops and no expressions, and the
-only include is a partial inserted verbatim. The goal is configuration that stays deterministic
-and statically inspectable.
+Templating is minimal: there are no conditions, no loops and no expressions, and the only include
+is a partial inserted verbatim.
 
 | Placeholder | Resolves to |
 | --- | --- |
@@ -234,18 +231,14 @@ rendered request with the partials inserted.
 > and the model would answer something plausible. That is the most expensive failure mode
 > available here, because it is invisible.
 >
-> The consequence is that a prompt can no longer contain `{{ foo }}` as literal text. An unclosed
+> The consequence is that a prompt cannot contain `{{ foo }}` as literal text. An unclosed
 > `{{` is left alone, since nothing can distinguish intent from a typo there.
 
 > [!WARNING]
 > **An argument referenced by the prompt must be `required = true`.** The prompt cannot be
-> rendered without it, so declaring it optional is a contradiction in the file. It is rejected at
-> load rather than silently promoted — honouring configuration differently from how it is
-> declared is exactly what this project avoids. Rejecting it at load also lets
-> [`gko describe`](cli.md) and [`gko doctor`](cli.md) see the file is broken *without running it*.
->
-> This constraint will stop making sense the day default values exist. It reflects the current
-> state, not a permanent truth.
+> rendered without it, so declaring it optional is rejected at load time, naming the file — which
+> also lets [`gko describe`](cli.md) and [`gko doctor`](cli.md) see the file is broken *without
+> running it*.
 
 ---
 
@@ -264,15 +257,13 @@ assistant = '{"category":"hardware","confidence":0.98}'
 Classify: {{ input }}
 ```
 
-`system` (optional string) and `[[examples]]` (optional array of `{ user, assistant }` pairs) let
-a command steer a model that follows a fixed system instruction and a few fixed demonstrations
-more reliably than a single free-text prompt — the most effective non-agentic lever on output
-shape for a small local model.
+`system` (optional string) and `[[examples]]` (optional array of `{ user, assistant }` pairs) give
+the model a fixed system instruction and a few fixed demonstrations, which steer the shape of its
+answer more reliably than a single free-text prompt.
 
 The request sent to the backend becomes, in this order: the `system` message (if declared), each
 example's `user`/`assistant` pair (in file order), then the rendered body as the final `user`
-message. **A command declaring neither key sends exactly what it always has** — a single `user`
-message.
+message. A command declaring neither key sends a single `user` message.
 
 Both `system` and every example field are templated with the same placeholders as the body
 (`{{ args.* }}`, `{{ env.* }}`, `{{ schemas.* }}`, `{{ partials.* }}`), with one exception: **`{{ input }}` is
@@ -285,7 +276,7 @@ An environment variable they reference is resolved at the same preflight step as
 placeholders — before the input is read.
 
 `system` cannot be blank (empty after trimming), and every example needs both non-empty `user`
-and `assistant` fields: a key present but pointless is read and rejected, not silently ignored.
+and `assistant` fields; either is rejected at load time.
 
 `gko describe` reports the raw `system` template (never resolved — `describe` documents the file,
 it does not run it) and the **count** of declared examples, never their content.
@@ -301,9 +292,8 @@ resolve command → collect arguments → check placeholders resolve
                 → read input → render prompt → call backend → apply output contract
 ```
 
-This ordering matters in a pipeline. Without it, `git diff | gko commit-message` would drain the
-whole diff before failing on an unset environment variable — work lost, and a non-replayable
-input lost for good.
+In a pipeline, `git diff | gko commit-message` therefore fails on an unset environment variable
+before it consumes the diff.
 
 | Checked at load (exit `2`) | Checked before reading input (exit `2`) | Checked at runtime |
 | --- | --- | --- |
