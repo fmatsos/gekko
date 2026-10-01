@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="en" class="doc" data-motion="off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Built-in commands · Gekko</title>
+<meta name="description" content="doctor, config, backend, model, describe, update, degraded mode">
+<link rel="canonical" href="https://fmatsos.github.io/gekko/docs/cli.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gekko">
+<meta property="og:title" content="Built-in commands · Gekko">
+<meta property="og:description" content="doctor, config, backend, model, describe, update, degraded mode">
+<meta property="og:url" content="https://fmatsos.github.io/gekko/docs/cli.html">
+<meta property="og:image" content="https://fmatsos.github.io/gekko/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Gekko the gecko holding a glowing terminal in a night desert">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0f1419">
+<link rel="icon" href="../assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/space-grotesk.woff2" crossorigin>
+
+<style>
+/* Generic mechanics, no design: inlined first by build.py; the site's own CSS comes after
+   and sets the look. Needs from the site: --focus-in / --focus-out (two contrasting colors
+   for the focus ring, visible on every background), @font-face with font-display: optional
+   (a late web font must not reflow the page: CLS). */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: var(--hh, 0px); }
+html[data-motion="off"], html.dragging { scroll-behavior: auto; }
+body { margin: 0; overflow-x: hidden; }
+img { max-width: 100%; height: auto; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }         /* reflow at 320 px (RGAA 10.11) */
+.table { overflow-x: auto; }                                     /* a wide table scrolls, as a focusable region */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 16px; top: -100px; z-index: 100; }
+.skip:focus { top: 12px; }
+:focus-visible { outline: 3px solid var(--focus-in, #000); outline-offset: 3px; box-shadow: 0 0 0 3px var(--focus-out, #fff); }
+main:focus { outline: none; box-shadow: none; }
+[hidden] { display: none !important; }
+:where(nav, ul, ol) a, :where(button) { display: inline-block; min-height: 24px; min-width: 24px; }   /* target size (WCAG 2.5.8); zero specificity: the design overrides */
+
+/* motion: every loop and every "not shown yet" state lives under [data-motion="on"] (and .ready) */
+.sprite { overflow: hidden; display: none; pointer-events: none; }
+.sprite img { width: calc(var(--frames, 6) * 100%); max-width: none; height: 100%; display: block; }
+[data-motion="on"] .sprite { display: block; }
+[data-motion="on"] .sprite img { animation: sprite-frames var(--speed, 1.2s) steps(var(--frames, 6)) infinite; }
+@keyframes sprite-frames { to { transform: translateX(-100%); } }
+[data-hop] { position: absolute; left: 0; top: 0; z-index: 2; }
+
+/* entrances: .enter elements of a [data-part] play in when it becomes .active; --d staggers them */
+[data-motion="on"].ready [data-part] .enter { transition: opacity .6s, transform .7s cubic-bezier(.3, 1.4, .5, 1); transition-delay: calc(var(--d, 0) * 100ms); }
+[data-motion="on"].ready [data-part]:not(.active) .enter { opacity: 0; transform: var(--enter-from, translateY(32px)); transition-delay: 0s; }
+
+/* parts that each fill the screen: opt in with html[data-snap]; mandatory only when all fit */
+html[data-snap] { scroll-snap-type: y proximity; }
+html[data-snap].snap { scroll-snap-type: y mandatory; }
+html[data-snap].dragging { scroll-snap-type: none; }
+html[data-snap] [data-part] { scroll-snap-align: start; min-height: calc(100svh - var(--hh, 0px)); }
+
+/* the rail's labels are shown by the site on hover / focus; Escape hides them */
+[data-rail].quiet a span { opacity: 0 !important; }
+[data-rail-thumb] { touch-action: none; cursor: grab; }
+[data-rail-thumb]:active { cursor: grabbing; }
+
+/* Gekko: a night desert where AI runs locally. Night, sand, the gecko's orange, neon circuit teal. */
+@font-face { font-family: "Space Grotesk"; src: url("../assets/fonts/space-grotesk.woff2") format("woff2"); font-weight: 300 700; font-display: optional; }
+@font-face { font-family: "JetBrains Mono"; src: url("../assets/fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 100 800; font-display: optional; }
+:root {
+  --night: #0f1419; --panel: #18212b; --deep: #131b24; --line: #2a3644;
+  --dune: #fff4e0; --muted: #b8c2cc; --gecko: #fb903b; --circuit: #3ee6c4; --prompt: #2fd672; --clay: #7b2d12;
+  --focus-in: #3ee6c4; --focus-out: #0f1419;
+  --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+body { background: var(--night); color: var(--dune); font: 1.0625rem/1.6 var(--sans); }
+a { color: var(--circuit); text-underline-offset: .2em; }
+a:hover { color: var(--dune); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+:not(pre) > code { background: #ffffff14; padding: .05em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--night); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; margin: 0; line-height: 1.55; color: var(--dune); }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -.01em; margin: 0 0 .5em; }
+h2 { font-size: clamp(2rem, 1.4rem + 2.6vw, 3.2rem); }
+h3 { font-size: 1.2rem; }
+em { font-style: normal; color: var(--gecko); }
+.wrap { max-width: 72rem; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 40em) { .wrap { padding: 0 32px; } }
+.kicker { font: 600 .85rem/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--circuit); margin: 0 0 .75rem; }
+.lead { font-size: 1.15rem; max-width: 44rem; color: var(--muted); }
+.lead code, .lead strong { color: var(--dune); }
+
+/* header */
+[data-header] { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .6rem 16px; background: #0f1419e6; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.2rem; color: var(--dune); text-decoration: none; }
+[data-header] nav { margin-left: auto; }
+[data-header] ul, footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; }
+[data-header] nav a { color: var(--dune); text-decoration: none; padding: .3rem 0; }
+[data-header] nav a:hover, [data-header] nav a[aria-current] { color: var(--circuit); text-decoration: underline; }
+.motion { font: 500 .85rem var(--mono); color: var(--dune); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: .35rem .8rem; cursor: pointer; }
+.motion::before { content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; margin-right: .45rem; background: var(--muted); }
+.motion[aria-pressed="true"]::before { background: var(--prompt); box-shadow: 0 0 8px var(--prompt); }
+.skip { background: var(--gecko); color: var(--night); padding: .5rem 1rem; border-radius: 6px; font-weight: 700; }
+
+/* buttons */
+.btn { display: inline-block; padding: .75rem 1.3rem; border-radius: 10px; background: var(--gecko); color: var(--night); font-weight: 700; text-decoration: none; margin: 0 .5rem .5rem 0; }
+.btn:hover { background: var(--dune); color: var(--night); }
+.btn.ghost { background: transparent; color: var(--dune); border: 1px solid var(--dune); }
+.btn.ghost:hover { background: var(--dune); color: var(--night); }
+
+/* hero: the night desert, the terminal, the gecko typing */
+.hero { position: relative; min-height: calc(100svh - var(--hh, 0px)); display: flex; align-items: center; padding: 2.5rem 0 2.5rem; overflow: hidden; isolation: isolate; }
+.hero-bg, .hero-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; z-index: -2; }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #0f1419f2 0, #0f1419d9 38%, #0f141966 70%, #0f141900 100%), linear-gradient(0deg, #0f1419 0, #0f141900 25%); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; width: 100%; }
+.hero h1 { font-size: clamp(2rem, 1.3rem + 4vw, 4.4rem); max-width: 14ch; overflow-wrap: break-word; }
+.hero .lead { color: var(--dune); }
+.stage { position: relative; max-width: 34rem; padding-left: 7rem; }
+.term { margin: 0; background: #0b0f14f2; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 0 0 1px #3ee6c433, 0 20px 60px #000a, 0 0 40px #3ee6c41f; overflow: hidden; }
+.term-bar { display: flex; align-items: center; gap: .75rem; padding: .6rem .9rem; border-bottom: 1px solid var(--line); font: .8rem var(--mono); color: var(--muted); }
+.dots { display: flex; gap: .4rem; }
+.dots i { width: .7rem; height: .7rem; border-radius: 50%; background: #ff5f57; }
+.dots i + i { background: #febc2e; }
+.dots i + i + i { background: #28c840; }
+.term pre { border: 0; border-radius: 0; background: transparent; font-size: .92rem; min-height: 8.5em; }
+.line { display: block; }
+.ps { color: var(--prompt); }
+.out { color: var(--muted); }
+.l3::after { content: ""; display: inline-block; width: .6em; height: 1.1em; margin-left: .2em; vertical-align: text-bottom; background: var(--prompt); }
+.gecko { position: absolute; width: 128px; height: 128px; }
+.type { left: -.5rem; bottom: -1.5rem; width: 150px; height: 150px; }
+@media (min-width: 60em) {
+  .hero-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: end; }
+  .stage { padding-left: 0; }
+  .type { left: auto; right: 1.5rem; bottom: calc(100% - 22px); width: 170px; height: 170px; }
+}
+
+/* the terminal types itself, once, then the cursor blinks */
+[data-motion="on"].ready .hero .l1, [data-motion="on"].ready .hero .l3 { width: max-content; max-width: 100%; }
+[data-motion="on"].ready .hero.active .l1 { animation: type 1s steps(19) .3s both; }
+[data-motion="on"].ready .hero.active .l2 { animation: appear .1s 1.5s both; }
+[data-motion="on"].ready .hero.active .l3 { animation: type 1.6s steps(40) 2s both; }
+[data-motion="on"] .l3::after { animation: blink 1s steps(1) infinite; }
+@keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes appear { from { opacity: 0; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* bands */
+.band { position: relative; padding: 5rem 0; }
+.band::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--circuit) 20%, var(--circuit) 80%, transparent); opacity: .5; }
+.split { display: grid; gap: 2.5rem; align-items: center; }
+@media (min-width: 60em) { .split { grid-template-columns: 1fr 1fr; } }
+.art { position: relative; margin: 0; }
+.art img { border-radius: 16px; display: block; box-shadow: 0 20px 60px #0008; }
+
+/* files: sand, dark cards the gecko carries from one to the next */
+.files { background: var(--dune); color: var(--night); }
+.files::before { display: none; }
+.files .kicker { color: var(--clay); }
+.files .lead { color: #3b2a1f; }
+.files .lead code, .files .after code { background: #7b2d1214; color: var(--night); }
+.files a { color: var(--clay); font-weight: 600; }
+.files a:hover { color: var(--night); }
+.cards { position: relative; display: grid; gap: 1.25rem; padding-top: 130px; }
+@media (min-width: 60em) { .cards { grid-template-columns: repeat(3, 1fr); align-items: start; } }
+.card { background: var(--panel); color: var(--dune); border-radius: 14px; padding: 1.25rem; box-shadow: 0 12px 30px #7b2d1233; min-width: 0; }
+.card h3 { display: flex; flex-direction: column; gap: .3rem; }
+.card h3 span { color: var(--gecko); }
+.card h3 code { font-size: .8rem; font-weight: 400; color: var(--circuit); background: transparent; padding: 0; overflow-wrap: anywhere; }
+.card p { color: var(--muted); margin: 0 0 1rem; }
+.card pre { font-size: .8rem; }
+.after { max-width: 50rem; margin-top: 2rem; }
+
+/* backends: the gecko clings to the chip */
+.climb { left: 27%; top: 22%; width: 22%; height: auto; aspect-ratio: 1; }
+.ticks { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; }
+.ticks li { padding-left: 1.6rem; position: relative; color: var(--muted); }
+.ticks li::before { content: ""; position: absolute; left: 0; top: .55em; width: .6rem; height: .6rem; border: 2px solid var(--circuit); border-radius: 50%; box-shadow: 0 0 8px var(--circuit); }
+.ticks b { color: var(--dune); }
+
+/* driven: exit codes the gecko presents one by one */
+.driven { background: var(--deep) radial-gradient(#3ee6c41a 1px, transparent 1px) 0 0 / 24px 24px; }
+.codes-box { position: relative; padding-top: 130px; }
+.codes { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.code { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: .35rem; }
+.code b { font: 700 2.4rem/1 var(--mono); color: var(--gecko); align-self: flex-start; }
+.code:first-child b { color: var(--prompt); }
+.code small { color: var(--circuit); font: .8rem var(--mono); }
+.mcp { margin-top: 4rem; }
+.mcp p { color: var(--muted); }
+.mcp h3 { margin-top: 1.5rem; }
+.shell { font-size: .85rem; }
+
+/* get */
+.get .split { align-items: start; }
+.cmd { display: flex; gap: .5rem; align-items: stretch; margin: 1rem 0 1.5rem; }
+.cmd pre { flex: 1; min-width: 0; }
+.cmd button { font: 600 .85rem var(--mono); background: var(--panel); color: var(--dune); border: 1px solid var(--line); border-radius: 10px; padding: 0 1rem; cursor: pointer; }
+.cmd button:hover { border-color: var(--circuit); color: var(--circuit); }
+.idle { position: relative; width: 160px; height: 160px; margin: 1rem 0 0 auto; }
+.docs-nav ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+.docs-nav a { display: block; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); text-decoration: none; }
+.docs-nav a:hover { border-color: var(--circuit); }
+.docs-nav b { display: block; color: var(--dune); }
+.docs-nav span { color: var(--muted); font-size: .92rem; }
+
+/* sprites: a slow sway on top of slow steps reads as fluid */
+[data-motion="on"] .gecko:not([data-hop]) img { animation-duration: var(--speed, 1.4s); }
+[data-motion="on"] .type, [data-motion="on"] .idle { animation: sway 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes sway { 50% { rotate: 1.5deg; translate: 0 -2px; } }
+.type { --speed: 1s; } .carry { --speed: .9s; } .climb { --speed: 1.6s; } .present { --speed: 1.4s; } .idle { --speed: 1.8s; }
+
+/* footer */
+footer { border-top: 1px solid var(--line); padding: 2.5rem 16px; text-align: center; color: var(--muted); }
+footer ul { justify-content: center; }
+footer a { color: var(--dune); }
+
+/* docs pages */
+.doc main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 16px 4rem; display: grid; gap: 2rem; }
+.doc main > h1 { font-size: clamp(2rem, 1.5rem + 2vw, 3rem); margin: 0; }
+.doc main > nav ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
+.doc main > nav a { color: var(--muted); }
+.doc main > nav a[aria-current] { color: var(--gecko); font-weight: 700; }
+@media (min-width: 60em) {
+  .doc main { grid-template-columns: 15rem minmax(0, 1fr); padding: 3rem 32px 5rem; }
+  .doc main > h1 { grid-column: 2; }
+  .doc main > nav { grid-row: 1 / 3; }
+  .doc main > nav ul { flex-direction: column; position: sticky; top: calc(var(--hh, 0px) + 1.5rem); gap: .6rem; }
+}
+.prose { min-width: 0; max-width: 50rem; }
+.prose h2 { font-size: 1.7rem; margin-top: 2.5rem; }
+.prose h3 { margin-top: 2rem; }
+.prose pre { margin: 1rem 0; font-size: .88rem; }
+.prose table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+.prose th, .prose td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+.prose th { background: var(--panel); }
+.prose .right { text-align: right; } .prose .center { text-align: center; }
+.prose .markdown-alert { border-left: 4px solid var(--circuit); background: var(--panel); padding: .6rem 1rem; border-radius: 0 10px 10px 0; margin: 1rem 0; }
+.prose .markdown-alert-title { font-weight: 700; display: flex; gap: .4rem; align-items: center; }
+.prose .octicon { fill: currentColor; }
+.prose .center { text-align: center; }
+.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem; flex-wrap: wrap; }
+.pager a { border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1rem; text-decoration: none; background: var(--panel); }
+.pager small { display: block; color: var(--muted); }
+.pager .next { margin-left: auto; text-align: right; }
+
+/* site map */
+.page main { padding: 2.5rem 0 4rem; }
+.page main li { margin: .3rem 0; }
+
+/* narrow screens: the text runs over the whole image, so the veil covers it all */
+@media (max-width: 59.99em) {
+  .hero::before { background: linear-gradient(0deg, #0f1419 0, #0f1419cc 30%, #0f1419b3 100%); }
+  [data-header] { gap: .5rem 1rem; }
+  [data-header] ul { gap: .25rem .9rem; }
+}
+@media (max-width: 39.99em) { [data-header] { position: static; } }
+.prose li a { display: inline; }   /* a wrapped link keeps its bullet on its first line */
+
+</style>
+<script>
+/* animations on unless the visitor turned them off here, or asks for reduced motion (RGAA 13.8) */
+try { var m = localStorage.getItem("site-motion"); } catch (e) {}
+document.documentElement.dataset.motion = m || (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on");
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header data-header>
+  <a class="brand" href="../"><img src="../assets/logo-64.png" alt="" width="32" height="32"><span>Gekko</span></a>
+  <nav aria-label="Main">
+    <ul>
+      <li><a href="../docs/">Docs</a></li>
+      <li><a href="https://github.com/fmatsos/gekko/releases">Releases</a></li>
+      <li><a href="https://github.com/fmatsos/gekko">Source</a></li>
+    </ul>
+  </nav>
+  <button type="button" class="motion" data-motion-toggle aria-pressed="true" hidden>Animations</button>
+</header>
+<main id="main" tabindex="-1">
+<h1>Built-in commands</h1>
+<nav aria-label="Documentation pages"><ul>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="configuration.html">Configuration</a></li>
+<li><a href="commands.html">Writing commands</a></li>
+<li><a href="output.html">Output contracts</a></li>
+<li><a href="testing.html">Testing configured prompts</a></li>
+<li><a href="mcp.html">MCP server</a></li>
+<li><a aria-current="page" href="cli.html">Built-in commands</a></li>
+<li><a href="intel-npu.html">Deploying on an Intel NPU</a></li>
+<li><a href="apple-silicon.html">Running on Apple Silicon</a></li>
+</ul></nav>
+<div class="prose">
+<p><code>gko</code> ships its built-in commands under eight names: four groups, <code>backend</code> (the runtime
+lifecycle), <code>config</code> (inspection), <code>model</code> (<code>discover</code>) and <code>mcp</code> (<code>serve</code>, see
+<a href="mcp.html">MCP server</a>), plus <code>doctor</code>, <code>describe</code>, <code>update</code> and <code>help</code>. They are not AI commands,
+and these eight names are reserved: a command file whose first path segment is one of them is
+rejected at load time, naming the file. Any other name, <code>status</code> or <code>logs</code> included, is yours.</p>
+<p><code>gko --help</code> lists your commands under <code>Commands:</code> and the built-ins under <code>Built-ins:</code>, <code>help</code>
+included: <code>gko help backend serve</code> is <code>gko backend serve --help</code>.</p>
+<p>On a terminal, help, reports and diagnostics are coloured. Through a pipe — or with <code>NO_COLOR</code>
+set — every byte is the same as without colours: the escape sequences are stripped on the way out,
+never written to a stream that is not a terminal.</p>
+<p>A command's answer, on a terminal, is framed: a blank line, a <code>●</code> header naming the model that
+actually answered (the fallback, when it took over), the answer, and a blank line. A pipe or a
+file receives the answer alone, byte for byte.</p>
+<p>A free-text answer (<code>format = "text"</code> without <code>max_lines</code>) is <strong>streamed</strong> to a terminal. <code>gko</code>
+asks the backend for <code>stream: true</code>, and each token is printed as it arrives. Nothing is printed
+until the first non-blank token. Until then the fallback can still take over, which covers a
+stopped container or a prompt the NPU refuses. Once a token is on screen, the answer belongs to
+that model: a failure mid-way exits <code>3</code> after a partial answer, with no fallback. A JSON answer,
+or one bounded by <code>max_lines</code>, can only be validated whole, so it is never streamed. Neither is
+anything written to a pipe or a file.</p>
+<ul>
+<li>
+<a href="#gko-doctor"><code>gko doctor</code></a> (also <code>gko config check</code>)</li>
+<li><a href="testing.html"><code>gko config test</code></a></li>
+<li><a href="#gko-config-models"><code>gko config models</code></a></li>
+<li><a href="#gko-config-schema"><code>gko config schema</code></a></li>
+<li><a href="#gko-backend-serve"><code>gko backend serve</code></a></li>
+<li><a href="#gko-backend-stop"><code>gko backend stop</code></a></li>
+<li><a href="#gko-backend-status"><code>gko backend status</code></a></li>
+<li><a href="#gko-backend-logs"><code>gko backend logs</code></a></li>
+<li><a href="#gko-backend-tune"><code>gko backend tune</code></a></li>
+<li><a href="#gko-model-discover"><code>gko model discover</code></a></li>
+<li><a href="#gko-describe"><code>gko describe</code></a></li>
+<li><a href="#gko---version"><code>gko --version</code></a></li>
+<li><a href="#gko-update"><code>gko update</code></a></li>
+<li><a href="#verbosity">Verbosity</a></li>
+<li><a href="#execution-statistics">Execution statistics</a></li>
+<li><a href="#degraded-mode">Degraded mode</a></li>
+</ul>
+<hr>
+<h2 id="gko-doctor"><code>gko doctor</code></h2>
+<p>Validates the runtime environment and reports on stdout. Its report <em>is</em> its result.
+<code>gko config check</code> is the same command under its grouped name.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko doctor</span>
+<span class="pl-c1">✓ configuration loaded</span>
+<span class="pl-c1">✗ backend "ovms" reachable: TCP connection to "127.0.0.1:8000" failed: Connection refused (os error 111)</span>
+<span class="pl-c1">✓ container runtime available</span>
+<span class="pl-c1">✓ model "qwen-fast"</span>
+<span class="pl-c1">✓ command "classify": model</span>
+<span class="pl-c1">✓ command "commit-message": model</span>
+<span class="pl-c1">✓ command "translate": model</span>
+<span class="pl-c1">✓ command "classify": output schema</span></pre></div>
+<p>What it checks, in order:</p>
+<ol>
+<li>
+<strong>Configuration loads</strong> — every scope parses and merges.</li>
+<li><strong>Each backend is reachable.</strong></li>
+<li>
+<strong>The container runtime answers</strong> — <code>docker info</code> succeeds. This check appears <strong>only</strong> if at
+least one backend declares a Docker runtime; Docker is an optional prerequisite, and a
+machine that never asked for a container is never penalized for not having one.</li>
+<li>
+<strong>Each runtime command is runnable</strong> — one check per distinct <code>command</code> declared by a
+<a href="configuration.html#starting-a-backend-as-a-process">process runtime</a>, named, and again <strong>only</strong>
+if at least one backend declares one.</li>
+<li>
+<strong>Each model</strong> names a backend that exists and an operation that backend exposes.</li>
+<li>
+<strong>Each command</strong> names a model that exists.</li>
+<li>
+<strong>Each declared output schema</strong> exists, is readable, is valid JSON and compiles as a schema.</li>
+</ol>
+<p>Step 7 covers every schema in every scope. Running a command compiles only that command's
+schema, so a broken schema elsewhere does not stop your other commands; <code>doctor</code> is where every
+schema gets checked.</p>
+<h3 id="exit-codes">Exit codes</h3>
+<div class="table" tabindex="0" role="region" aria-label="Table: Exit codes"><table>
+<thead>
+<tr>
+<th class="right">Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="right"><code>0</code></td>
+<td>every check passed</td>
+</tr>
+<tr>
+<td class="right"><code>2</code></td>
+<td>at least one <strong>configuration</strong> check failed (1, 5, 6, 7)</td>
+</tr>
+<tr>
+<td class="right"><code>3</code></td>
+<td>
+<strong>only</strong> reachability failed (2, 3, 4)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Configuration takes priority: an unreachable backend <em>and</em> a broken configuration gives <code>2</code>, so
+a calling program can tell <em>fix your files</em> from <em>start your runtime</em>. Code <code>3</code> here means the
+same thing it means everywhere else in the CLI — a backend problem.</p>
+<h3 id="what-doctor-does-not-check">What <code>doctor</code> does not check</h3>
+<p><code>doctor</code> does not report whether an NPU is present: <code>gko</code> does not observe the inference hardware.</p>
+<p>The reachability probe opens a TCP connection and closes it — it never sends an HTTP request, so it
+never invokes a model. The label therefore says <em>reachable</em>, not <em>available</em>: a socket accepted,
+and that is all that was established.</p>
+<hr>
+<h2 id="gko-config-models"><code>gko config models</code></h2>
+<p>Lists configured models, sorted by name, with column widths computed from the content.
+<code>FALLBACK</code> is the model retried once when this one fails with a backend error, or <code>-</code> when none is
+declared — see <a href="configuration.html#fallback-optional"><code>fallback</code></a>.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko config models</span>
+<span class="pl-c1">NAME                       BACKEND   OPERATION  FALLBACK</span>
+<span class="pl-c1">qwen2.5-coder-3b-instruct  ovms      chat       -</span>
+<span class="pl-c1">qwen3-8b                   ovms      chat       qwen3-8b-gpu</span>
+<span class="pl-c1">qwen3-8b-gpu               ovms-gpu  chat       -</span></pre></div>
+<hr>
+<h2 id="gko-config-schema"><code>gko config schema</code></h2>
+<p>Prints the JSON Schema (draft-07) of one configuration format: <code>backend</code>, <code>model</code>, <code>command</code>
+(the frontmatter of a command file) or <code>test</code> (a <a href="testing.html">test case</a>). Each schema lists
+exactly the keys <code>gko</code> accepts and rejects any other one, like <code>gko</code> itself.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko config schema backend <span class="pl-k">&gt;</span> .gekko/backend.schema.json</span></pre></div>
+<p>A schema checks structure: the keys, their types, and the few literal values that are fixed
+(<code>type = "openai-compatible"</code>, <code>method = "POST"</code>, <code>port = "auto"</code>). It does not check the rules
+that link keys together, such as <code>values</code> being allowed only with <code>type = "enum"</code>, or a model
+naming a backend that exists. <code>gko config check</code> stays authoritative.</p>
+<p>The schemas do not depend on your configuration, so the command also works when that
+configuration fails to load.</p>
+<p>To have an editor using <a href="https://taplo.tamasfe.dev/" rel="nofollow">Taplo</a> (Even Better TOML in VS Code)
+validate a backend, model or test case file as you type, start the file with a <code>#:schema</code>
+directive. A relative path is resolved from the TOML file's own directory:</p>
+<div class="highlight highlight-source-toml"><pre><span class="pl-c"><span class="pl-c">#</span>:schema ../backend.schema.json</span>
+<span class="pl-smi">id</span> = <span class="pl-s"><span class="pl-pds">"</span>ovms<span class="pl-pds">"</span></span></pre></div>
+<p>A command's frontmatter sits inside a Markdown file, which Taplo does not read. Its schema is
+meant for tools and for checking the documentation.</p>
+<hr>
+<h2 id="gko-backend-serve"><code>gko backend serve</code></h2>
+<p>Starts the runtime of the backend a model points at, and prints what that runtime family calls
+what it started — its result, and the only thing it writes to stdout. For a
+<a href="configuration.html#starting-a-backend-with-docker">Docker</a> backend that is the container
+identifier; for a <a href="configuration.html#starting-a-backend-as-a-process">process</a> one, the pid.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend serve qwen-fast</span>
+<span class="pl-c1">2ac5416d2aae6769b9c2674ee2e284eaab4be049fa7d02d38146852989c35e35</span></pre></div>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend serve qwen-fast</span>
+<span class="pl-c1">1002664</span></pre></div>
+<p>The argument is a <strong>model</strong>, not a backend: a model already names exactly one backend
+(<code>backend = "ovms"</code>), so there is nothing to disambiguate, and several served backends coexist
+without ceremony. What gets run comes entirely from that backend's <code>[runtime]</code> table: image,
+options, command and arguments are configuration.</p>
+<h3 id="the-docker-family">The Docker family</h3>
+<p>The command built is:</p>
+<pre><code>docker run -d --name gko-&lt;backend-id&gt; &lt;options…&gt; &lt;image&gt; &lt;args…&gt;
+</code></pre>
+<p><code>-d</code> and <code>--name</code> are imposed by <code>gko</code>. Detached, because an attached container would write the
+server's logs onto stdout, where only the result belongs. Named after the <strong>backend</strong>, because
+that is what owns the ports: starting the same backend twice then fails on an explicit name
+conflict instead of silently running a second container fighting for port 8000. That second
+attempt exits <code>3</code>, with Docker's own <code>Conflict. The container name "/gko-ovms" is already in use</code>
+on stderr and nothing on stdout.</p>
+<h3 id="the-process-family">The process family</h3>
+<p>The declared <code>command</code> is spawned directly, with the declared <code>arguments</code>, its two streams
+redirected into a log file beside the state record <code>gko</code> writes, and <code>[runtime.env]</code> layered over
+the environment <code>gko</code> itself runs in. Serving the same backend twice is refused before anything is
+spawned, naming the backend and the pid already holding it.</p>
+<p>Then, unlike the Docker family, <code>gko backend serve</code> <strong>waits</strong>: it polls the backend's <code>base_url</code> until
+something answers, the server exits, or <code>startup_timeout_secs</code> runs out. The poll is a TCP
+connection and nothing more — no byte is sent, no protocol is spoken — so a <code>serve</code> that printed a
+pid means <em>something accepted a connection on that address</em>, which a server still loading its
+model already does. Use <code>gko doctor</code> or the runtime's own readiness endpoint for anything
+stronger.</p>
+<p>Every failure after the spawn terminates the child and deletes the record, but <strong>keeps the log</strong> —
+the only place the server explained itself. The
+message that reaches stderr names the backend, the executable that was run, what happened — it
+exited during startup with its status, or it did not answer within its budget — and the path of
+that log. stdout stays empty, as it does on every failure path of every command here.</p>
+<h3 id="exit-codes-1">Exit codes</h3>
+<div class="table" tabindex="0" role="region" aria-label="Table: Exit codes"><table>
+<thead>
+<tr>
+<th class="right">Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="right"><code>0</code></td>
+<td>the runtime started; its container identifier or pid is on stdout</td>
+</tr>
+<tr>
+<td class="right"><code>2</code></td>
+<td>unknown model, or its backend declares no <code>[runtime]</code> table</td>
+</tr>
+<tr>
+<td class="right"><code>3</code></td>
+<td>the runtime could not be brought up</td>
+</tr>
+</tbody>
+</table></div>
+<p>Code <code>3</code> covers every way a start fails, whichever family: <code>docker</code> missing, its daemon down or
+<code>docker run</code> failing; and for a process, a <code>command</code> this machine does not have, a port already
+taken, a spawn the OS refused, a server that exited during startup or one that never answered
+within its budget. The port pre-check only exists for a backend that declares a <code>port</code> key: one
+spelling its number directly in <code>base_url</code> and in <code>arguments</code> has nothing for <code>gko</code> to check, and
+a port already held then surfaces as the server exiting during startup, with the reason in its
+log. It is the same <code>3</code> as everywhere else in this CLI — a backend problem. To a
+calling program, <em>the runtime could not be brought up</em> and <em>the backend is unreachable</em> call for
+the same reaction.</p>
+<h3 id="what-gko-backend-serve-does-not-do">What <code>gko backend serve</code> does not do</h3>
+<p>For a Docker backend it does not wait for the server to be ready: <code>docker run -d</code> returns as soon
+as the container is created, long before a model is loaded. Use <code>gko doctor</code>, <code>gko backend status</code>, or the
+runtime's own readiness endpoint, to know when it can answer. (A process backend does wait — see
+above.)</p>
+<p>It does not detach a spawned process into its own session either, so a terminal hang-up takes it
+down along with everything else in that session.</p>
+<p>The rest of the lifecycle lives in its own commands: <a href="#gko-backend-stop"><code>gko backend stop</code></a>,
+<a href="#gko-backend-status"><code>gko backend status</code></a> and <a href="#gko-backend-logs"><code>gko backend logs</code></a>.</p>
+<hr>
+<h2 id="gko-backend-stop"><code>gko backend stop</code></h2>
+<p>Ends what <code>gko backend serve</code> started for that model's backend.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend stop qwen-fast</span>
+<span class="pl-c1">gko-ovms</span></pre></div>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend stop qwen-fast</span>
+<span class="pl-c1">llamacpp</span></pre></div>
+<p>For a Docker backend it <strong>removes</strong> the container rather than merely stopping it, and prints its
+name: a stopped container still owns that name, so <code>gko backend serve</code> would then fail on a conflict and
+the lifecycle would be a one-way trip.</p>
+<p>For a process backend it prints the <strong>backend identifier</strong>, not the pid <code>serve</code> returned: by the
+time <code>stop</code> answers, that pid names nothing. The pid, while it exists, is
+<a href="#gko-backend-status"><code>gko backend status</code></a>'s <code>INSTANCE</code> column. Termination escalates:
+<code>SIGTERM</code>, a bounded wait, then <code>SIGKILL</code>.</p>
+<p>Stopping a backend that was never started is not an error in either family — the command prints
+the same name and exits <code>0</code>, so a script can call it without checking first. Neither is a record
+whose process is already gone, or whose pid has since been recycled: that record is forgotten,
+never signalled, because the pid it holds may belong to anybody by now.</p>
+<p>Exit codes are <code>gko backend serve</code>'s: <code>2</code> for an unknown model or a backend without a <code>[runtime]</code> table,
+<code>3</code> when the runtime itself refuses — including a process that survived both signals, in which
+case the record is <strong>kept</strong>, so <code>gko</code> can still find that server.</p>
+<hr>
+<h2 id="gko-backend-status"><code>gko backend status</code></h2>
+<p>Reports the state of every backend that declares a runtime, sorted by backend, one line
+each. Its report <em>is</em> its result.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend status</span>
+<span class="pl-c1">BACKEND   RUNTIME  INSTANCE      URL                     STATE</span>
+<span class="pl-c1">ovms      docker   gko-ovms      http://127.0.0.1:8000   Up 3 hours</span>
+<span class="pl-c1">ovms-gpu  docker   gko-ovms-gpu  http://127.0.0.1:32768  Up 3 hours</span></pre></div>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend status</span>
+<span class="pl-c1">BACKEND   RUNTIME  INSTANCE  URL                     STATE</span>
+<span class="pl-c1">llamacpp  process  1002664   http://127.0.0.1:18432  running</span></pre></div>
+<p><code>RUNTIME</code> is the family that manages the backend — <code>docker</code> or <code>process</code>. <code>INSTANCE</code> is what that
+family calls the thing it started: the container name for Docker, the pid for a process, <code>-</code> when
+there is nothing running.</p>
+<p><code>URL</code> is the backend's resolved <code>base_url</code> — the only place a
+<a href="configuration.html#port-optional"><code>port = "auto"</code></a> shows up, since Docker allocates that number and
+nothing else in the CLI would reveal it. A backend whose port cannot be read back (not started,
+Docker unusable) shows <code>-</code> there. A <strong>served process</strong> backend shows the URL its own record
+holds — the address it was actually started on, even if <code>port</code> was edited since.</p>
+<p><code>STATE</code> is whatever the runtime says. For Docker that is Docker's own wording (<code>Up 3 minutes</code>,
+<code>Exited (0) 2 minutes ago</code>); for a process it is one of <code>running</code> (the pid is ours and something
+answers on that URL), <code>unreachable</code> (ours, but nothing answers — starting up, wedged, or listening
+elsewhere), <code>exited</code> (the pid is gone), <code>stale state</code> (the pid was recycled and now belongs to
+somebody else) or <code>foreign state</code> (a live runtime recorded by another backend file — two projects
+sharing an identifier in a machine-global state directory). Every family prints <code>not started</code> when
+nothing was started.</p>
+<p><code>status</code> reports without repairing: a stale record is named as such and left alone. <code>serve</code> and
+<code>stop</code> are what clear it.</p>
+<p>A backend the runtime cannot even be asked about — a Docker daemon that will not answer, one
+unreadable state file — gets that failure as its own state and costs nothing but its own row.
+<code>status</code> exits <code>0</code> as long as the configuration loads, and prints its header even when no backend
+declares a runtime at all.</p>
+<hr>
+<h2 id="gko-backend-logs"><code>gko backend logs</code></h2>
+<p>Streams what the served runtime wrote.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend logs qwen-fast</span>
+<span class="pl-c1">[2026-09-21 17:26:44.688][1][serving][info][server.cpp:115] OpenVINO Model Server 2026.4.0.869b2186a</span>
+<span class="pl-c1">[2026-09-21 17:26:44.688][1][serving][info][server.cpp:116] OpenVINO backend 2026.4.0-22959-99c81491cc3-releases/2026/4</span></pre></div>
+<p><code>--follow</code> (<code>-f</code>) keeps streaming as new lines arrive, until you interrupt it.</p>
+<p>For a Docker backend the container's two streams are passed through untouched — its stdout on
+<code>gko</code>'s stdout, its stderr on <code>gko</code>'s stderr, in the order the runtime wrote them.</p>
+<p>For a process backend both streams were already redirected, at <code>serve</code> time, into a single log
+file beside the state record — interleaved there in the order the server wrote them — and this
+command hands that file back byte for byte. It therefore still works after the
+server has exited, which is exactly when its last lines matter; <code>--follow</code> is a read to end of
+file and then a poll, so it also works on a server that has not written anything yet. A backend
+<code>gko</code> never served has no such file: that is exit <code>3</code>, naming the backend and the path that was
+looked for, with nothing on stdout.</p>
+<p>The logs <em>are</em> this command's result. Exit codes are <code>gko backend serve</code>'s.</p>
+<hr>
+<h2 id="cargo-feature-hardware-tooling">Cargo feature: <code>hardware-tooling</code>
+</h2>
+<p><code>gko backend tune</code> and <code>gko model discover</code> (below) help prepare a configuration for
+Intel/OpenVINO and Hugging Face. They never run a command themselves, and they come with the
+<code>hardware-tooling</code> Cargo feature, <strong>on by default</strong>.</p>
+<p>Building with <code>--no-default-features</code> drops both commands, and the <code>model</code> group along with
+<code>discover</code> (the group would otherwise be empty), from the CLI — <code>backend</code>'s own description drops
+<code>tune</code> too:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko --help</span>
+<span class="pl-c1">Usage: gko [OPTIONS] [COMMAND]</span>
+
+<span class="pl-c1">Commands:</span>
+<span class="pl-c1">  bank-classify   Classify the transactions of a bank statement</span>
+<span class="pl-c1">  chat            Everyday question, answer streamed on a terminal</span>
+<span class="pl-c1">  classify        Classify an input document</span>
+<span class="pl-c1">  code            Code assistant</span>
+<span class="pl-c1">  commit-message  Generate a conventional commit message</span>
+<span class="pl-c1">  mr-description  Generate a merge request title and description from a diff</span>
+<span class="pl-c1">  rewrite         Rewrite a text (email, document) in a given tone</span>
+<span class="pl-c1">  sort-files      Propose a folder for each file of a listing</span>
+<span class="pl-c1">  synthese        Synthétise un ou plusieurs fichiers en Markdown</span>
+<span class="pl-c1">  translate       Translate input text</span>
+
+<span class="pl-c1">Built-ins:</span>
+<span class="pl-c1">  backend   Manage the runtime of a model's backend: serve, stop, status, logs</span>
+<span class="pl-c1">  config    Inspect the configuration: check, models, test, schema</span>
+<span class="pl-c1">  mcp       Expose configured commands to MCP clients</span>
+<span class="pl-c1">  doctor    Check the runtime environment: configuration, backend reachability, declared output schemas</span>
+<span class="pl-c1">  describe  Describe a command, built-in or configured, as JSON; with none given, list every command</span>
+<span class="pl-c1">  update    Download and install the latest gko release from GitHub</span>
+<span class="pl-c1">  help      Print this message or the help of the given command</span>
+
+<span class="pl-c1">Options:</span>
+<span class="pl-c1">  -v, --verbose &lt;LEVEL&gt;        Diagnostic verbosity on stderr; stdout always carries the result only [default: warn] [possible values: error, warn, info]</span>
+<span class="pl-c1">      --error-format &lt;FORMAT&gt;  Format errors on stderr as plain text or a one-line JSON envelope [default: text] [possible values: text, json]</span>
+<span class="pl-c1">      --config-dir &lt;DIR&gt;       Use this directory as the project scope instead of walking up from the current one [env: GKO_CONFIG_DIR]</span>
+<span class="pl-c1">  -h, --help                   Print help</span>
+<span class="pl-c1">  -V, --version                Print version</span></pre></div>
+<p><code>model</code> stays a reserved name either way, so a command file still cannot be placed at
+<code>commands/model/*.md</code>.</p>
+<hr>
+<h2 id="gko-backend-tune"><code>gko backend tune</code></h2>
+<p>Sizes the context and memory of every model compiled for the NPU or the GPU, from the model and the
+host, and writes the result. An OpenVINO NPU graph is compiled for a fixed prompt length plus a
+fixed answer length: a longer prompt is refused, and a longer answer is cut. A GPU graph allocates
+its KV cache on demand, and on unified memory nothing bounds it. <code>tune</code> sizes both instead of
+leaving OVMS's defaults: 1024 + 128 tokens on NPU, and an unbounded cache on GPU.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend tune --help</span>
+<span class="pl-c1">Size the context and memory of every NPU- and GPU-compiled model from the model and the host's RAM, and write it</span>
+
+<span class="pl-c1">Usage: gko backend tune [OPTIONS]</span>
+
+<span class="pl-c1">Options:</span>
+<span class="pl-c1">      --npu                   Tune the NPU models only [default: NPU and GPU, same limits]</span>
+<span class="pl-c1">  -v, --verbose &lt;LEVEL&gt;       Diagnostic verbosity on stderr; stdout always carries the result only [default: warn] [possible values: error, warn, info]</span>
+<span class="pl-c1">      --gpu                   Tune the GPU models only</span>
+<span class="pl-c1">      --max-models &lt;N|all&gt;    How many of the tuned models run at the same time [default: all]</span>
+<span class="pl-c1">      --max-memory &lt;PERCENT&gt;  Share of the total RAM those models get together, in percent [default: 50]</span>
+<span class="pl-c1">      --models-dir &lt;DIR&gt;      Directory holding the exports [default: $HOME/models]</span>
+<span class="pl-c1">      --dry-run               Print the plan without writing anything</span>
+<span class="pl-c1">      --kv-u8                 Store GPU KV caches as u8: about twice the context per GB</span>
+<span class="pl-c1">  -h, --help                  Print help</span></pre></div>
+<p>A model is tuned when <code>&lt;models-dir&gt;/&lt;model&gt;/graph.pbtxt</code> declares <code>device: "NPU"</code> or
+<code>device: "GPU"</code>. Without <code>--npu</code> or <code>--gpu</code>, both devices are tuned together with the same limits.
+With <code>--npu</code> or <code>--gpu</code>, only that device is tuned, so each device can get its own limits:</p>
+<div class="highlight highlight-source-shell"><pre>gko backend tune --npu --max-memory 35
+gko backend tune --gpu --max-memory 15 --max-models 1 --kv-u8</pre></div>
+<p>Each model's share is:</p>
+<ul>
+<li>
+<code>--max-memory</code> percent of the total RAM,</li>
+<li>minus the weights of the <code>--max-models</code> heaviest tuned models,</li>
+<li>divided by <code>--max-models</code>.</li>
+</ul>
+<p>A GPU twin loads its own copy of the weights, so it counts like any other model. The plan is the
+command's result:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko backend tune --dry-run</span>
+<span class="pl-c1">RAM 65.4 GB x 50% - weights 23.0 GB = 1.6 GB per model (6 of 6 NPU or GPU models at once)</span>
+
+<span class="pl-c1">model                            device model max  KV/token  prompt  answer est. memory</span>
+<span class="pl-c1">qwen2.5-coder-7b-instruct        NPU        32768      56KB    1536     512       5.8GB</span>
+<span class="pl-c1">qwen2.5-coder-7b-instruct-gpu    GPU        32768      56KB   13824    4608       5.5GB</span>
+<span class="pl-c1">qwen3-4b-instruct                NPU       262144     144KB    1536     512       3.7GB</span>
+<span class="pl-c1">qwen3-4b-instruct-gpu            GPU       262144     144KB    5376    1792       3.3GB</span>
+<span class="pl-c1">qwen3-8b                         NPU        40960     144KB     512     512       5.9GB</span>
+<span class="pl-c1">qwen3-8b-gpu                     GPU        40960     144KB    5376    1792       5.9GB</span>
+
+<span class="pl-c1">calibration: activation_tenths=62 activation_tenths_long=90 long_context=24576 step=1024</span></pre></div>
+<p><code>--dry-run</code> additionally prints the calibration constants the NPU column above was computed
+from: <code>activation_tenths</code> and <code>activation_tenths_long</code> are the tenths of
+<code>hidden_size x layers</code> bytes of static buffers charged per token below and above
+<code>long_context</code>, and <code>step</code> is the token granularity the context is rounded to.</p>
+<p>What each device gets:</p>
+<div class="table" tabindex="0" role="region" aria-label="Table: gko backend tune"><table>
+<thead>
+<tr>
+<th>Device</th>
+<th>Context</th>
+<th><code>graph.pbtxt</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NPU</td>
+<td>Grows by 1024 tokens until the share or the model's <code>max_position_embeddings</code> is reached. A quarter goes to the answer. The memory estimate counts the fp16 KV cache and the graph's static buffers, calibrated on a Meteor Lake NPU so that it never under-estimates.</td>
+<td>
+<code>MAX_PROMPT_LEN</code> and <code>MIN_RESPONSE_LEN</code> at the root of <code>plugin_config</code>. <code>NPUW_LLM_ENABLE_PREFIX_CACHING</code> under <code>DEVICE_PROPERTIES.NPU</code>, which reuses a repeated prompt prefix (the NPU ignores the top-level <code>enable_prefix_caching</code>).</td>
+</tr>
+<tr>
+<td>GPU</td>
+<td>The share, in whole GiB, becomes <code>cache_size</code>. The context is what that cache holds, capped by the model. A quarter goes to the answer.</td>
+<td>
+<code>cache_size</code>. <code>max_num_seqs: 4</code>, since one user never needs 256 sequences in flight. <code>KV_CACHE_PRECISION: "u8"</code> in <code>plugin_config</code> with <code>--kv-u8</code>, which holds about twice the tokens per GiB; it is removed without the flag.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each model file gets <code>[generation].max_tokens</code> set to the answer length. Nothing is written until
+every file has been computed. A file is replaced, not rewritten, so a <code>graph.pbtxt</code> created by a
+container running as another user can still be updated. The next <code>gko backend serve</code> applies the
+new graph.</p>
+<p>Re-run it after every export, re-export or <code>--configure</code>, since they reset <code>graph.pbtxt</code> to the
+defaults. Also re-run it after adding a model, since each model's share then shrinks. It fails
+with a configuration error (<code>2</code>) when no export for the selected devices is found, naming the
+directory. It also fails with <code>2</code> when a <code>config.json</code>, <code>openvino_model.bin</code> or <code>graph.pbtxt</code> is
+missing or malformed, naming the file.</p>
+<h2 id="gko-model-discover"><code>gko model discover</code></h2>
+<p>Searches Hugging Face for the models this host can run, whatever runs them: CPU, GPU or NPU. It
+needs no configuration, so like <code>doctor</code> it works when yours fails to load.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko model discover --help</span>
+<span class="pl-c1">Search Hugging Face for models this host can run, judged by llmfit when it is on PATH; --backend or --npu narrow the list</span>
+
+<span class="pl-c1">Usage: gko model discover [OPTIONS] [QUERY]...</span>
+
+<span class="pl-c1">Arguments:</span>
+<span class="pl-c1">  [QUERY]...  Words to search for (e.g. "qwen coder"); none lists the most downloaded</span>
+
+<span class="pl-c1">Options:</span>
+<span class="pl-c1">      --task &lt;TASK&gt;                   Hugging Face task the model must serve [default: text-generation]</span>
+<span class="pl-c1">  -v, --verbose &lt;LEVEL&gt;               Diagnostic verbosity on stderr; stdout always carries the result only [default: warn] [possible values: error, warn, info]</span>
+<span class="pl-c1">  -n, --limit &lt;N&gt;                     Most models listed [default: 20]</span>
+<span class="pl-c1">      --candidates &lt;N&gt;                Hugging Face results examined before filtering [default: 100]</span>
+<span class="pl-c1">      --max-memory &lt;PERCENT&gt;          Share of the total RAM one model's INT4 weights may take, in percent, for the models llmfit does not size [default: 50]</span>
+<span class="pl-c1">      --min-score &lt;SCORE&gt;             Lowest llmfit score kept, out of 100 [default: 60]</span>
+<span class="pl-c1">      --sort &lt;COLUMN[:asc|desc],...&gt;  Order by one or more columns (model, type, params, mem, license, downloads, score, fit, on); numbers default to desc, text to asc [default: downloads]</span>
+<span class="pl-c1">      --backend &lt;ENGINE|ID&gt;           Only models packaged for this engine (openvino, llamacpp, mlx), or for the engine a configured backend runs</span>
+<span class="pl-c1">      --npu                           --backend openvino, on a host that has an Intel NPU</span>
+<span class="pl-c1">  -h, --help                          Print help</span></pre></div>
+<p>By default, the only filter is that the model runs well on this machine. This is decided by
+<a href="https://github.com/AlexsJones/llmfit">llmfit</a>, when its CLI is on <code>PATH</code>
+(<code>uv tool install llmfit</code>) and it knows the model: a fit of <code>Perfect</code> or <code>Good</code>, and a score of at
+least <code>--min-score</code>. For a model llmfit does not know, or without llmfit, the check is an INT4
+estimate (half a byte per parameter, plus 20 %) against <code>--max-memory</code> percent of the RAM. A
+repository that cannot be sized that way, such as a GGUF-only one llmfit does not know, is left
+out. The search also asks for <code>--task</code> (Hugging Face <code>pipeline_tag</code>, <code>text-generation</code> by
+default), and leaves out anything under 100M parameters: tokenizer fixtures and toys.</p>
+<p><code>--backend</code> narrows the list to what one inference engine serves. It accepts an engine name, or
+the identifier of a configured backend: its engine is read from what its runtime starts (the
+Docker image and arguments, or the process command and arguments). <code>openvino/model_server</code> or
+<code>ovms</code> means <code>openvino</code>, and <code>llama-server</code> means <code>llamacpp</code>. A backend that starts neither is a
+configuration error (<code>2</code>) naming it, and so is a name that is neither an engine nor a backend.</p>
+<div class="table" tabindex="0" role="region" aria-label="Table: gko model discover"><table>
+<thead>
+<tr>
+<th><code>--backend</code></th>
+<th>Keeps only</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>openvino</code></td>
+<td>An architecture <code>optimum-intel</code> exports for <code>--task</code>, read at run time from its own registry (<code>model_configs.py</code> on <code>main</code>). The original weights, not an already-quantized repository (AWQ, GPTQ, FP8, etc.): <code>optimum-cli export --weight-format int4</code> starts from those. Open weights, unless <code>HF_TOKEN</code> is set (it is then sent to the Hub).</td>
+</tr>
+<tr>
+<td><code>llamacpp</code></td>
+<td>GGUF repositories, searched by their Hub tag and sized from the parameter count in their GGUF header. A GGUF repository llmfit lists among a model's <code>gguf_sources</code> gets that model's score and fit.</td>
+</tr>
+<tr>
+<td><code>mlx</code></td>
+<td>MLX repositories, searched by their Hub tag. They are already quantized: the size is read from the bit width in the name (<code>-4bit</code>, <code>-8bit</code>), 4 bits when it gives none.</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>--npu</code> is <code>--backend openvino</code> on a host with an Intel NPU. With no <code>/dev/accel/accel*</code>, it fails
+before any request with exit <code>3</code>. It cannot be combined with another <code>--backend</code>.</p>
+<p>A candidate that fails a filter is left out, never listed with a caveat. The report is the
+result, on stdout, sorted by downloads unless <code>--sort</code> says otherwise. <code>--sort</code> takes one or more
+comma-separated <code>column[:asc|desc]</code> keys, applied in order, each breaking the ties of the previous
+one. A number column (<code>params</code>, <code>mem</code>, <code>downloads</code>, <code>score</code>) defaults to <code>desc</code>, and a text column
+to <code>asc</code>. <code>fit</code> ranks <code>Perfect</code> before <code>Good</code>. A value shown as <code>-</code> always sorts last, and rows
+equal on every key keep the downloads order. The sort runs over every model that passed the
+filters, before <code>-n</code> keeps the first ones:</p>
+<div class="highlight highlight-source-shell"><pre>gko model discover qwen3 --sort score              <span class="pl-c"><span class="pl-c">#</span> best score first</span>
+gko model discover qwen3 --sort fit,params:asc     <span class="pl-c"><span class="pl-c">#</span> Perfect fits, smallest first</span></pre></div>
+<p>The <code>mem GB</code> column is llmfit's figure when it sized the model, and <code>~</code> marks the INT4 estimate otherwise. The <code>score</code>, <code>fit</code>, <code>on</code> and <code>use case</code> columns
+appear only with llmfit. On a terminal the report is coloured: model ids stand out, a <code>~</code> estimate
+and a non-permissive licence are yellow, and a <code>Perfect</code> fit and a score of 75 or more are green.
+Through a pipe the table is plain.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko model discover qwen3 instruct -n 4</span>
+<span class="pl-c1">model                                     type            params  mem GB license        downloads score fit     on   use case</span>
+<span class="pl-c1">unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF -                    -    15.6 apache-2.0         12.4M  80.8 Perfect GPU  Code generation and completion</span>
+<span class="pl-c1">Qwen/Qwen3-4B-Instruct-2507               qwen3             4.0B     5.8 apache-2.0          3.9M  72.3 Perfect GPU  Instruction following, chat</span>
+<span class="pl-c1">Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8     qwen3_moe        30.5B    15.6 apache-2.0          1.1M  80.8 Perfect GPU  Code generation and completion</span>
+<span class="pl-c1">QuantTrio/Qwen3-VL-30B-A3B-Instruct-AWQ   qwen3_vl_moe     31.1B   ~18.6 apache-2.0          1.1M     - -       -    -</span></pre></div>
+<p>A Hub or registry that cannot be reached fails with exit <code>3</code>, naming the URL. This list answers
+"worth trying". <a href="intel-npu.html"><code>gko-export</code></a>'s CPU check answers "actually works", and
+<a href="#gko-backend-tune"><code>gko backend tune</code></a> sizes the context once the model is exported.</p>
+<h2 id="gko-describe"><code>gko describe</code></h2>
+<p>Prints a JSON description of a command — a configured one or a built-in — useful for humans, and
+for programs driving the CLI. The path is given as words, like the command itself
+(<code>gko describe git review</code>); <code>git/review</code> is accepted too. Built-ins are looked up first.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko describe translate</span>
+<span class="pl-c1">{"name":"translate","kind":"command","description":"Translate input text","model":"qwen3-8b","backend":"ovms","fallback":"qwen3-8b-gpu","source":{"file":"/home/…/gekko/.gekko/commands/translate.md","scope":"/home/…/gekko/.gekko"},"input":"stdin_or_file","args":{"language":{"short":"l","required":true,"description":"Target language"}},"output":{"format":"text","schema":null,"max_lines":null}}</span></pre></div>
+<p>Pipe it through <code>jq</code> to read it:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko describe commit-message <span class="pl-k">|</span> jq <span class="pl-c1">.</span></span>
+<span class="pl-c1">{</span>
+<span class="pl-c1">  "name": "commit-message",</span>
+<span class="pl-c1">  "kind": "command",</span>
+<span class="pl-c1">  "description": "Generate a conventional commit message",</span>
+<span class="pl-c1">  "model": "qwen3-8b",</span>
+<span class="pl-c1">  "backend": "ovms",</span>
+<span class="pl-c1">  "fallback": "qwen3-8b-gpu",</span>
+<span class="pl-c1">  "source": {</span>
+<span class="pl-c1">    "file": "/home/…/gekko/.gekko/commands/commit-message.md",</span>
+<span class="pl-c1">    "scope": "/home/…/gekko/.gekko"</span>
+<span class="pl-c1">  },</span>
+<span class="pl-c1">  "input": "stdin",</span>
+<span class="pl-c1">  "args": {},</span>
+<span class="pl-c1">  "output": {</span>
+<span class="pl-c1">    "format": "text",</span>
+<span class="pl-c1">    "schema": null,</span>
+<span class="pl-c1">    "max_lines": 1</span>
+<span class="pl-c1">  }</span>
+<span class="pl-c1">}</span></pre></div>
+<p>For a configured command, <code>backend</code> and <code>fallback</code> are resolved from its model (<code>null</code> when the
+model is not configured, which <code>describe</code> reports rather than fails on), and <code>source</code> names the
+file that won and the scope it came from — which is how a shadowed command is told apart from its
+winner.</p>
+<p>A built-in is described from the command tree itself, so this works even with a broken
+configuration; <code>degraded_mode</code> says whether the built-in does too:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko describe backend serve <span class="pl-k">|</span> jq <span class="pl-c1">.</span></span>
+<span class="pl-c1">{</span>
+<span class="pl-c1">  "name": "backend/serve",</span>
+<span class="pl-c1">  "kind": "builtin",</span>
+<span class="pl-c1">  "description": "Start the runtime of the backend a model points at",</span>
+<span class="pl-c1">  "args": {</span>
+<span class="pl-c1">    "MODEL": {</span>
+<span class="pl-c1">      "short": null,</span>
+<span class="pl-c1">      "required": true,</span>
+<span class="pl-c1">      "description": "Identifier of the model to serve (e.g. \"qwen-fast\")"</span>
+<span class="pl-c1">    }</span>
+<span class="pl-c1">  },</span>
+<span class="pl-c1">  "subcommands": [],</span>
+<span class="pl-c1">  "degraded_mode": false</span>
+<span class="pl-c1">}</span></pre></div>
+<p>An unknown path is a configuration error listing the configured commands:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko describe nexistepas</span>
+<span class="pl-c1">configuration error: unknown command: "nexistepas" (available commands: classify, code, commit-message, synthese, translate)</span></pre></div>
+<h3 id="the-index">The index</h3>
+<p>With no argument, <code>gko describe</code> lists every describable path instead — built-in and business,
+each with its own one-line description — rather than failing on a missing required argument:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko describe <span class="pl-k">|</span> jq <span class="pl-c1">.</span></span>
+<span class="pl-c1">[</span>
+<span class="pl-c1">  {</span>
+<span class="pl-c1">    "about": "Stream the logs of the runtime started for a model's backend",</span>
+<span class="pl-c1">    "kind": "builtin",</span>
+<span class="pl-c1">    "path": "backend/logs"</span>
+<span class="pl-c1">  },</span>
+<span class="pl-c1">  ...</span>
+<span class="pl-c1">  {</span>
+<span class="pl-c1">    "about": "",</span>
+<span class="pl-c1">    "kind": "business",</span>
+<span class="pl-c1">    "path": "classify"</span>
+<span class="pl-c1">  },</span>
+<span class="pl-c1">  ...</span>
+<span class="pl-c1">]</span></pre></div>
+<hr>
+<h2 id="--json"><code>--json</code></h2>
+<p><code>gko doctor</code> (and its alias <code>config check</code>), <code>gko backend status</code> and <code>gko config models</code> also
+accept <code>--json</code>: the same report, serialized instead of formatted for a terminal.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko doctor --json <span class="pl-k">|</span> jq <span class="pl-c1">.</span></span>
+<span class="pl-c1">[</span>
+<span class="pl-c1">  {</span>
+<span class="pl-c1">    "kind": "config",</span>
+<span class="pl-c1">    "label": "configuration loaded",</span>
+<span class="pl-c1">    "status": "ok"</span>
+<span class="pl-c1">  },</span>
+<span class="pl-c1">  {</span>
+<span class="pl-c1">    "kind": "reachability",</span>
+<span class="pl-c1">    "label": "backend \"ovms\" reachable",</span>
+<span class="pl-c1">    "status": "failed",</span>
+<span class="pl-c1">    "message": "TCP connection to \"127.0.0.1:8000\" failed: Connection refused (os error 111)"</span>
+<span class="pl-c1">  }</span>
+<span class="pl-c1">]</span></pre></div>
+<p><code>kind</code> (<code>"config"</code> or <code>"reachability"</code>) and <code>status</code> (<code>"ok"</code>, or <code>"failed"</code> with a <code>message</code>)
+are the machine contract: a calling agent reads those, never <code>label</code>'s text, to tell a
+configuration failure (exit <code>2</code>) apart from a reachability one (exit <code>3</code>).</p>
+<h2 id="--error-format"><code>--error-format</code></h2>
+<p><code>--error-format &lt;text|json&gt;</code> (default <code>text</code>) changes how errors are rendered on stderr — both
+usage errors and command failures. The latter include <code>kind</code>, <code>message</code>, <code>exit_code</code>, and the
+available family-specific fields (for example <code>backend</code>, <code>status</code>, or <code>file</code>). Usage errors honour
+it too, wherever the flag sits on the command line. <code>--help</code> and <code>--version</code> are never affected:
+they print their usual text on stdout and exit <code>0</code>, whatever this flag says.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko does-not-exist --error-format json</span></pre></div>
+<div class="highlight highlight-source-json"><pre>{<span class="pl-ent">"kind"</span>:<span class="pl-s"><span class="pl-pds">"</span>usage<span class="pl-pds">"</span></span>,<span class="pl-ent">"message"</span>:<span class="pl-s"><span class="pl-pds">"</span>error: unrecognized subcommand 'does-not-exist'<span class="pl-pds">"</span></span>}</pre></div>
+<p><code>error-format</code> is consequently a reserved argument name: a command declaring
+<code>[args."error-format"]</code> is rejected at load time, naming the file.</p>
+<h2 id="--config-dir"><code>--config-dir</code></h2>
+<p><code>--config-dir &lt;DIR&gt;</code> (or <code>$GKO_CONFIG_DIR</code>, the flag winning when both are set) names the project
+scope directly, skipping the walk-up search entirely. See
+<a href="configuration.html#scopes-and-precedence">Scopes and precedence</a> for the walk-up itself.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko --config-dir /path/to/.gekko config models</span></pre></div>
+<p><code>config-dir</code> is consequently a reserved argument name: a command declaring <code>[args."config-dir"]</code>
+is rejected at load time, naming the file.</p>
+<h2 id="shell-completions">Shell completions</h2>
+<p><code>gko</code> supports dynamic shell completions, with no <code>completions</code> subcommand: setting
+<code>COMPLETE=&lt;shell&gt;</code> makes the binary print the shell's registration script instead of running as
+usual.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1"><span class="pl-c1">eval</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-s"><span class="pl-pds">$(</span>COMPLETE=bash gko<span class="pl-pds">)</span></span><span class="pl-pds">"</span></span>       <span class="pl-c"><span class="pl-c">#</span> bash, once per shell session (or in ~/.bashrc)</span></span>
+$ <span class="pl-s1"><span class="pl-c1">eval</span> <span class="pl-s"><span class="pl-pds">"</span><span class="pl-s"><span class="pl-pds">$(</span>COMPLETE=zsh gko<span class="pl-pds">)</span></span><span class="pl-pds">"</span></span>        <span class="pl-c"><span class="pl-c">#</span> zsh</span></span>
+$ <span class="pl-s1">COMPLETE=fish gko <span class="pl-k">|</span> <span class="pl-c1">source</span>        <span class="pl-c"><span class="pl-c">#</span> fish</span></span></pre></div>
+<p>Once registered, <code>&lt;TAB&gt;</code> completes business commands, built-in group names (<code>backend</code>, <code>config</code>,
+...) and the global flags — but not the top-level built-ins <code>doctor</code>, <code>describe</code> and <code>update</code>.
+Completions are computed on every request from the configuration in effect, so they reflect the
+current <code>.gekko/</code> — including <code>--config-dir</code>/<code>GKO_CONFIG_DIR</code>.</p>
+<hr>
+<h2 id="gko---version"><code>gko --version</code></h2>
+<p>Prints the program name and its version:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko --version</span>
+<span class="pl-c1">gko 0.8.0</span></pre></div>
+<p>It does not load or require a valid AI configuration.</p>
+<hr>
+<h2 id="gko-update"><code>gko update</code></h2>
+<p>Checks the latest GitHub Release and installs it over the currently running executable:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko update</span>
+<span class="pl-c1">updated gko from 0.7.0 to 0.7.1</span></pre></div>
+<p>When no newer release exists, it reports that fact and leaves the executable untouched:</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko update</span>
+<span class="pl-c1">gko 0.8.0 is already up to date</span></pre></div>
+<p>The release publishes a <code>gko-update.json</code> manifest. It maps every supported platform to a raw
+binary and its SHA-256 checksum. The command downloads that manifest through GitHub's stable
+<code>releases/latest</code> URL, compares semantic versions, selects the current platform (one Linux build
+per architecture, for every glibc-based distribution), verifies the downloaded bytes, then replaces the executable
+at the same path. It exits <code>1</code> without replacing anything when the manifest, download, checksum,
+platform detection, or replacement fails. The executable's directory must therefore be writable
+by the current user.</p>
+<p>The manifest and the binaries come from the same GitHub release: the SHA-256 check protects
+against a corrupted download, not against a compromised release.</p>
+<p>Like <code>--version</code>, <code>update</code> does not depend on the AI configuration and remains available in degraded
+mode. After a successful update, the <strong>new</strong> binary is asked whether it accepts your configuration;
+if it does not, a warning on stderr points to the changelog and the documentation — the update
+itself has succeeded and exits <code>0</code>.</p>
+<hr>
+<h2 id="verbosity">Verbosity</h2>
+<p><code>--verbose &lt;LEVEL&gt;</code> (<code>-v</code>) sets what reaches <strong>stderr</strong>. Three levels, accepted after any
+subcommand since the argument is global:</p>
+<div class="table" tabindex="0" role="region" aria-label="Table: Verbosity"><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Prints</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>error</code></td>
+<td>nothing but the failure itself, printed by the process regardless</td>
+</tr>
+<tr>
+<td><code>warn</code></td>
+<td>
+<em>(default)</em> what the engine had to work around — an unloadable scope, for instance</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>a trace: scopes read, command resolved, input size, request sent, response received</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1"><span class="pl-c1">echo</span> <span class="pl-s"><span class="pl-pds">"</span>texte<span class="pl-pds">"</span></span> <span class="pl-k">|</span> gko classify --verbose info <span class="pl-k">&gt;</span> /dev/null</span>
+<span class="pl-c1">gko: info: scopes: /home/…/gekko/.gekko, /home/…/.config/gekko</span>
+<span class="pl-c1">gko: info: command "classify" -&gt; model "qwen-fast" (backend "ovms", operation "chat") from /home/…/gekko/.gekko/commands/classify.md</span>
+<span class="pl-c1">gko: info: input: 6 characters read from stdin</span>
+<span class="pl-c1">gko: info: prompt rendered: 125 characters</span>
+<span class="pl-c1">gko: info: POST http://127.0.0.1:8000/v3/chat/completions (model "OpenVINO/Qwen3-8B-int4-ov", timeout 30 s)</span></pre></div>
+<p><strong>No level ever changes stdout.</strong> Verbosity moves a threshold on the diagnostic stream; the result
+of a command is not a diagnostic. A failure message is printed by the process itself, once, at
+every level — <code>--verbose error</code> silences the engine's commentary, never the error you need.</p>
+<h3 id="--dry-run"><code>--dry-run</code></h3>
+<p>Every business command leaf accepts <code>--dry-run</code>: it builds the exact request <code>gko</code> would send —
+url, headers, body — exactly as the real call would, and prints it as JSON
+instead of sending it. Nothing is written or read but the terminal: the runtime is never resolved
+(a <code>port = "auto"</code> backend keeps its <code>{{ backend.port }}</code> placeholder verbatim, since resolving it
+means asking Docker), only the primary model is shown (never the fallback), and header VALUES are
+redacted — only their names appear.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1"><span class="pl-c1">echo</span> <span class="pl-s"><span class="pl-pds">"</span>texte<span class="pl-pds">"</span></span> <span class="pl-k">|</span> gko classify --dry-run</span>
+<span class="pl-c1">{"body":{"messages":[{"content":"Classify: texte\n","role":"user"}],"model":"OpenVINO/Qwen3-8B-int4-ov"},"headers":{},"url":"http://127.0.0.1:8000/v3/chat/completions"}</span></pre></div>
+<p><code>--dry-run</code> exists only on business command leaves, never on a built-in: <code>gko doctor --dry-run</code>
+is a usage error (exit <code>2</code>, empty stdout), like any other unrecognized flag. <code>dry-run</code> is consequently a reserved argument name: a command declaring
+<code>[args."dry-run"]</code> is rejected at load time, naming the file.</p>
+<h3 id="--model"><code>--model</code></h3>
+<p>Every business command leaf also accepts <code>--model &lt;ID&gt;</code>, to use a model other than the command
+file's own for this one call. The override applies before the model is resolved and before the
+input is read: an unknown id fails exactly like an unknown model in the command file would (a
+configuration error, exit <code>2</code>, the id named in the message), and nothing is sent to the network.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1"><span class="pl-c1">echo</span> <span class="pl-s"><span class="pl-pds">"</span>texte<span class="pl-pds">"</span></span> <span class="pl-k">|</span> gko classify --model qwen-fast --dry-run</span>
+<span class="pl-c1">{"body":{"messages":[{"content":"Classify: texte\n","role":"user"}],"model":"OpenVINO/Qwen3-8B-int4-ov"},"headers":{},"url":"http://127.0.0.1:8000/v3/chat/completions"}</span></pre></div>
+<p><code>model</code> is consequently a reserved argument name, for the same reason as <code>dry-run</code>: a command
+declaring <code>[args.model]</code> is rejected at load time, naming the file.</p>
+<h3 id="--no-wait"><code>--no-wait</code></h3>
+<p>A business command leaf also accepts <code>--no-wait</code>. When the command's backend declares
+<a href="configuration.html#max_concurrent-optional"><code>max_concurrent = 1</code></a> and another <code>gko</code> process is
+using it, the command does not wait for its turn: the busy backend is a backend failure, so the
+model's <code>fallback</code> answers if it declares one, and otherwise the command fails at once (exit <code>3</code>,
+empty stdout) naming the backend. On a backend without a limit it changes nothing.
+<code>no-wait</code> is consequently a reserved argument name, for the same reason as <code>dry-run</code>.</p>
+<h3 id="progress-indicators">Progress indicators</h3>
+<p>On a terminal, <code>gko</code> draws a spinner on stderr while it waits for a model (relabelled when the
+fallback takes over) or for a process backend to start, and a progress bar while <code>gko update</code>
+downloads. They are drawn only when <strong>stderr is a terminal</strong> and the level is above <code>error</code>:
+through a pipe — how a program driving <code>gko</code> sees it — stderr receives no escape sequence and no
+carriage return, and <code>--verbose error</code> means silence. Indicators never touch stdout.</p>
+<p>The name <code>verbose</code> and the short letter <code>-v</code> are consequently reserved: a command declaring
+<code>[args.verbose]</code> or <code>short = "v"</code> is rejected at load time, naming the argument.</p>
+<hr>
+<h2 id="execution-statistics">Execution statistics</h2>
+<p>With <code>GKO_STATS_FILE</code> set to a path, every run of a configured command appends one JSON line to
+that file, created if needed: from the CLI, from <a href="testing.html"><code>gko config test</code></a> (one line per
+run of a case) and from <a href="mcp.html"><code>gko mcp serve</code></a> (one line per tool call). A <code>--dry-run</code> sends no
+request and writes nothing.</p>
+<div class="highlight highlight-source-json"><pre>{<span class="pl-ent">"timestamp_ms"</span>:<span class="pl-c1">1790000000000</span>,<span class="pl-ent">"command"</span>:<span class="pl-s"><span class="pl-pds">"</span>classify<span class="pl-pds">"</span></span>,<span class="pl-ent">"model_requested"</span>:<span class="pl-s"><span class="pl-pds">"</span>qwen-npu<span class="pl-pds">"</span></span>,<span class="pl-ent">"model_answered"</span>:<span class="pl-s"><span class="pl-pds">"</span>qwen-gpu<span class="pl-pds">"</span></span>,<span class="pl-ent">"fallback_used"</span>:<span class="pl-c1">true</span>,<span class="pl-ent">"backend"</span>:<span class="pl-s"><span class="pl-pds">"</span>ovms-gpu<span class="pl-pds">"</span></span>,<span class="pl-ent">"duration_ms"</span>:<span class="pl-c1">1840</span>,<span class="pl-ent">"prompt_tokens"</span>:<span class="pl-c1">212</span>,<span class="pl-ent">"completion_tokens"</span>:<span class="pl-c1">14</span>,<span class="pl-ent">"finish_reason"</span>:<span class="pl-s"><span class="pl-pds">"</span>stop<span class="pl-pds">"</span></span>,<span class="pl-ent">"exit_code"</span>:<span class="pl-c1">0</span>}</pre></div>
+<div class="table" tabindex="0" role="region" aria-label="Table: Execution statistics"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>timestamp_ms</code></td>
+<td>when the run started, in milliseconds since the Unix epoch</td>
+</tr>
+<tr>
+<td><code>command</code></td>
+<td>the command path, segments joined by <code>/</code>
+</td>
+</tr>
+<tr>
+<td><code>case</code></td>
+<td>the <code>config test</code> case name; absent outside <code>config test</code>
+</td>
+</tr>
+<tr>
+<td><code>model_requested</code></td>
+<td>the model the command (or <code>--model</code>) named</td>
+</tr>
+<tr>
+<td><code>model_answered</code></td>
+<td>the model that answered: the fallback, when it took over</td>
+</tr>
+<tr>
+<td><code>fallback_used</code></td>
+<td>whether the fallback answered</td>
+</tr>
+<tr>
+<td><code>backend</code></td>
+<td>the backend that answered, or the requested model's backend when none did</td>
+</tr>
+<tr>
+<td><code>duration_ms</code></td>
+<td>time spent reaching the backend and waiting for the answer, fallback included, and the wait for a busy <a href="configuration.html#max_concurrent-optional"><code>max_concurrent</code></a> backend</td>
+</tr>
+<tr>
+<td>
+<code>prompt_tokens</code>, <code>completion_tokens</code>
+</td>
+<td>the backend's <code>usage</code>, when it reports one</td>
+</tr>
+<tr>
+<td><code>finish_reason</code></td>
+<td>the backend's <code>finish_reason</code>, when it reports one</td>
+</tr>
+<tr>
+<td><code>exit_code</code></td>
+<td>the invocation's exit code</td>
+</tr>
+</tbody>
+</table></div>
+<p>A field the run never got to know is <code>null</code>: a run that failed before reaching the backend has no
+<code>backend</code>, one whose backend failed has no <code>model_answered</code>. A record never holds the prompt, the
+answer or a header value.</p>
+<p>The line is appended after the answer is written, in a single write, so concurrent runs sharing a
+file do not interleave. A file that cannot be written is a warning on stderr: the exit code and
+stdout stay what they would have been.</p>
+<hr>
+<h2 id="degraded-mode">Degraded mode</h2>
+<p>A broken configuration does not leave you without the tools to diagnose it. When loading fails,
+the built-ins stay available and your commands are left out.</p>
+<div class="highlight highlight-text-shell-session"><pre>$ <span class="pl-s1">gko --help</span>
+<span class="pl-c1">Usage: gko [OPTIONS]</span>
+
+<span class="pl-c1">Commands:</span>
+<span class="pl-c1">  none: the configuration failed to load; run "gko doctor"</span>
+
+<span class="pl-c1">Built-ins:</span>
+<span class="pl-c1">  backend   Manage the runtime of a model's backend: serve, stop, status, logs, tune</span>
+<span class="pl-c1">  config    Inspect the configuration: check, models, test, schema</span>
+<span class="pl-c1">  mcp       Expose configured commands to MCP clients</span>
+<span class="pl-c1">  model     Find models for this host: discover</span>
+<span class="pl-c1">  doctor    Check the runtime environment: configuration, backend reachability, declared output schemas</span>
+<span class="pl-c1">  describe  Describe a command, built-in or configured, as JSON; with none given, list every command</span>
+<span class="pl-c1">  update    Download and install the latest gko release from GitHub</span>
+<span class="pl-c1">  help      Print this message or the help of the given command</span>
+
+<span class="pl-c1">Options:</span>
+<span class="pl-c1">  -v, --verbose &lt;LEVEL&gt;        Diagnostic verbosity on stderr; stdout always carries the result only [default: warn] [possible values: error, warn, info]</span>
+<span class="pl-c1">      --error-format &lt;FORMAT&gt;  Format errors on stderr as plain text or a one-line JSON envelope [default: text] [possible values: text, json]</span>
+<span class="pl-c1">      --config-dir &lt;DIR&gt;       Use this directory as the project scope instead of walking up from the current one [env: GKO_CONFIG_DIR]</span>
+<span class="pl-c1">  -h, --help                   Print help</span>
+<span class="pl-c1">  -V, --version                Print version</span></pre></div>
+<p>Exit code <code>0</code>, and on <strong>stderr</strong>:</p>
+<pre><code>gko: warn: invalid configuration (configuration error: invalid TOML in
+/tmp/…/.gekko/backends/k.toml: TOML parse error at line 1, column 2
+  |
+1 | x{[
+  |  ^
+key with no value, expected `=`
+); run "gko doctor" for details on the failed checks
+</code></pre>
+<p>From there:</p>
+<div class="table" tabindex="0" role="region" aria-label="Table: Degraded mode"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Behaviour with a broken configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gko --help</code></td>
+<td>exit <code>0</code>, built-ins listed, warning on stderr</td>
+</tr>
+<tr>
+<td>
+<code>gko doctor</code>, <code>gko config check</code>
+</td>
+<td>exit <code>2</code>, report on stdout naming the offending file and line</td>
+</tr>
+<tr>
+<td>
+<code>gko --version</code>, <code>update</code>
+</td>
+<td>run normally; they do not depend on the configuration</td>
+</tr>
+<tr>
+<td><code>gko config schema</code></td>
+<td>runs normally (the warning still goes to stderr)</td>
+</tr>
+<tr>
+<td><code>gko describe &lt;built-in&gt;</code></td>
+<td>runs normally; <code>gko describe &lt;command&gt;</code> exits <code>2</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>gko backend serve</code>, <code>stop</code>, <code>status</code>, <code>logs</code>, <code>gko config models</code>
+</td>
+<td>exit <code>2</code>, stdout empty — they need the configuration that could not load</td>
+</tr>
+<tr>
+<td>anything else</td>
+<td>exit <code>2</code>, stdout empty, error on stderr</td>
+</tr>
+</tbody>
+</table></div>
+
+<nav class="pager" aria-label="Previous and next pages"><a class="prev" rel="prev" href="mcp.html"><small>Previous</small> MCP server</a><a class="next" rel="next" href="intel-npu.html"><small>Next</small> Deploying on an Intel NPU</a></nav>
+</div>
+
+</main>
+<footer>
+  <nav aria-label="Footer">
+    <ul>
+      <li><a href="../docs/">Documentation</a></li>
+      <li><a href="../sitemap.html">Site map</a></li>
+      <li><a href="https://github.com/fmatsos/gekko/releases">Releases</a></li>
+      <li><a href="https://github.com/fmatsos/gekko">Source</a></li>
+      <li><a href="https://github.com/fmatsos/gekko/blob/main/LICENSE">MIT License</a></li>
+    </ul>
+  </nav>
+  <p>Gekko runs where your model runs. Not a cloud in this sky.</p>
+</footer>
+<p class="sr-only" role="status" id="status"></p>
+<script>
+/* Generic behaviours, each switched on by markup; no design. Inlined first by build.py.
+   [data-motion-toggle]   the Animations button (aria-pressed); html[data-motion] = on|off
+   img[data-src]          decorative sprites: loaded after `load`, only while motion is on
+   [data-copy]            a button copying the text of its previous sibling (or of data-copy="#id");
+                          data-copy-shell drops "$ " prompts and "# comments"; fires "site:copied"
+   [data-part]            parts of a page: the one under the middle of the screen gets .active,
+                          links to it in [data-parts-nav] get aria-current="true"; html.snap when
+                          every part fits the screen (with html[data-snap]); --hh = header height
+   [data-rail]            a scroll rail: its [data-rail-thumb] follows the scroll and can be dragged
+   [data-hop="sel"]       a sprite that jumps onto the elements matching sel inside its parent,
+                          measured from their positions (any layout), while its part is active
+   html.ready             set once the above is wired: "not shown yet" styles may apply */
+(() => {
+  const html = document.documentElement, on = () => html.dataset.motion === "on";
+  const status = document.getElementById("status");
+  const say = msg => { if (!status) return; status.textContent = msg; setTimeout(() => { status.textContent = ""; }, 4000); };
+  const listeners = [];   // run when motion is switched
+  const onMotion = f => listeners.push(f);
+
+  // decorative sprites
+  let loaded = false;
+  const sprites = () => {
+    if (loaded || !on() || document.readyState !== "complete") return;
+    loaded = true;
+    document.querySelectorAll("img[data-src]").forEach(i => { i.src = i.dataset.src; });
+  };
+  addEventListener("load", () => setTimeout(sprites, 1000));   // after the LCP: decorative bytes never compete with it
+  onMotion(sprites);
+
+  // RGAA 13.8: every looping animation can be stopped, and the choice sticks
+  document.querySelectorAll("[data-motion-toggle]").forEach(b => {
+    b.hidden = false;
+    b.setAttribute("aria-pressed", String(on()));
+    b.addEventListener("click", () => {
+      html.dataset.motion = on() ? "off" : "on";
+      document.querySelectorAll("[data-motion-toggle]").forEach(x => x.setAttribute("aria-pressed", String(on())));
+      try { localStorage.setItem("site-motion", html.dataset.motion); } catch (e) {}
+      listeners.forEach(f => f());
+    });
+  });
+
+  // copy buttons
+  document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+    const src = b.dataset.copy ? document.querySelector(b.dataset.copy) : b.previousElementSibling;
+    let t = src.innerText;
+    if ("copyShell" in b.dataset) t = t.split("\n").map(l => l.replace(/^\$ /, "").replace(/\s+# .*$/, "")).join("\n");
+    navigator.clipboard.writeText(t.trim()).then(() => {
+      say(b.dataset.copied || "Copied to the clipboard.");
+      b.dispatchEvent(new CustomEvent("site:copied", { bubbles: true, detail: { motion: on() } }));
+    }, () => say("Copy failed: select the text and copy it by hand."));
+  }));
+
+  // parts of a page
+  const parts = [...document.querySelectorAll("[data-part]")];
+  const header = document.querySelector("[data-header]");
+  const navLinks = [...document.querySelectorAll("[data-parts-nav] a[href^='#']")];
+  const max = () => html.scrollHeight - innerHeight;
+  let cur;
+  const hops = [];
+  const current = () => {
+    if (!parts.length) return;
+    const mid = innerHeight / 2;
+    const p = scrollY >= max() - 2 ? parts.at(-1) : parts.find(x => { const r = x.getBoundingClientRect(); return r.top <= mid && r.bottom > mid; });
+    if (!p || p === cur) return;
+    cur = p;
+    parts.forEach(x => x.classList.toggle("active", x === p));
+    navLinks.forEach(a => a.getAttribute("href") === "#" + p.id ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
+    hops.forEach(h => h.start());
+  };
+  const fit = () => {
+    const hh = header ? header.offsetHeight : 0;
+    html.style.setProperty("--hh", hh + "px");
+    if ("snap" in html.dataset) html.classList.toggle("snap", parts.every(s => s.offsetHeight <= innerHeight - hh + 1));
+  };
+  if (header) new ResizeObserver(fit).observe(header);
+  fit();
+
+  // the scroll rail
+  const rail = document.querySelector("[data-rail]"), thumb = rail && rail.querySelector("[data-rail-thumb]");
+  const place = () => { if (thumb) thumb.style.transform = `translateY(${(scrollY / Math.max(1, max())) * (rail.clientHeight - thumb.offsetHeight)}px)`; };
+  if (thumb) {
+    const toY = e => { const r = rail.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientY - r.top - thumb.offsetHeight / 2) / (r.height - thumb.offsetHeight))) * max(); };
+    thumb.addEventListener("pointerdown", e => {
+      e.preventDefault(); thumb.setPointerCapture(e.pointerId); html.classList.add("dragging");
+      const move = ev => scrollTo({ top: toY(ev), behavior: "instant" });
+      const up = () => { html.classList.remove("dragging"); thumb.removeEventListener("pointermove", move); thumb.removeEventListener("pointerup", up); };
+      thumb.addEventListener("pointermove", move); thumb.addEventListener("pointerup", up);
+    });
+    rail.addEventListener("click", e => { if (!e.target.closest("a, [data-rail-thumb]")) scrollTo({ top: toY(e) }); });
+    addEventListener("keydown", e => { if (e.key === "Escape") rail.classList.add("quiet"); });   // WCAG 1.4.13
+    ["pointerleave", "focusout"].forEach(ev => rail.addEventListener(ev, () => rail.classList.remove("quiet")));
+  }
+
+  // sprites that jump from element to element
+  document.querySelectorAll("[data-hop]").forEach(sprite => {
+    const box = sprite.parentElement, part = sprite.closest("[data-part]");
+    const targets = () => [...box.querySelectorAll(sprite.dataset.hop)];
+    let at = null, timer;
+    const spot = el => {
+      const r = box.getBoundingClientRect(), k = el.getBoundingClientRect();
+      return [k.left - r.left + (k.width - sprite.offsetWidth) / 2, k.top - r.top - sprite.offsetHeight + 8];
+    };
+    const stand = () => { if (at) { const [x, y] = spot(at); sprite.style.transform = `translate(${x}px, ${y}px)`; } };
+    const start = () => {
+      clearTimeout(timer);
+      if (!on() || (part && cur !== part)) return;
+      const all = targets();
+      if (!all.length) return;
+      const firstRow = all[0].getBoundingClientRect().bottom;
+      const seen = all.filter(el => {   // fully in view, first row only: never land on text below
+        const k = el.getBoundingClientRect();
+        return k.left >= 0 && k.right <= innerWidth && k.top < firstRow;
+      });
+      if (!seen.length) { timer = setTimeout(start, 800); return; }
+      const next = seen.find(el => all.indexOf(el) > all.indexOf(at)) || seen[0];
+      const from = at ? spot(at) : spot(next), to = spot(next);
+      const flip = to[0] < from[0] ? " scaleX(-1)" : "", peak = Math.min(from[1], to[1]) - 90;
+      const jump = sprite.animate([
+        { transform: `translate(${from[0]}px, ${from[1]}px)${flip}`, easing: "ease-out" },
+        { transform: `translate(${(from[0] + to[0]) / 2}px, ${peak}px)${flip}`, easing: "ease-in" },
+        { transform: `translate(${to[0]}px, ${to[1]}px)${flip}` }], { duration: 700, fill: "forwards" });
+      jump.onfinish = () => {
+        at = next; stand(); jump.cancel();
+        next.animate([{ translate: "0 0" }, { translate: "0 12px", scale: "1.02 .96" }, { translate: "0 0" }], { duration: 400, easing: "ease-out" });
+        next.dispatchEvent(new CustomEvent("site:landed", { bubbles: true }));
+        timer = setTimeout(start, 1100);
+      };
+    };
+    hops.push({ start });
+    onMotion(start);
+    addEventListener("resize", () => { sprite.getAnimations().forEach(a => a.cancel()); stand(); });
+    box.querySelectorAll("*").forEach(el => { if (el.scrollWidth > el.clientWidth) el.addEventListener("scroll", stand, { passive: true }); });
+    if (!part) start();
+  });
+
+  addEventListener("scroll", () => { current(); requestAnimationFrame(place); }, { passive: true });
+  ["load", "hashchange", "resize"].forEach(e => addEventListener(e, () => { fit(); current(); place(); }));
+  current(); place();
+  html.classList.add("ready");
+})();
+
+</script>
+</body>
+</html>

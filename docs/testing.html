@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en" class="doc" data-motion="off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing configured prompts · Gekko</title>
+<meta name="description" content="regression cases for configured commands, run by gko config test">
+<link rel="canonical" href="https://fmatsos.github.io/gekko/docs/testing.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gekko">
+<meta property="og:title" content="Testing configured prompts · Gekko">
+<meta property="og:description" content="regression cases for configured commands, run by gko config test">
+<meta property="og:url" content="https://fmatsos.github.io/gekko/docs/testing.html">
+<meta property="og:image" content="https://fmatsos.github.io/gekko/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Gekko the gecko holding a glowing terminal in a night desert">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0f1419">
+<link rel="icon" href="../assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/space-grotesk.woff2" crossorigin>
+
+<style>
+/* Generic mechanics, no design: inlined first by build.py; the site's own CSS comes after
+   and sets the look. Needs from the site: --focus-in / --focus-out (two contrasting colors
+   for the focus ring, visible on every background), @font-face with font-display: optional
+   (a late web font must not reflow the page: CLS). */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: var(--hh, 0px); }
+html[data-motion="off"], html.dragging { scroll-behavior: auto; }
+body { margin: 0; overflow-x: hidden; }
+img { max-width: 100%; height: auto; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }         /* reflow at 320 px (RGAA 10.11) */
+.table { overflow-x: auto; }                                     /* a wide table scrolls, as a focusable region */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 16px; top: -100px; z-index: 100; }
+.skip:focus { top: 12px; }
+:focus-visible { outline: 3px solid var(--focus-in, #000); outline-offset: 3px; box-shadow: 0 0 0 3px var(--focus-out, #fff); }
+main:focus { outline: none; box-shadow: none; }
+[hidden] { display: none !important; }
+:where(nav, ul, ol) a, :where(button) { display: inline-block; min-height: 24px; min-width: 24px; }   /* target size (WCAG 2.5.8); zero specificity: the design overrides */
+
+/* motion: every loop and every "not shown yet" state lives under [data-motion="on"] (and .ready) */
+.sprite { overflow: hidden; display: none; pointer-events: none; }
+.sprite img { width: calc(var(--frames, 6) * 100%); max-width: none; height: 100%; display: block; }
+[data-motion="on"] .sprite { display: block; }
+[data-motion="on"] .sprite img { animation: sprite-frames var(--speed, 1.2s) steps(var(--frames, 6)) infinite; }
+@keyframes sprite-frames { to { transform: translateX(-100%); } }
+[data-hop] { position: absolute; left: 0; top: 0; z-index: 2; }
+
+/* entrances: .enter elements of a [data-part] play in when it becomes .active; --d staggers them */
+[data-motion="on"].ready [data-part] .enter { transition: opacity .6s, transform .7s cubic-bezier(.3, 1.4, .5, 1); transition-delay: calc(var(--d, 0) * 100ms); }
+[data-motion="on"].ready [data-part]:not(.active) .enter { opacity: 0; transform: var(--enter-from, translateY(32px)); transition-delay: 0s; }
+
+/* parts that each fill the screen: opt in with html[data-snap]; mandatory only when all fit */
+html[data-snap] { scroll-snap-type: y proximity; }
+html[data-snap].snap { scroll-snap-type: y mandatory; }
+html[data-snap].dragging { scroll-snap-type: none; }
+html[data-snap] [data-part] { scroll-snap-align: start; min-height: calc(100svh - var(--hh, 0px)); }
+
+/* the rail's labels are shown by the site on hover / focus; Escape hides them */
+[data-rail].quiet a span { opacity: 0 !important; }
+[data-rail-thumb] { touch-action: none; cursor: grab; }
+[data-rail-thumb]:active { cursor: grabbing; }
+
+/* Gekko: a night desert where AI runs locally. Night, sand, the gecko's orange, neon circuit teal. */
+@font-face { font-family: "Space Grotesk"; src: url("../assets/fonts/space-grotesk.woff2") format("woff2"); font-weight: 300 700; font-display: optional; }
+@font-face { font-family: "JetBrains Mono"; src: url("../assets/fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 100 800; font-display: optional; }
+:root {
+  --night: #0f1419; --panel: #18212b; --deep: #131b24; --line: #2a3644;
+  --dune: #fff4e0; --muted: #b8c2cc; --gecko: #fb903b; --circuit: #3ee6c4; --prompt: #2fd672; --clay: #7b2d12;
+  --focus-in: #3ee6c4; --focus-out: #0f1419;
+  --sans: "Space Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+body { background: var(--night); color: var(--dune); font: 1.0625rem/1.6 var(--sans); }
+a { color: var(--circuit); text-underline-offset: .2em; }
+a:hover { color: var(--dune); }
+code, pre { font-family: var(--mono); font-size: .9em; }
+:not(pre) > code { background: #ffffff14; padding: .05em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--night); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; margin: 0; line-height: 1.55; color: var(--dune); }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -.01em; margin: 0 0 .5em; }
+h2 { font-size: clamp(2rem, 1.4rem + 2.6vw, 3.2rem); }
+h3 { font-size: 1.2rem; }
+em { font-style: normal; color: var(--gecko); }
+.wrap { max-width: 72rem; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 40em) { .wrap { padding: 0 32px; } }
+.kicker { font: 600 .85rem/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--circuit); margin: 0 0 .75rem; }
+.lead { font-size: 1.15rem; max-width: 44rem; color: var(--muted); }
+.lead code, .lead strong { color: var(--dune); }
+
+/* header */
+[data-header] { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .6rem 16px; background: #0f1419e6; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.2rem; color: var(--dune); text-decoration: none; }
+[data-header] nav { margin-left: auto; }
+[data-header] ul, footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; }
+[data-header] nav a { color: var(--dune); text-decoration: none; padding: .3rem 0; }
+[data-header] nav a:hover, [data-header] nav a[aria-current] { color: var(--circuit); text-decoration: underline; }
+.motion { font: 500 .85rem var(--mono); color: var(--dune); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: .35rem .8rem; cursor: pointer; }
+.motion::before { content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; margin-right: .45rem; background: var(--muted); }
+.motion[aria-pressed="true"]::before { background: var(--prompt); box-shadow: 0 0 8px var(--prompt); }
+.skip { background: var(--gecko); color: var(--night); padding: .5rem 1rem; border-radius: 6px; font-weight: 700; }
+
+/* buttons */
+.btn { display: inline-block; padding: .75rem 1.3rem; border-radius: 10px; background: var(--gecko); color: var(--night); font-weight: 700; text-decoration: none; margin: 0 .5rem .5rem 0; }
+.btn:hover { background: var(--dune); color: var(--night); }
+.btn.ghost { background: transparent; color: var(--dune); border: 1px solid var(--dune); }
+.btn.ghost:hover { background: var(--dune); color: var(--night); }
+
+/* hero: the night desert, the terminal, the gecko typing */
+.hero { position: relative; min-height: calc(100svh - var(--hh, 0px)); display: flex; align-items: center; padding: 2.5rem 0 2.5rem; overflow: hidden; isolation: isolate; }
+.hero-bg, .hero-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; z-index: -2; }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #0f1419f2 0, #0f1419d9 38%, #0f141966 70%, #0f141900 100%), linear-gradient(0deg, #0f1419 0, #0f141900 25%); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; width: 100%; }
+.hero h1 { font-size: clamp(2rem, 1.3rem + 4vw, 4.4rem); max-width: 14ch; overflow-wrap: break-word; }
+.hero .lead { color: var(--dune); }
+.stage { position: relative; max-width: 34rem; padding-left: 7rem; }
+.term { margin: 0; background: #0b0f14f2; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 0 0 1px #3ee6c433, 0 20px 60px #000a, 0 0 40px #3ee6c41f; overflow: hidden; }
+.term-bar { display: flex; align-items: center; gap: .75rem; padding: .6rem .9rem; border-bottom: 1px solid var(--line); font: .8rem var(--mono); color: var(--muted); }
+.dots { display: flex; gap: .4rem; }
+.dots i { width: .7rem; height: .7rem; border-radius: 50%; background: #ff5f57; }
+.dots i + i { background: #febc2e; }
+.dots i + i + i { background: #28c840; }
+.term pre { border: 0; border-radius: 0; background: transparent; font-size: .92rem; min-height: 8.5em; }
+.line { display: block; }
+.ps { color: var(--prompt); }
+.out { color: var(--muted); }
+.l3::after { content: ""; display: inline-block; width: .6em; height: 1.1em; margin-left: .2em; vertical-align: text-bottom; background: var(--prompt); }
+.gecko { position: absolute; width: 128px; height: 128px; }
+.type { left: -.5rem; bottom: -1.5rem; width: 150px; height: 150px; }
+@media (min-width: 60em) {
+  .hero-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: end; }
+  .stage { padding-left: 0; }
+  .type { left: auto; right: 1.5rem; bottom: calc(100% - 22px); width: 170px; height: 170px; }
+}
+
+/* the terminal types itself, once, then the cursor blinks */
+[data-motion="on"].ready .hero .l1, [data-motion="on"].ready .hero .l3 { width: max-content; max-width: 100%; }
+[data-motion="on"].ready .hero.active .l1 { animation: type 1s steps(19) .3s both; }
+[data-motion="on"].ready .hero.active .l2 { animation: appear .1s 1.5s both; }
+[data-motion="on"].ready .hero.active .l3 { animation: type 1.6s steps(40) 2s both; }
+[data-motion="on"] .l3::after { animation: blink 1s steps(1) infinite; }
+@keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes appear { from { opacity: 0; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* bands */
+.band { position: relative; padding: 5rem 0; }
+.band::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--circuit) 20%, var(--circuit) 80%, transparent); opacity: .5; }
+.split { display: grid; gap: 2.5rem; align-items: center; }
+@media (min-width: 60em) { .split { grid-template-columns: 1fr 1fr; } }
+.art { position: relative; margin: 0; }
+.art img { border-radius: 16px; display: block; box-shadow: 0 20px 60px #0008; }
+
+/* files: sand, dark cards the gecko carries from one to the next */
+.files { background: var(--dune); color: var(--night); }
+.files::before { display: none; }
+.files .kicker { color: var(--clay); }
+.files .lead { color: #3b2a1f; }
+.files .lead code, .files .after code { background: #7b2d1214; color: var(--night); }
+.files a { color: var(--clay); font-weight: 600; }
+.files a:hover { color: var(--night); }
+.cards { position: relative; display: grid; gap: 1.25rem; padding-top: 130px; }
+@media (min-width: 60em) { .cards { grid-template-columns: repeat(3, 1fr); align-items: start; } }
+.card { background: var(--panel); color: var(--dune); border-radius: 14px; padding: 1.25rem; box-shadow: 0 12px 30px #7b2d1233; min-width: 0; }
+.card h3 { display: flex; flex-direction: column; gap: .3rem; }
+.card h3 span { color: var(--gecko); }
+.card h3 code { font-size: .8rem; font-weight: 400; color: var(--circuit); background: transparent; padding: 0; overflow-wrap: anywhere; }
+.card p { color: var(--muted); margin: 0 0 1rem; }
+.card pre { font-size: .8rem; }
+.after { max-width: 50rem; margin-top: 2rem; }
+
+/* backends: the gecko clings to the chip */
+.climb { left: 27%; top: 22%; width: 22%; height: auto; aspect-ratio: 1; }
+.ticks { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; }
+.ticks li { padding-left: 1.6rem; position: relative; color: var(--muted); }
+.ticks li::before { content: ""; position: absolute; left: 0; top: .55em; width: .6rem; height: .6rem; border: 2px solid var(--circuit); border-radius: 50%; box-shadow: 0 0 8px var(--circuit); }
+.ticks b { color: var(--dune); }
+
+/* driven: exit codes the gecko presents one by one */
+.driven { background: var(--deep) radial-gradient(#3ee6c41a 1px, transparent 1px) 0 0 / 24px 24px; }
+.codes-box { position: relative; padding-top: 130px; }
+.codes { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.code { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: .35rem; }
+.code b { font: 700 2.4rem/1 var(--mono); color: var(--gecko); align-self: flex-start; }
+.code:first-child b { color: var(--prompt); }
+.code small { color: var(--circuit); font: .8rem var(--mono); }
+.mcp { margin-top: 4rem; }
+.mcp p { color: var(--muted); }
+.mcp h3 { margin-top: 1.5rem; }
+.shell { font-size: .85rem; }
+
+/* get */
+.get .split { align-items: start; }
+.cmd { display: flex; gap: .5rem; align-items: stretch; margin: 1rem 0 1.5rem; }
+.cmd pre { flex: 1; min-width: 0; }
+.cmd button { font: 600 .85rem var(--mono); background: var(--panel); color: var(--dune); border: 1px solid var(--line); border-radius: 10px; padding: 0 1rem; cursor: pointer; }
+.cmd button:hover { border-color: var(--circuit); color: var(--circuit); }
+.idle { position: relative; width: 160px; height: 160px; margin: 1rem 0 0 auto; }
+.docs-nav ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+.docs-nav a { display: block; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); text-decoration: none; }
+.docs-nav a:hover { border-color: var(--circuit); }
+.docs-nav b { display: block; color: var(--dune); }
+.docs-nav span { color: var(--muted); font-size: .92rem; }
+
+/* sprites: a slow sway on top of slow steps reads as fluid */
+[data-motion="on"] .gecko:not([data-hop]) img { animation-duration: var(--speed, 1.4s); }
+[data-motion="on"] .type, [data-motion="on"] .idle { animation: sway 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes sway { 50% { rotate: 1.5deg; translate: 0 -2px; } }
+.type { --speed: 1s; } .carry { --speed: .9s; } .climb { --speed: 1.6s; } .present { --speed: 1.4s; } .idle { --speed: 1.8s; }
+
+/* footer */
+footer { border-top: 1px solid var(--line); padding: 2.5rem 16px; text-align: center; color: var(--muted); }
+footer ul { justify-content: center; }
+footer a { color: var(--dune); }
+
+/* docs pages */
+.doc main { max-width: 72rem; margin: 0 auto; padding: 2.5rem 16px 4rem; display: grid; gap: 2rem; }
+.doc main > h1 { font-size: clamp(2rem, 1.5rem + 2vw, 3rem); margin: 0; }
+.doc main > nav ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
+.doc main > nav a { color: var(--muted); }
+.doc main > nav a[aria-current] { color: var(--gecko); font-weight: 700; }
+@media (min-width: 60em) {
+  .doc main { grid-template-columns: 15rem minmax(0, 1fr); padding: 3rem 32px 5rem; }
+  .doc main > h1 { grid-column: 2; }
+  .doc main > nav { grid-row: 1 / 3; }
+  .doc main > nav ul { flex-direction: column; position: sticky; top: calc(var(--hh, 0px) + 1.5rem); gap: .6rem; }
+}
+.prose { min-width: 0; max-width: 50rem; }
+.prose h2 { font-size: 1.7rem; margin-top: 2.5rem; }
+.prose h3 { margin-top: 2rem; }
+.prose pre { margin: 1rem 0; font-size: .88rem; }
+.prose table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+.prose th, .prose td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+.prose th { background: var(--panel); }
+.prose .right { text-align: right; } .prose .center { text-align: center; }
+.prose .markdown-alert { border-left: 4px solid var(--circuit); background: var(--panel); padding: .6rem 1rem; border-radius: 0 10px 10px 0; margin: 1rem 0; }
+.prose .markdown-alert-title { font-weight: 700; display: flex; gap: .4rem; align-items: center; }
+.prose .octicon { fill: currentColor; }
+.prose .center { text-align: center; }
+.pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem; flex-wrap: wrap; }
+.pager a { border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1rem; text-decoration: none; background: var(--panel); }
+.pager small { display: block; color: var(--muted); }
+.pager .next { margin-left: auto; text-align: right; }
+
+/* site map */
+.page main { padding: 2.5rem 0 4rem; }
+.page main li { margin: .3rem 0; }
+
+/* narrow screens: the text runs over the whole image, so the veil covers it all */
+@media (max-width: 59.99em) {
+  .hero::before { background: linear-gradient(0deg, #0f1419 0, #0f1419cc 30%, #0f1419b3 100%); }
+  [data-header] { gap: .5rem 1rem; }
+  [data-header] ul { gap: .25rem .9rem; }
+}
+@media (max-width: 39.99em) { [data-header] { position: static; } }
+.prose li a { display: inline; }   /* a wrapped link keeps its bullet on its first line */
+
+</style>
+<script>
+/* animations on unless the visitor turned them off here, or asks for reduced motion (RGAA 13.8) */
+try { var m = localStorage.getItem("site-motion"); } catch (e) {}
+document.documentElement.dataset.motion = m || (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on");
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header data-header>
+  <a class="brand" href="../"><img src="../assets/logo-64.png" alt="" width="32" height="32"><span>Gekko</span></a>
+  <nav aria-label="Main">
+    <ul>
+      <li><a href="../docs/">Docs</a></li>
+      <li><a href="https://github.com/fmatsos/gekko/releases">Releases</a></li>
+      <li><a href="https://github.com/fmatsos/gekko">Source</a></li>
+    </ul>
+  </nav>
+  <button type="button" class="motion" data-motion-toggle aria-pressed="true" hidden>Animations</button>
+</header>
+<main id="main" tabindex="-1">
+<h1>Testing configured prompts</h1>
+<nav aria-label="Documentation pages"><ul>
+<li><a href="installation.html">Installation</a></li>
+<li><a href="configuration.html">Configuration</a></li>
+<li><a href="commands.html">Writing commands</a></li>
+<li><a href="output.html">Output contracts</a></li>
+<li><a aria-current="page" href="testing.html">Testing configured prompts</a></li>
+<li><a href="mcp.html">MCP server</a></li>
+<li><a href="cli.html">Built-in commands</a></li>
+<li><a href="intel-npu.html">Deploying on an Intel NPU</a></li>
+<li><a href="apple-silicon.html">Running on Apple Silicon</a></li>
+</ul></nav>
+<div class="prose">
+<p><code>gko config test</code> runs regression cases for configured commands. A case is a TOML file at
+<code>.gekko/tests/&lt;command path&gt;/&lt;case&gt;.toml</code>. For example, <code>tests/git/review/hardware.toml</code>
+tests <code>gko git review</code>. Cases from system, user and project scopes are combined; a more local
+case replaces one with the same command path and case name. A selection with no cases is an
+error (exit <code>2</code>). <code>gko config schema test</code> prints the JSON Schema of a case file; see
+<a href="cli.html#gko-config-schema"><code>gko config schema</code></a>.</p>
+<div class="highlight highlight-source-toml"><pre><span class="pl-smi">args</span> = { <span class="pl-smi">kind</span> = <span class="pl-s"><span class="pl-pds">"</span>ticket<span class="pl-pds">"</span></span> }
+<span class="pl-smi">input</span> = { <span class="pl-smi">file</span> = <span class="pl-s"><span class="pl-pds">"</span>hardware.txt<span class="pl-pds">"</span></span> } <span class="pl-c"><span class="pl-c">#</span> a file next to this case; or input = "inline text"</span>
+
+[<span class="pl-en">expect</span>]
+<span class="pl-smi">exit_code</span> = <span class="pl-c1">0</span>
+<span class="pl-smi">"/category"</span> = <span class="pl-s"><span class="pl-pds">"</span>hardware<span class="pl-pds">"</span></span>
+<span class="pl-smi">"/confidence"</span> = { <span class="pl-smi">min</span> = <span class="pl-c1">0.8</span> }</pre></div>
+<p><code>args</code> names arguments declared by the command; required arguments must be supplied.
+<code>input</code> is required. A file input is read as UTF-8 with the ordinary input size limit and
+must name a file next to the case. Every case and expectation key is checked before any request.</p>
+<p>For JSON commands, keys beginning with <code>/</code> are JSON pointers. Their values are exact JSON
+values, or a numeric minimum as <code>{ min = 0.8 }</code>. A missing pointer fails the case. For text
+commands, use <code>lines = 1</code> to check the number of nonempty lines and
+<code>contains = ["feat:"]</code> to require literal substrings. Only <code>exit_code = 0</code> (the default)
+and <code>exit_code = 4</code> (output contract rejection) are valid expectations.
+An <code>exit_code = 4</code> case cannot also declare output comparisons because it produces no
+validated output.</p>
+<div class="highlight highlight-source-shell"><pre>gko config <span class="pl-c1">test</span>                      <span class="pl-c"><span class="pl-c">#</span> all cases, sequentially</span>
+gko config <span class="pl-c1">test</span> git review           <span class="pl-c"><span class="pl-c">#</span> one command path</span>
+gko config <span class="pl-c1">test</span> --model gpu-twin     <span class="pl-c"><span class="pl-c">#</span> run the same cases with another model</span>
+gko config <span class="pl-c1">test</span> --repeat 3 --json    <span class="pl-c"><span class="pl-c">#</span> measure distinct final outputs</span>
+gko config <span class="pl-c1">test</span> --dry-run --json     <span class="pl-c"><span class="pl-c">#</span> list cases and rendered messages, no request</span></pre></div>
+<p>The normal report has <code>COMMAND CASE RESULT DURATION</code> columns. <code>--json</code> returns an array
+whose rows contain <code>command</code>, <code>case</code>, <code>result</code>, <code>duration_ms</code>, <code>runs</code>, <code>distinct_outputs</code>
+and, on failure, <code>message</code>. Each case runs <code>N</code> times with <code>--repeat N</code>; distinct outputs
+are counted after the command's output contract, and are zero if no run produced a valid
+output. The runner finishes the suite when expectations fail (exit <code>4</code>). Malformed cases
+(exit <code>2</code>) and backend errors (exit <code>3</code>) stop the suite with empty stdout. A dry run prints
+the rendered messages for each case and never contacts the backend.
+With <code>GKO_STATS_FILE</code> set, every run of a case also appends a
+<a href="cli.html#execution-statistics">statistics record</a> carrying the case name.</p>
+<p>A command with <code>[input] mode = "binary"</code> takes its case input as a file next to the case
+(<code>input = { file = "memo.wav" }</code>), read as bytes; an inline string is rejected.</p>
+
+<nav class="pager" aria-label="Previous and next pages"><a class="prev" rel="prev" href="output.html"><small>Previous</small> Output contracts</a><a class="next" rel="next" href="mcp.html"><small>Next</small> MCP server</a></nav>
+</div>
+
+</main>
+<footer>
+  <nav aria-label="Footer">
+    <ul>
+      <li><a href="../docs/">Documentation</a></li>
+      <li><a href="../sitemap.html">Site map</a></li>
+      <li><a href="https://github.com/fmatsos/gekko/releases">Releases</a></li>
+      <li><a href="https://github.com/fmatsos/gekko">Source</a></li>
+      <li><a href="https://github.com/fmatsos/gekko/blob/main/LICENSE">MIT License</a></li>
+    </ul>
+  </nav>
+  <p>Gekko runs where your model runs. Not a cloud in this sky.</p>
+</footer>
+<p class="sr-only" role="status" id="status"></p>
+<script>
+/* Generic behaviours, each switched on by markup; no design. Inlined first by build.py.
+   [data-motion-toggle]   the Animations button (aria-pressed); html[data-motion] = on|off
+   img[data-src]          decorative sprites: loaded after `load`, only while motion is on
+   [data-copy]            a button copying the text of its previous sibling (or of data-copy="#id");
+                          data-copy-shell drops "$ " prompts and "# comments"; fires "site:copied"
+   [data-part]            parts of a page: the one under the middle of the screen gets .active,
+                          links to it in [data-parts-nav] get aria-current="true"; html.snap when
+                          every part fits the screen (with html[data-snap]); --hh = header height
+   [data-rail]            a scroll rail: its [data-rail-thumb] follows the scroll and can be dragged
+   [data-hop="sel"]       a sprite that jumps onto the elements matching sel inside its parent,
+                          measured from their positions (any layout), while its part is active
+   html.ready             set once the above is wired: "not shown yet" styles may apply */
+(() => {
+  const html = document.documentElement, on = () => html.dataset.motion === "on";
+  const status = document.getElementById("status");
+  const say = msg => { if (!status) return; status.textContent = msg; setTimeout(() => { status.textContent = ""; }, 4000); };
+  const listeners = [];   // run when motion is switched
+  const onMotion = f => listeners.push(f);
+
+  // decorative sprites
+  let loaded = false;
+  const sprites = () => {
+    if (loaded || !on() || document.readyState !== "complete") return;
+    loaded = true;
+    document.querySelectorAll("img[data-src]").forEach(i => { i.src = i.dataset.src; });
+  };
+  addEventListener("load", () => setTimeout(sprites, 1000));   // after the LCP: decorative bytes never compete with it
+  onMotion(sprites);
+
+  // RGAA 13.8: every looping animation can be stopped, and the choice sticks
+  document.querySelectorAll("[data-motion-toggle]").forEach(b => {
+    b.hidden = false;
+    b.setAttribute("aria-pressed", String(on()));
+    b.addEventListener("click", () => {
+      html.dataset.motion = on() ? "off" : "on";
+      document.querySelectorAll("[data-motion-toggle]").forEach(x => x.setAttribute("aria-pressed", String(on())));
+      try { localStorage.setItem("site-motion", html.dataset.motion); } catch (e) {}
+      listeners.forEach(f => f());
+    });
+  });
+
+  // copy buttons
+  document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+    const src = b.dataset.copy ? document.querySelector(b.dataset.copy) : b.previousElementSibling;
+    let t = src.innerText;
+    if ("copyShell" in b.dataset) t = t.split("\n").map(l => l.replace(/^\$ /, "").replace(/\s+# .*$/, "")).join("\n");
+    navigator.clipboard.writeText(t.trim()).then(() => {
+      say(b.dataset.copied || "Copied to the clipboard.");
+      b.dispatchEvent(new CustomEvent("site:copied", { bubbles: true, detail: { motion: on() } }));
+    }, () => say("Copy failed: select the text and copy it by hand."));
+  }));
+
+  // parts of a page
+  const parts = [...document.querySelectorAll("[data-part]")];
+  const header = document.querySelector("[data-header]");
+  const navLinks = [...document.querySelectorAll("[data-parts-nav] a[href^='#']")];
+  const max = () => html.scrollHeight - innerHeight;
+  let cur;
+  const hops = [];
+  const current = () => {
+    if (!parts.length) return;
+    const mid = innerHeight / 2;
+    const p = scrollY >= max() - 2 ? parts.at(-1) : parts.find(x => { const r = x.getBoundingClientRect(); return r.top <= mid && r.bottom > mid; });
+    if (!p || p === cur) return;
+    cur = p;
+    parts.forEach(x => x.classList.toggle("active", x === p));
+    navLinks.forEach(a => a.getAttribute("href") === "#" + p.id ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
+    hops.forEach(h => h.start());
+  };
+  const fit = () => {
+    const hh = header ? header.offsetHeight : 0;
+    html.style.setProperty("--hh", hh + "px");
+    if ("snap" in html.dataset) html.classList.toggle("snap", parts.every(s => s.offsetHeight <= innerHeight - hh + 1));
+  };
+  if (header) new ResizeObserver(fit).observe(header);
+  fit();
+
+  // the scroll rail
+  const rail = document.querySelector("[data-rail]"), thumb = rail && rail.querySelector("[data-rail-thumb]");
+  const place = () => { if (thumb) thumb.style.transform = `translateY(${(scrollY / Math.max(1, max())) * (rail.clientHeight - thumb.offsetHeight)}px)`; };
+  if (thumb) {
+    const toY = e => { const r = rail.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientY - r.top - thumb.offsetHeight / 2) / (r.height - thumb.offsetHeight))) * max(); };
+    thumb.addEventListener("pointerdown", e => {
+      e.preventDefault(); thumb.setPointerCapture(e.pointerId); html.classList.add("dragging");
+      const move = ev => scrollTo({ top: toY(ev), behavior: "instant" });
+      const up = () => { html.classList.remove("dragging"); thumb.removeEventListener("pointermove", move); thumb.removeEventListener("pointerup", up); };
+      thumb.addEventListener("pointermove", move); thumb.addEventListener("pointerup", up);
+    });
+    rail.addEventListener("click", e => { if (!e.target.closest("a, [data-rail-thumb]")) scrollTo({ top: toY(e) }); });
+    addEventListener("keydown", e => { if (e.key === "Escape") rail.classList.add("quiet"); });   // WCAG 1.4.13
+    ["pointerleave", "focusout"].forEach(ev => rail.addEventListener(ev, () => rail.classList.remove("quiet")));
+  }
+
+  // sprites that jump from element to element
+  document.querySelectorAll("[data-hop]").forEach(sprite => {
+    const box = sprite.parentElement, part = sprite.closest("[data-part]");
+    const targets = () => [...box.querySelectorAll(sprite.dataset.hop)];
+    let at = null, timer;
+    const spot = el => {
+      const r = box.getBoundingClientRect(), k = el.getBoundingClientRect();
+      return [k.left - r.left + (k.width - sprite.offsetWidth) / 2, k.top - r.top - sprite.offsetHeight + 8];
+    };
+    const stand = () => { if (at) { const [x, y] = spot(at); sprite.style.transform = `translate(${x}px, ${y}px)`; } };
+    const start = () => {
+      clearTimeout(timer);
+      if (!on() || (part && cur !== part)) return;
+      const all = targets();
+      if (!all.length) return;
+      const firstRow = all[0].getBoundingClientRect().bottom;
+      const seen = all.filter(el => {   // fully in view, first row only: never land on text below
+        const k = el.getBoundingClientRect();
+        return k.left >= 0 && k.right <= innerWidth && k.top < firstRow;
+      });
+      if (!seen.length) { timer = setTimeout(start, 800); return; }
+      const next = seen.find(el => all.indexOf(el) > all.indexOf(at)) || seen[0];
+      const from = at ? spot(at) : spot(next), to = spot(next);
+      const flip = to[0] < from[0] ? " scaleX(-1)" : "", peak = Math.min(from[1], to[1]) - 90;
+      const jump = sprite.animate([
+        { transform: `translate(${from[0]}px, ${from[1]}px)${flip}`, easing: "ease-out" },
+        { transform: `translate(${(from[0] + to[0]) / 2}px, ${peak}px)${flip}`, easing: "ease-in" },
+        { transform: `translate(${to[0]}px, ${to[1]}px)${flip}` }], { duration: 700, fill: "forwards" });
+      jump.onfinish = () => {
+        at = next; stand(); jump.cancel();
+        next.animate([{ translate: "0 0" }, { translate: "0 12px", scale: "1.02 .96" }, { translate: "0 0" }], { duration: 400, easing: "ease-out" });
+        next.dispatchEvent(new CustomEvent("site:landed", { bubbles: true }));
+        timer = setTimeout(start, 1100);
+      };
+    };
+    hops.push({ start });
+    onMotion(start);
+    addEventListener("resize", () => { sprite.getAnimations().forEach(a => a.cancel()); stand(); });
+    box.querySelectorAll("*").forEach(el => { if (el.scrollWidth > el.clientWidth) el.addEventListener("scroll", stand, { passive: true }); });
+    if (!part) start();
+  });
+
+  addEventListener("scroll", () => { current(); requestAnimationFrame(place); }, { passive: true });
+  ["load", "hashchange", "resize"].forEach(e => addEventListener(e, () => { fit(); current(); place(); }));
+  current(); place();
+  html.classList.add("ready");
+})();
+
+</script>
+</body>
+</html>
