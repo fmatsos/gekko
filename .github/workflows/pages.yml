@@ -1,0 +1,43 @@
+# Goes on the project's default branch. The site lives on gh-pages; its docs pages are built
+# from this branch's docs (site.json "docs"). At every push touching them, build.py (on
+# gh-pages) renders them with GitHub's Markdown API and commits the result to gh-pages,
+# then a Pages build is requested. build.py fails on a broken link or anchor: fix the doc.
+name: pages
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']
+  workflow_dispatch:
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push to gh-pages
+      pages: write      # request the Pages build
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: main
+      - uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: site
+      - name: Build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 site/build.py main
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd site
+          git add -A
+          if git diff --cached --quiet; then echo "docs unchanged"; exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "docs: rebuild from ${GITHUB_REF_NAME}@${GITHUB_SHA::7}"
+          git push origin HEAD:gh-pages
+          # a push made with GITHUB_TOKEN doesn't always start a Pages build: ask for one
+          gh api -X POST "repos/$GITHUB_REPOSITORY/pages/builds" --silent
