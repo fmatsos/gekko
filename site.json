@@ -1,0 +1,11 @@
+{
+  "name": "Gekko",
+  "url": "https://fmatsos.github.io/gekko/",
+  "repo": "https://github.com/fmatsos/gekko",
+  "branch": "main",
+  "lang": "en",
+  "description": "Gekko (gko) is a generic CLI engine for local AI commands: commands, models and backends are configuration files, never recompiled.",
+  "og_image": "assets/og.jpg",
+  "og_image_alt": "Gekko the gecko holding a glowing terminal in a night desert",
+  "docs": { "dir": "docs", "index": "README.md", "out": "docs", "title": "Documentation" }
+}

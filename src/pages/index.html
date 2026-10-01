@@ -1,0 +1,165 @@
+<!--page {"title": "Gekko: your AI commands are configuration, not code", "description": "Gekko (gko) is a generic CLI engine for local AI commands on any OpenAI-compatible model server. Commands, models and backends are configuration files, never recompiled.", "class": "home", "head": "<link rel=\"preload\" as=\"image\" type=\"image/avif\" imagesrcset=\"assets/hero-800.avif 800w, assets/hero-960.avif 960w, assets/hero-1920.avif 1920w\" imagesizes=\"100vw\" fetchpriority=\"high\">"} -->
+<section data-part class="hero" id="top" aria-labelledby="hero-title">
+  <picture class="hero-bg">
+    <source type="image/avif" srcset="assets/hero-800.avif 800w, assets/hero-960.avif 960w, assets/hero-1920.avif 1920w" sizes="100vw">
+    <img src="assets/hero-1920.webp" srcset="assets/hero-800.webp 800w, assets/hero-960.webp 960w, assets/hero-1920.webp 1920w" sizes="100vw" alt="" width="1920" height="1080" fetchpriority="high">
+  </picture>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="kicker enter"><code>gko</code> · a generic CLI engine for local AI</p>
+      <h1 id="hero-title" class="enter" style="--d:1">Your AI commands are <em>configuration</em>, not code.</h1>
+      <p class="lead enter" style="--d:2">Declare a command in a Markdown file, point it at any OpenAI-compatible model server — OVMS on an Intel NPU, <code>llama-server</code> on Apple Silicon, anything that speaks the protocol — and it becomes a real subcommand. Adding, changing or removing one never requires recompiling.</p>
+      <p class="cta enter" style="--d:3"><a class="btn" href="#get">Get Gekko</a> <a class="btn ghost" href="docs/">Read the docs</a></p>
+    </div>
+    <div class="stage">
+      <figure class="term" aria-labelledby="term-cap">
+        <figcaption id="term-cap" class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>A terminal session with gko</figcaption>
+<pre><span class="line l1"><span class="ps" aria-hidden="true">$ </span>gko config models</span><span class="line l2 out">NAME       BACKEND  OPERATION
+qwen-fast  ovms     chat</span><span class="line l3"><span class="ps" aria-hidden="true">$ </span>git diff --cached | gko commit-message</span></pre>
+      </figure>
+      <div class="sprite gecko type" aria-hidden="true"><img src="{{blank}}" data-src="assets/sprite-type.webp" alt="" width="1536" height="256"></div>
+    </div>
+  </div>
+</section>
+
+<section data-part class="band files" id="files" aria-labelledby="files-title">
+  <div class="wrap">
+    <p class="kicker enter">Quick start</p>
+    <h2 id="files-title" class="enter" style="--d:1">Three files. No rebuild.</h2>
+    <p class="lead enter" style="--d:2">A command names a model; a model names a backend and one of its operations. The command never needs to know which endpoint or protocol is involved. A repository can ship its own <code>.gekko/</code> directory and get project-specific AI tooling without shipping any executable code.</p>
+    <div class="cards">
+      <div class="sprite gecko carry" data-hop=".card h3" aria-hidden="true"><img src="{{blank}}" data-src="assets/sprite-carry.webp" alt="" width="1536" height="256"></div>
+      <article class="card enter" style="--d:2" aria-labelledby="f-backend">
+        <h3 id="f-backend"><span>Backend</span> <code>.gekko/backends/ovms.toml</code></h3>
+        <p>Where to send requests.</p>
+<pre>id = "ovms"
+type = "openai-compatible"
+base_url = "http://127.0.0.1:8000"
+
+[operations.chat]
+method = "POST"
+path = "/v3/chat/completions"</pre>
+      </article>
+      <article class="card enter" style="--d:3" aria-labelledby="f-model">
+        <h3 id="f-model"><span>Model</span> <code>.gekko/models/qwen-fast.toml</code></h3>
+        <p>Which model, on which backend operation.</p>
+<pre>id = "qwen-fast"
+backend = "ovms"
+operation = "chat"
+model = "qwen-2.5-1.5b"
+
+[generation]
+temperature = 0.0
+max_tokens = 512</pre>
+      </article>
+      <article class="card enter" style="--d:4" aria-labelledby="f-command">
+        <h3 id="f-command"><span>Command</span> <code>.gekko/commands/commit-message.md</code></h3>
+        <p>The command itself: TOML frontmatter between <code>---</code> fences, and the prompt as the body.</p>
+<pre>---
+description = "Generate a conventional commit message"
+model = "qwen-fast"
+
+[input]
+mode = "stdin"
+
+[output]
+format = "text"
+max_lines = 1
+---
+
+Generate a Conventional Commit message from the supplied diff.
+
+Return exactly one commit message.
+
+Do not use Markdown.
+Do not explain your answer.
+
+{{ input }}</pre>
+      </article>
+    </div>
+    <p class="after enter">The filename becomes the command name, so this is now a real subcommand: <code>git diff --cached | gko commit-message</code>. Nested directories become nested subcommands: <code>commands/git/review.md</code> gives you <code>gko git review</code>. <a href="docs/commands.html">Writing commands</a></p>
+  </div>
+</section>
+
+<section data-part class="band backends" id="backends" aria-labelledby="backends-title">
+  <div class="wrap split">
+    <div class="art">
+      <picture>
+        <source type="image/avif" srcset="assets/chip-800.avif 800w, assets/chip-1600.avif 1600w" sizes="(min-width: 60em) 50vw, 100vw">
+        <img src="assets/chip-1600.webp" srcset="assets/chip-800.webp 800w, assets/chip-1600.webp 1600w" sizes="(min-width: 60em) 50vw, 100vw" alt="" width="1600" height="1000" loading="lazy" decoding="async">
+      </picture>
+      <div class="sprite gecko climb" aria-hidden="true"><img src="{{blank}}" data-src="assets/sprite-climb.webp" alt="" width="1536" height="256"></div>
+    </div>
+    <div>
+      <p class="kicker enter">Backends</p>
+      <h2 id="backends-title" class="enter" style="--d:1">Runs where your model runs.</h2>
+      <p class="lead enter" style="--d:2">A gecko sticks to any wall. <code>gko</code> speaks the OpenAI chat-completions protocol, so it sticks to any server that does.</p>
+      <ul class="ticks">
+        <li class="enter" style="--d:3"><b>Intel NPU</b> — a model exported with <code>optimum-cli</code>, served by OpenVINO Model Server. <a href="docs/intel-npu.html">Deploying on an Intel NPU</a></li>
+        <li class="enter" style="--d:4"><b>Apple Silicon</b> — a GGUF model served by <code>llama-server</code> on Metal. <a href="docs/apple-silicon.html">Running on Apple Silicon</a></li>
+        <li class="enter" style="--d:5"><b>Anything else</b> exposing <code>POST /v1/chat/completions</code>, or an equivalent path you configure.</li>
+        <li class="enter" style="--d:6"><b><code>gko backend serve</code></b> starts a backend's runtime — a container (<code>type = "docker"</code>) or a plain local process (<code>type = "process"</code>). Switching family, image, ports or accelerator is a configuration change, not a rebuild.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section data-part class="band driven" id="driven" aria-labelledby="driven-title">
+  <div class="wrap">
+    <p class="kicker enter">For programs and agents</p>
+    <h2 id="driven-title" class="enter" style="--d:1">Built to be driven.</h2>
+    <p class="lead enter" style="--d:2"><code>gko</code> is designed to be called by other programs, including coding agents. Exit codes are a contract, not an afterthought, and <strong>stdout carries the command result and nothing else</strong>: diagnostics go to stderr.</p>
+    <div class="codes-box">
+      <div class="sprite gecko present" data-hop=".code b" aria-hidden="true"><img src="{{blank}}" data-src="assets/sprite-present.webp" alt="" width="1536" height="256"></div>
+      <h3 class="sr-only">Exit codes</h3>
+      <ol class="codes" start="0">
+        <li class="code enter" style="--d:2"><b>0</b><span>Success</span></li>
+        <li class="code enter" style="--d:3"><b>1</b><span>I/O or update error</span><small>You</small></li>
+        <li class="code enter" style="--d:4"><b>2</b><span>Configuration error — your files are wrong</span><small>You: fix the named file</small></li>
+        <li class="code enter" style="--d:5"><b>3</b><span>Backend error — unreachable, or an HTTP failure</span><small>Your runtime: start or fix it</small></li>
+        <li class="code enter" style="--d:6"><b>4</b><span>Output contract violation — the model answered badly</span><small>Your prompt or your schema</small></li>
+      </ol>
+    </div>
+    <div class="split mcp">
+      <div>
+        <h3>An MCP server, built in</h3>
+        <p>Run <code>gko mcp serve</code> as a stdio MCP server. It exposes each configured business command as a tool; built-ins are not tools. JSON commands also return <code>structuredContent</code>. <a href="docs/mcp.html">MCP server</a></p>
+        <h3>Output you can pipe</h3>
+<pre class="shell">gko summarize README.md &gt; summary.txt
+cat ticket.md | gko classify | jq .
+journalctl -u nginx --since -30min | gko analyze-logs</pre>
+        <p>A malformed structured response is an execution failure, never something <code>gko</code> quietly repairs. <a href="docs/output.html">Output contracts</a></p>
+      </div>
+      <picture class="art">
+        <source type="image/avif" srcset="assets/antenna-800.avif 800w, assets/antenna-1600.avif 1600w" sizes="(min-width: 60em) 50vw, 100vw">
+        <img src="assets/antenna-1600.webp" srcset="assets/antenna-800.webp 800w, assets/antenna-1600.webp 1600w" sizes="(min-width: 60em) 50vw, 100vw" alt="" width="1600" height="1000" loading="lazy" decoding="async">
+      </picture>
+    </div>
+  </div>
+</section>
+
+<section data-part class="band get" id="get" aria-labelledby="get-title">
+  <div class="wrap split">
+    <div>
+      <p class="kicker enter">Install</p>
+      <h2 id="get-title" class="enter" style="--d:1">Get Gekko.</h2>
+      <p class="enter" style="--d:2">Grab a binary from the <a href="{{repo}}/releases">releases</a> — Linux, macOS and Windows, x86_64 and aarch64 — put <code>gko</code> anywhere on your <code>PATH</code>, and later releases install in place with <code>gko update</code>. Or build from source with <a href="https://rustup.rs">rustup</a>:</p>
+      <div class="cmd enter" style="--d:3">
+<pre id="install"><span class="ps" aria-hidden="true">$ </span>git clone {{repo}}.git gekko
+<span class="ps" aria-hidden="true">$ </span>cd gekko
+<span class="ps" aria-hidden="true">$ </span>cargo install --path .</pre><button type="button" data-copy data-copy-shell>Copy<span class="sr-only"> the build commands</span></button>
+      </div>
+      <p class="enter" style="--d:4">Then check your setup: <code>gko doctor</code> validates your configuration, probes every configured backend and compiles every declared output schema — even when your configuration is invalid.</p>
+      <div class="cmd enter" style="--d:5">
+<pre><span class="ps" aria-hidden="true">$ </span>gko doctor</pre><button type="button" data-copy data-copy-shell>Copy<span class="sr-only"> gko doctor</span></button>
+      </div>
+      <div class="sprite gecko idle" aria-hidden="true"><img src="{{blank}}" data-src="assets/sprite-idle.webp" alt="" width="1536" height="256"></div>
+    </div>
+    <nav class="docs-nav" aria-labelledby="docs-title">
+      <h2 id="docs-title" class="enter">Documentation</h2>
+      <ul>
+{{docs_list}}
+      </ul>
+    </nav>
+  </div>
+</section>
