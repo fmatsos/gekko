@@ -52,8 +52,52 @@
   const go = y => {
     lock = Infinity;
     clearTimeout(unlock); unlock = setTimeout(() => { lock = 0; }, 1500);   // scrollend may never come
-    scrollTo({ top: y, behavior: "smooth" });
+    const part = parts.find(p => Math.abs(Math.max(0, topOf(p)) - y) < 2);
+    if (part && part !== partAt(scrollY)) travel(y, part);
+    else scrollTo({ top: y, behavior: "smooth" });
   };
+
+  // between parts, a transition of the site's own: it covers the screen, the page jumps under it,
+  // then it uncovers the new part; each part has its own (the moon's iris, a terminal scan, the
+  // circuit grid, a dune rising, a terminal window opening and closing)
+  const veil = document.querySelector(".veil"), veilLine = veil && veil.querySelector(".veil-line");
+  const partAt = y => parts.findLast(p => Math.max(0, topOf(p)) <= y + 2) || parts[0];
+  const shapes = {
+    iris: [["circle(0% at 50% 50%)", "circle(75% at 50% 50%)"], ["circle(75% at 50% 50%)", "circle(0% at 50% 50%)"]],
+    scan: [["inset(100% 0 0 0)", "inset(0 0 0 0)"], ["inset(0 0 0 0)", "inset(0 0 100% 0)"]],
+    circuit: [["inset(0 100% 0 0)", "inset(0 0 0 0)"], ["inset(0 0 0 0)", "inset(0 0 0 100%)"]],
+    dune: [["ellipse(160% 0% at 50% 100%)", "ellipse(160% 140% at 50% 100%)"], ["ellipse(160% 140% at 50% 0%)", "ellipse(160% 0% at 50% 0%)"]],
+    window: [["inset(0 50% 0 50% round 24px)", "inset(0 0 0 0 round 0px)"], ["inset(0 0 0 0 round 0px)", "inset(50% 0 50% 0 round 24px)"]],
+  };
+  const kinds = Object.keys(shapes);
+  const travel = (y, part) => {
+    if (!veil || html.dataset.motion !== "on") { scrollTo({ top: y, behavior: "instant" }); lock = 0; return; }
+    const kind = kinds[parts.indexOf(part) % kinds.length], [inn, out] = shapes[kind];
+    veil.dataset.kind = kind;
+    veilLine.textContent = "$ cd " + (part === parts[0] ? "~" : part.id);
+    veil.classList.add("on");
+    const ease = "cubic-bezier(.65, 0, .35, 1)";
+    const cover = veil.animate({ clipPath: inn }, { duration: 420, easing: ease, fill: "forwards" });
+    cover.onfinish = () => {
+      scrollTo({ top: y, behavior: "instant" });
+      setTimeout(() => {
+        const reveal = veil.animate({ clipPath: out }, { duration: 480, easing: ease, fill: "forwards" });
+        cover.cancel();
+        reveal.onfinish = () => { reveal.cancel(); veil.classList.remove("on"); lock = 0; };
+      }, 160);
+    };
+  };
+  // the in-page links to a part (the nodes, "Get Gekko") travel the same way
+  document.querySelectorAll("a[href^='#']").forEach(a => {
+    const part = parts.find(p => "#" + p.id === a.getAttribute("href"));
+    if (part) a.addEventListener("click", e => {
+      if (!veil || html.dataset.motion !== "on" || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      history.pushState(null, "", "#" + part.id);
+      const y = Math.round(Math.max(0, topOf(part)));
+      if (Math.abs(scrollY - y) > 2) { lock = Infinity; travel(y, part); }
+    });
+  });
   // one step per gesture: a trackpad's inertia and a fast-spun wheel count once, until a 200 ms pause
   addEventListener("wheel", e => {
     if (!sectioned() || e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;

@@ -239,3 +239,22 @@ footer a { color: var(--dune); }
   .rail-nav li:last-child span { left: auto; right: 0; translate: 0 0; }
   .rail-nav a[aria-current] span, .rail-nav a:focus-visible span { opacity: 1; }
 }
+
+/* every part fills the screen, so one part at a time is ever in view; its content sits in the middle */
+[data-part] { min-height: calc(100svh - var(--hh, 0px)); }
+.band { display: flex; flex-direction: column; justify-content: center; }
+
+/* the transition between parts: a full-screen veil, shaped by site.js, dressed by its kind */
+.veil { display: none; position: fixed; inset: 0; z-index: 60; place-items: center; pointer-events: none; background: var(--night); }
+.veil.on { display: grid; }
+.veil-line { font: 600 clamp(1.1rem, .8rem + 1.6vw, 1.8rem) var(--mono); color: var(--prompt); text-shadow: 0 0 12px #2fd67288; }
+.veil-line::after { content: ""; display: inline-block; width: .55em; height: 1.05em; margin-left: .25em; vertical-align: text-bottom; background: currentColor; }
+.veil[data-kind="iris"] { background: radial-gradient(circle at 50% 50%, #fff4e033 0, #fb903b26 18%, var(--night) 46%), var(--night); }
+.veil[data-kind="iris"] .veil-line { color: var(--dune); text-shadow: 0 0 14px #fb903b99; }
+.veil[data-kind="scan"] { background: repeating-linear-gradient(0deg, #2fd67214 0 1px, transparent 1px 4px), var(--night); box-shadow: inset 0 -3px 0 var(--prompt), inset 0 3px 0 var(--prompt); }
+.veil[data-kind="circuit"] { background: linear-gradient(90deg, #3ee6c41f 1px, transparent 1px) 0 0 / 32px 32px, linear-gradient(0deg, #3ee6c41f 1px, transparent 1px) 0 0 / 32px 32px, var(--deep); box-shadow: inset 3px 0 0 var(--circuit), inset -3px 0 0 var(--circuit); }
+.veil[data-kind="circuit"] .veil-line { color: var(--circuit); text-shadow: 0 0 12px #3ee6c488; }
+.veil[data-kind="dune"] { background: linear-gradient(180deg, #ffd8a1 0, var(--gecko) 60%, #c4561d); }
+.veil[data-kind="dune"] .veil-line { color: var(--night); text-shadow: none; }
+.veil[data-kind="window"] { background: var(--panel); box-shadow: inset 0 0 0 2px var(--circuit); }
+.veil[data-kind="window"] .veil-line { color: var(--dune); text-shadow: none; }
