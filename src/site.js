@@ -1,13 +1,18 @@
-/* The custom scroll rail's size and section nodes, and section-by-section scrolling on pages
-   with [data-part]: the wheel goes from stop to stop, and the rail settles on the nearest stop
-   after a drag or a click. Only with a fine pointer and motion on: touch, reduced motion and
-   the Animations switch keep native scrolling. */
+/* The custom scrollbars and section-by-section scrolling on pages with [data-part].
+   Fine pointer, wide screen: a vertical rail; the wheel goes from stop to stop and the rail settles
+   on the nearest stop after a drag or a click (motion on only: reduced motion and the Animations
+   switch keep native wheel scrolling). Touch or narrow screen: a bar at the bottom of the screen,
+   a node per part to tap and a strip to scrub, settling on the nearest stop; touch scrolling of
+   the page itself stays native. */
 (() => {
   const html = document.documentElement, rail = document.querySelector("[data-rail]");
   const thumb = rail && rail.querySelector("[data-rail-thumb]"), nav = document.querySelector(".rail-nav");
+  const hbar = document.querySelector("[data-hbar]"), hthumb = hbar && hbar.querySelector(".hbar-thumb");
   const parts = [...document.querySelectorAll("[data-part]")];
   const fine = matchMedia("(min-width: 40em) and (pointer: fine)");
-  const hh = () => parseFloat(html.style.getPropertyValue("--hh")) || 0;
+  const header = document.querySelector("[data-header]");
+  // the header only covers the page while it is sticky (not on narrow screens)
+  const hh = () => header && getComputedStyle(header).position === "sticky" ? parseFloat(html.style.getPropertyValue("--hh")) || 0 : 0;
   const max = () => html.scrollHeight - innerHeight;
   const topOf = el => el.getBoundingClientRect().top + scrollY - hh();
   const sectioned = () => parts.length > 0 && fine.matches && html.dataset.motion === "on";
@@ -32,9 +37,8 @@
 
   // the thumb is as tall as the screen is to the page; a node sits where the thumb's middle is at its part
   const layout = () => {
-    if (!thumb) return;
-    const th = Math.max(40, rail.clientHeight * innerHeight / html.scrollHeight);
-    html.style.setProperty("--th", th + "px");
+    if (rail) html.style.setProperty("--th", Math.max(40, rail.clientHeight * innerHeight / html.scrollHeight) + "px");
+    if (hbar) html.style.setProperty("--tw", Math.max(32, hbar.clientWidth * innerHeight / html.scrollHeight) + "px");
     if (nav) nav.querySelectorAll("a[href^='#']").forEach(a => {
       const el = document.getElementById(a.getAttribute("href").slice(1));
       if (el) a.parentElement.style.setProperty("--at", Math.min(1, Math.max(0, topOf(el) / Math.max(1, max()))).toFixed(4));
@@ -79,5 +83,32 @@
   if (nav) {
     addEventListener("keydown", e => { if (e.key === "Escape") nav.classList.add("quiet"); });
     ["pointerleave", "focusout"].forEach(ev => nav.addEventListener(ev, () => nav.classList.remove("quiet")));
+  }
+
+  // the bottom bar, where the rail is not shown: the thumb follows the scroll; a finger anywhere on
+  // the bar scrubs through the page and, on release, settles on the nearest stop
+  if (hbar) {
+    const span = () => hbar.clientWidth - hthumb.offsetWidth;
+    const follow = () => { hthumb.style.transform = `translateX(${scrollY / Math.max(1, max()) * span()}px)`; };
+    const toY = e => {
+      const r = hbar.getBoundingClientRect();
+      return Math.min(1, Math.max(0, (e.clientX - r.left - hthumb.offsetWidth / 2) / Math.max(1, span()))) * max();
+    };
+    let scrubbing = false;
+    hbar.addEventListener("pointerdown", e => {
+      scrubbing = true; hbar.setPointerCapture(e.pointerId); html.classList.add("dragging");
+      scrollTo({ top: toY(e), behavior: "instant" });
+    });
+    hbar.addEventListener("pointermove", e => { if (scrubbing) scrollTo({ top: toY(e), behavior: "instant" }); });
+    const release = () => {
+      if (!scrubbing) return;
+      scrubbing = false; html.classList.remove("dragging");
+      const y = scrollY, near = stops().reduce((a, b) => Math.abs(b - y) < Math.abs(a - y) ? b : a);
+      scrollTo({ top: near, behavior: html.dataset.motion === "on" ? "smooth" : "instant" });
+    };
+    ["pointerup", "pointercancel"].forEach(ev => hbar.addEventListener(ev, release));
+    addEventListener("scroll", () => requestAnimationFrame(follow), { passive: true });
+    ["load", "resize"].forEach(ev => addEventListener(ev, follow));
+    follow();
   }
 })();

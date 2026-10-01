@@ -188,7 +188,7 @@ footer a { color: var(--dune); }
   [data-header] { gap: .5rem 1rem; }
   [data-header] ul { gap: .25rem .9rem; }
 }
-@media (max-width: 39.99em) { [data-header] { position: static; } }
+@media (max-width: 39.99em) { [data-header] { position: static; } html { scroll-padding-top: 0; } }
 .prose li a { display: inline; }   /* a wrapped link keeps its bullet on its first line */
 
 /* the custom scroll rail: a circuit trace, a node per part, the thumb glows like the gecko's tail */
@@ -214,3 +214,28 @@ footer a { color: var(--dune); }
 }
 /* inner scrolling regions (wide tables) wear the same colours */
 .table { scrollbar-width: thin; scrollbar-color: var(--gecko) var(--panel); }
+
+/* the bottom bar, where the rail is not shown: the same trace, nodes and thumb, laid horizontally */
+.hbar { display: none; }
+@media (max-width: 39.99em), (pointer: coarse) {
+  html.home { scrollbar-width: none; }
+  html.home::-webkit-scrollbar { display: none; }
+  .home body { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+  .hbar, .home .rail-nav { display: block; position: fixed; left: 20px; right: 20px; bottom: env(safe-area-inset-bottom); height: 56px; }
+  .hbar { z-index: 41; touch-action: none; cursor: pointer; }
+  .hbar::after { content: ""; position: absolute; z-index: -1; left: -20px; right: -20px; top: 0; bottom: calc(-1 * env(safe-area-inset-bottom)); background: #0f1419eb; backdrop-filter: blur(8px); border-top: 1px solid var(--line); }
+  .hbar::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; border-radius: 2px; background: linear-gradient(90deg, #3ee6c400, var(--circuit) 4%, var(--circuit) 96%, #3ee6c400); opacity: .45; }
+  .hbar-thumb { position: absolute; left: 0; top: 50%; width: var(--tw, 32px); height: 8px; margin-top: -4px; border-radius: 99px; background: linear-gradient(90deg, var(--dune), var(--gecko) 45%, #e8692a); box-shadow: 0 0 0 2px var(--night), 0 0 12px #fb903baa; }
+  html.dragging .hbar-thumb { height: 12px; margin-top: -6px; }
+  .home .rail-nav { z-index: 42; pointer-events: none; }
+  .rail-nav ol { list-style: none; margin: 0; padding: 0; position: relative; height: 100%; }
+  .rail-nav li { position: absolute; top: 50%; left: calc(var(--at, 0) * (100% - var(--tw, 32px)) + var(--tw, 32px) / 2); }
+  .rail-nav a { pointer-events: auto; position: relative; display: block; width: 32px; height: 32px; transform: translate(-50%, -50%); }
+  .rail-nav a::after { content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid var(--circuit); background: var(--night); }
+  .rail-nav a[aria-current]::after { background: var(--circuit); box-shadow: 0 0 8px var(--circuit); }
+  /* the current part's name sits above its node, kept on screen at both ends */
+  .rail-nav span { position: absolute; bottom: calc(100% + 6px); left: 50%; translate: -50% 0; font: 600 .72rem/1.4 var(--mono); color: var(--dune); background: var(--panel); border: 1px solid var(--line); padding: .15rem .5rem; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .rail-nav li:first-child span { left: 0; translate: 0 0; }
+  .rail-nav li:last-child span { left: auto; right: 0; translate: 0 0; }
+  .rail-nav a[aria-current] span, .rail-nav a:focus-visible span { opacity: 1; }
+}
