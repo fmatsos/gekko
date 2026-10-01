@@ -97,6 +97,7 @@ fn tool_calls_reuse_the_backend_pipeline_for_text_and_json() {
                     Err(err) => panic!("backend accept: {err}"),
                 }
             };
+            stream.set_nonblocking(false).expect("blocking stream");
             stream
                 .set_read_timeout(Some(std::time::Duration::from_secs(5)))
                 .expect("read timeout");
