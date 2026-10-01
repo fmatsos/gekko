@@ -729,11 +729,11 @@ journalctl -u nginx --since -30min | gko analyze-logs</pre>
       out.add(Math.round(Math.max(top, end)));
     });
     // a stop within a quarter screen of the previous one is a wasted wheel step: merge them, and keep
-    // the one that matters, a part's top or the page's end
+    // the one that matters, a part's top or the page's end (two of those are both kept)
     const end = Math.round(max()), firm = new Set([...parts.map(p => Math.round(Math.max(0, topOf(p)))), 0, end]);
     return [...out].filter(y => y >= 0 && y <= end).sort((a, b) => a - b).reduce((kept, y) => {
-      if (!kept.length || y - kept.at(-1) >= vh / 4) kept.push(y);
-      else if (firm.has(y) && !firm.has(kept.at(-1)) || y === end) kept[kept.length - 1] = y;
+      if (!kept.length || y - kept.at(-1) >= vh / 4 || firm.has(y) && firm.has(kept.at(-1))) kept.push(y);
+      else if (firm.has(y)) kept[kept.length - 1] = y;
       return kept;
     }, []);
   };
@@ -755,8 +755,9 @@ journalctl -u nginx --since -30min | gko analyze-logs</pre>
   const go = y => {
     lock = Infinity;
     clearTimeout(unlock); unlock = setTimeout(() => { lock = 0; }, 1500);   // scrollend may never come
-    const part = parts.find(p => Math.abs(Math.max(0, topOf(p)) - y) < 2);
-    if (part && part !== partAt(scrollY)) travel(y, part);
+    // any step into another part travels, up into a tall part's last screen as well as down to a top
+    const part = partAt(y);
+    if (part !== partAt(scrollY)) travel(y, part);
     else scrollTo({ top: y, behavior: "smooth" });
   };
 
@@ -833,7 +834,7 @@ journalctl -u nginx --since -30min | gko analyze-logs</pre>
     rail.addEventListener("pointerdown", () => { fromRail = true; });
     rail.addEventListener("pointerup", () => setTimeout(settle));
   }
-  addEventListener("scrollend", () => { lock = 0; settle(); });
+  addEventListener("scrollend", () => { if (!veil || !veil.classList.contains("on")) lock = 0; settle(); });
 
   // the nodes' labels show on hover and focus; Escape hides them (WCAG 1.4.13)
   if (nav) {
