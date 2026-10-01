@@ -1,6 +1,6 @@
 # MCP server
 
-`gko mcp serve` exposes configured business commands over stdio using `rmcp`. Configure an
+`gko mcp serve` exposes configured business commands over stdio. Configure an
 MCP client to launch the `gko` executable with arguments `mcp`, `serve`, optionally preceded
 by `--config-dir DIR`. Standard output contains only MCP messages; diagnostics go to stderr.
 
@@ -25,7 +25,5 @@ error envelope in `structuredContent`. If configuration loading fails, discovery
 the error and recommends `gko doctor`; `tools/list` is empty. Restart the server after
 editing configuration.
 
-Architecture decision: `rmcp` owns protocol framing and version validation, with Tokio only
-at the transport boundary. The existing blocking business pipeline runs in a blocking worker,
-with one execution at a time. This adds a dependency/runtime cost but avoids a hand-written
-JSON-RPC implementation. MCP does not start runtimes: use `gko backend serve` explicitly.
+Tool calls run one at a time. The server never starts a runtime: start
+the backend with `gko backend serve` first.

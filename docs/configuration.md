@@ -50,11 +50,10 @@ it. On macOS, where XDG is not a native convention, the effective path is normal
 
 ### The project scope
 
-The project scope is a `.gekko` directory found by walking UP from the current directory — not only
-`./.gekko` any more: running `gko` from a subdirectory of a project still finds that project's
-`.gekko`. The walk stops, without going any higher, at the first directory whose `.git` `exists()`
-(a file in a worktree, a directory otherwise: either way, that is the project's own boundary) or
-at `$HOME` (checked for its own `.gekko` before the walk stops there, but never searched above).
+The project scope is the nearest `.gekko` directory found by walking up from the current
+directory, so running `gko` from a subdirectory of a project still finds that project's `.gekko`.
+The search stops at the project's root — the first directory containing `.git` (a directory, or a
+file in a git worktree) — or at `$HOME`, whose own `.gekko` is checked but nothing above it.
 
 `--config-dir <DIR>` or `$GKO_CONFIG_DIR` (the flag wins when both are set) name the project scope
 directly and skip the walk-up entirely:
@@ -66,13 +65,16 @@ $ gko --config-dir /path/to/.gekko config models
 `gko doctor` reports the project scope it actually resolved, as an `Ok` line naming the directory.
 
 On Windows, the same three tiers use their own environment variables instead:
-`%ProgramData%\gekko` (system-wide; omitted entirely when `%ProgramData%` is unset — there is no
-hardcoded fallback path for it), then `%APPDATA%\gekko` if set, else `%USERPROFILE%\.config\gekko` if
-set, else `%HOME%\.config\gekko` as a last resort (a manual override, not `%USERPROFILE%` read again
-under another name).
+`%ProgramData%\gekko` (system-wide; skipped when `%ProgramData%` is unset), then `%APPDATA%\gekko`
+if set, else `%USERPROFILE%\.config\gekko` if set, else `%HOME%\.config\gekko`.
 
 This lets a repository ship its own `.gekko/` with project-specific commands, model aliases and
 backend overrides, without touching the machine or the user setup.
+
+A shared `.gekko/` cannot launch a program as a side effect of running a business command:
+runtime startup is an explicit operator action (`gko backend serve`), not part of the business
+pipeline. Treat command prompts and backend endpoints from a shared repository as untrusted
+configuration nonetheless.
 
 ---
 
@@ -97,9 +99,8 @@ declared only in `/etc/gekko`.
 
 ### Duplicate ids within one scope
 
-Two files in the *same* scope declaring the same `id` is rejected, naming both paths. Across
-scopes an override is the feature; within one scope it is an ambiguity resolved by filesystem
-ordering, which is not a decision anyone made.
+Two files in the *same* scope declaring the same `id` are rejected, naming both paths: across
+scopes an override is intended, within one scope it is ambiguous.
 
 ---
 
@@ -124,7 +125,7 @@ path = "/v3/chat/completions"
 | Key | Required | Notes |
 | --- | --- | --- |
 | `id` | yes | the merge key, and how models refer to this backend |
-| `type` | yes | `"openai-compatible"` is the only value supported in 0.1.0 |
+| `type` | yes | `"openai-compatible"`, the only supported value |
 | `base_url` | yes | joined with an operation's `path`; a trailing `/` is handled either way |
 | `port` | no | the listening port, declared once and read as `{{ backend.port }}` — see below |
 | `[operations.<name>]` | at least one | `method`, `path`, and optionally `protocol` — see below |
@@ -167,10 +168,10 @@ detect the format; read from stdin, it is named `input`. A `transcriptions` mode
 
 ### `port` (optional)
 
-A containerized backend writes its port twice — in `-p` and in `base_url` — and the two silently
-diverging is the worst failure this file has: `gko doctor` stays green (its probe reaches whatever
-answers on the `base_url` port, quite possibly another backend) and only the real request fails,
-with exit `3`. `port` removes the second spelling:
+A containerized backend would otherwise write its port twice — in `-p` and in `base_url` — and
+if the two diverge, `gko doctor` stays green (its probe reaches whatever answers on the `base_url`
+port, possibly another backend) while the real request fails with exit `3`. `port` declares the
+number once:
 
 ```toml
 port = 8001
@@ -183,28 +184,19 @@ options = ["-p", "{{ backend.port }}:8000", "..."]
 
 `{{ backend.port }}` is substituted at load time in `base_url` and in every `[runtime]` entry that
 can be resolved before the runtime exists: `image`, `options` and `args` for a Docker runtime,
-`arguments` and the `[runtime.env]` values for a process one. **Not** a process runtime's
-`command` — an executable whose *name* depends on a port is not a case worth a substitution, and
-leaving it out means a `port` read only there is reported as unused rather than silently dropped.
+`arguments` and the `[runtime.env]` values for a process one — but **not** in a process runtime's
+`command`.
 
-It is the only `backend.*` placeholder that exists, and the two halves are enforced together: the
-placeholder without a `port` key is rejected, and a `port` key nothing references is rejected too —
-a value read and then ignored is exactly what this configuration does not do.
+It is the only `backend.*` placeholder, and both halves are checked at load time: the placeholder
+without a `port` key is rejected, and so is a `port` key nothing references.
 
 ```toml
 port = "auto"
 ```
 
-`"auto"` hands the allocation to Docker: `{{ backend.port }}` becomes `0` in the `[runtime]` lists
-(`-p 0:8000`), the kernel picks a free port, and `gko` reads it back with `docker port` whenever it
-needs the URL. **Collision is impossible by construction** — nothing is derived or guessed, so
-there is no second candidate to try.
-
-Deriving a port instead (a hash of the id) would be stateless but can collide with an unrelated
-service; probing for a free one at each invocation does not even agree with itself, since by the
-time a command runs the port is occupied — by us. Asking Docker what it allocated is the only
-variant that is both collision-free and reproducible across processes, `gko` having no state to
-write the answer down in.
+`"auto"` lets Docker allocate the port: `{{ backend.port }}` becomes `0` in the `[runtime]` lists
+(`-p 0:8000`), Docker picks a free port, and `gko` reads it back with `docker port` whenever it
+needs the URL, so two backends can never collide.
 
 > [!IMPORTANT]
 > `port = "auto"` makes Docker a prerequisite for **executing commands** on that backend, not just
@@ -227,13 +219,11 @@ $ gko backend serve m
 backend error: backend "probe": port 8001 is already in use by something else — change its "port" key, stop what is listening on it, or use port = "auto" to let Docker allocate one
 ```
 
-Deliberately not silent, and deliberately not automatic: a fixed number is a decision — something
-outside `gko` connects to it, or a firewall rule names it — so moving it behind your back would
-break whatever depended on it. `"auto"` is how you say the number does not matter.
+A fixed port is never moved automatically, since something outside `gko` may depend on it; use
+`"auto"` when the number does not matter.
 
-The backend already being served is checked **first**, because from the outside the two look
-identical and only one of them is about the port — a container holds its own port, and sending its
-user to edit a `port` key that is perfectly correct is the wrong repair:
+A backend that is already served is reported as such instead, since its container is what holds
+the port:
 
 ```console
 $ gko backend serve qwen3-8b
@@ -258,18 +248,17 @@ max_concurrent = 1
 ```
 
 One request at a time to this backend, across every `gko` process on the machine: a git hook and
-an editor action launched together no longer make one of them fail with a `5xx` or a timeout on a
+an editor action launched together do not make one of them fail with a `5xx` or a timeout on a
 single NPU. The second invocation waits, its spinner reading `waiting for backend "ovms" (busy)`,
 and sends its request once the first one's answer is complete; waiting is not a failure, so it
 never triggers the model's `fallback`. With `--no-wait` a busy backend is a backend failure like
 any other: the model's `fallback` answers if it has one, otherwise the command fails at once
 (exit `3`) naming the backend. `gko config test` and `gko mcp serve` always wait.
 
-The lock is an advisory file lock under the [state directory](#what-gko-remembers), taken before
-the backend's URL is resolved and released as soon as the answer ends: a fallback model on the
-same backend takes it again rather than waiting for its own primary. It is keyed by backend id and
-backend file, like the process records, so two scopes describing the same device do not wait for
-each other. Omitted, there is no limit. Only `1` is accepted; any other value is rejected at load
+The lock is a file lock under the [state directory](#what-gko-remembers), released as soon as the
+answer ends: a fallback model on the same backend takes it again rather than waiting for its own
+primary. It is keyed by backend id and backend file, so two scopes describing the same device do
+not wait for each other. Omitted, there is no limit. Only `1` is accepted; any other value is rejected at load
 time, naming the file. The state directory comes from `XDG_STATE_HOME` or `HOME`, as for the
 process records: with neither set, as on a stock Windows session, a `max_concurrent` backend
 fails with exit `1`.
@@ -300,8 +289,7 @@ OpenAI-compatible endpoint that requires authentication.
 - A value is a template accepting **only** `{{ env.NAME }}`: `{{ input }}`, `{{ args.* }}` and
   `{{ schemas.* }}` are configuration errors here, at load time, naming the file and the header —
   a header cannot depend on the command being run.
-- `Content-Type` and `Content-Length` are rejected (case-insensitively): `gko` owns both, and
-  overriding either silently would be a key read and then ignored.
+- `Content-Type` and `Content-Length` are rejected (case-insensitively): `gko` sets both.
 - A header name must be a legal HTTP token (RFC 9110); two names colliding once case is ignored
   (`Authorization` next to `authorization`) are rejected too — one of them would silently win.
 - The environment variable is resolved at **preflight**, before the command's input is read
@@ -320,8 +308,7 @@ OpenAI-compatible endpoint that requires authentication.
 A backend may declare how to start its own runtime, in a `[runtime]` table whose `type` picks the
 **family**: `"docker"` (below) or `"process"` (see
 [Starting a backend as a process](#starting-a-backend-as-a-process)). Each family reads its own
-keys, and a key belonging to the other one is rejected by name — the table is tagged precisely so
-that `gko` never has to guess which shape it is looking at.
+keys, and a key belonging to the other one is rejected by name.
 
 `gko backend serve <model>` then runs it, and the family's prerequisite — Docker here — becomes an
 **optional** one: nothing changes for a configuration without this table.
@@ -346,24 +333,18 @@ args = [
 | `options` | no | passed to `docker run` **before** the image: ports, volumes, devices |
 | `args` | no | passed to the image **after** it: the server's own arguments |
 
-`type` is what makes an unsupported family a named rejection — `unknown variant "podman"`, with
-the file — instead of a table `gko` would have to guess the meaning of. Unknown keys inside
-`[runtime]` are rejected like everywhere else, and that includes a key of the *other* family:
-`image` under `type = "process"` is a mistake worth naming, not one to ignore.
+An unsupported family is rejected with the file named (`unknown variant "podman"`). Unknown keys
+inside `[runtime]` are rejected like everywhere else, including a key of the *other* family, such
+as `image` under `type = "process"`.
 
 ### The legacy `[docker]` table
 
-Earlier versions spelled this table `[docker]`, untagged. That spelling is **still accepted**: it
-is folded into `[runtime]` with `type = "docker"` at load time, once, so nothing downstream can
-tell which form a file used. `[runtime]` is the form to write in new files.
+A `[docker]` table, without `type`, is accepted as a synonym of `[runtime]` with
+`type = "docker"`; write `[runtime]` in new files. A backend declaring **both** is rejected at load
+time, naming the file and the backend.
 
-A backend declaring **both** is rejected at load time, naming the file and the backend: picking a
-winner would mean reading one table and silently ignoring the other.
-
-Two lists rather than one because `docker run [OPTIONS] IMAGE [ARG...]` is the grammar; merging
-them would make the position of the image implicit. `gko` adds `-d` and
-`--name gko-<backend-id>` itself, and nothing else — it knows the shape of a `docker run`
-invocation, never what you are running.
+`options` and `args` follow the grammar of `docker run [OPTIONS] IMAGE [ARG...]`. `gko` adds `-d`
+and `--name gko-<backend-id>` itself, and nothing else.
 
 Every entry goes through the same templating as a prompt:
 
@@ -423,95 +404,66 @@ LLAMA_CACHE = "{{ env.HOME }}/.cache/llama.cpp"
 | `[runtime.env]` | no | variables **layered over** the environment `gko` itself runs in |
 | `startup_timeout_secs` | no | readiness budget in seconds, `30` by default; `0` is rejected |
 
-`arguments` is a list of separate entries, never one string to be split: a model path containing a
-space would otherwise become two arguments, and there is no shell here to blame it on. Entries go
+`arguments` is a list of separate entries, never one string to be split, and no shell is
+involved: a model path containing a space stays one argument. Entries go
 through the same templating as a Docker runtime's — `{{ args.model }}`, `{{ env.NAME }}`,
 `{{ backend.port }}` — with `{{ input }}` rejected, since `gko backend serve` reads no input.
 
 `command` is templated too — `{{ args.model }}` and `{{ env.NAME }}`, so a server living under a
-path only the environment knows can be named — but **not** `{{ backend.port }}`: an executable
-whose path depends on a port is not a case this supports, and the placeholder is rejected there
-naming the file. `gko doctor` emits no "runtime command available" check for a templated
-`command`: it has no model to resolve it against, and reporting the template itself as a missing
-binary would tell its reader to install `{{ env.LLAMA_BIN }}`.
+path only the environment knows can be named — but **not** `{{ backend.port }}`, which is rejected
+there naming the file. `gko doctor` checks that a `command` is available only when it is not
+templated.
 
-The lookup requires an **executable** file. A regular file with no execute bit is skipped and the
-`PATH` scan continues, exactly as a shell does — so a non-executable leftover early on `PATH`
-cannot shadow the real server, nor make `gko doctor` green about a command `gko backend serve` then
-refuses to spawn.
+The `PATH` lookup requires an **executable** file: a file with no execute bit is skipped and the
+scan continues, as a shell does.
 
 `[runtime.env]` is an **overlay**, not a replacement: the child inherits `gko`'s own environment
 and these values are layered on top. A server needing `HOME`, `PATH` or a proxy setting therefore
 does not have to redeclare them to gain one variable.
 
-`startup_timeout_secs` is what `gko backend serve` waits, having spawned the server, for it to answer on
-its `base_url` — so a `base_url` this family cannot parse into a host and a port is rejected at
-load time naming the file: a probe that can never succeed would burn the whole budget and then
-terminate a perfectly working server, blaming a timeout key that was correct. The budget's failure
-message carries the last probe error for the same reason, so "connection refused" and "the port in
-`base_url` is not the one `arguments` gave the server" do not look alike. Unlike `docker run -d`,
-this family does **not** return before the server is ready: a `serve` that succeeded means
-something answered. `0` is rejected at load time naming the file,
-on the `[timeouts].request_secs` precedent — honoured literally it would make every start fail,
-and clamped it would be a key read and then ignored.
+`startup_timeout_secs` is how long `gko backend serve` waits, after spawning the server, for it to
+answer on its `base_url`, so a `base_url` that does not parse into a host and a port is rejected at
+load time naming the file. When the budget runs out, the error carries the last probe error.
+Unlike the Docker family, this one does **not** return before the server is ready: a `serve` that
+succeeded means something answered.
 
 Three constraints this family adds, all rejected at load time naming the file:
 
-- `port = "auto"` is refused. Docker can be asked which port it allocated; a process cannot, so
-  there would be nothing to read the answer back from. Declare a fixed `port`.
+- `port = "auto"` is refused: only Docker can report the port it allocated. Declare a fixed `port`.
 - the backend `id` must be usable as a file name (ASCII letters, digits, `_`, `.` and `-`,
-  starting with a letter or a digit) — the same rule the Docker family applies to a container
-  name, here because the name of this backend's state file starts with the identifier.
-- `startup_timeout_secs` must be between `1` and `86400`. The upper bound is not taste: a larger
-  value cannot be turned into a deadline at all, and a `serve` that panicked would replace this
-  CLI's exit codes with `101`.
+  starting with a letter or a digit), since it names the backend's state file.
+- `startup_timeout_secs` must be between `1` and `86400`.
 
-This family is **Unix-only**. On Windows a `[runtime] type = "process"` backend is rejected at
-load time naming the file: there is no `$XDG_STATE_HOME`/`$HOME` convention to put the state
-record under, and no `SIGTERM` — `stop`'s graceful step would silently collapse into an immediate
-hard kill, with no chance for a server to flush. Use `type = "docker"` there, or start the server
-outside `gko`.
+This family is **Unix-only**: on Windows a `[runtime] type = "process"` backend is rejected at load
+time naming the file. Use `type = "docker"` there, or start the server outside `gko`.
 
 ### What `gko` remembers
 
-Docker is its own registry, so a Docker runtime needs nothing persisted. A process has no
-registry: `gko backend serve` therefore writes a small JSON record, plus a `.log` file it redirects the
-server's **two** streams into. `stop` deletes the record; `logs` reads the file. Both are named
+A Docker runtime needs nothing persisted. For a process, `gko backend serve` writes a small JSON
+record, plus a `.log` file receiving the server's stdout and stderr. `stop` deletes the record; `logs` reads the file. Both are named
 `<backend id>-<digest>`, the digest being the first eight hex characters of the SHA-256 of the
 backend **file** the runtime was declared in. They live in `$XDG_STATE_HOME/gekko/`, or
-`$HOME/.local/state/gekko/` when that variable is unset — and on macOS in
-`$HOME/Library/Application Support/gekko/state/`, with no `XDG_STATE_HOME` branch at all: the
-variable has no meaning there, and honouring it would scatter one machine's state over two places
-depending on which shell exported what.
+`$HOME/.local/state/gekko/` when that variable is unset — and on macOS always in
+`$HOME/Library/Application Support/gekko/state/`.
 
-That directory is **machine-global** while backend identifiers are per-scope, which is what the
-digest is for: two projects each declaring `llamacpp` in their own `./.gekko` get two records, two
-logs and two servers, and neither one's `gko backend stop` or `gko backend logs` can reach the other's.
+The digest keeps projects apart: two projects each declaring `llamacpp` in their own `./.gekko` get
+two records, two logs and two servers, and neither one's `gko backend stop` or `gko backend logs`
+can reach the other's.
 
-The record **also** holds the backend file it was served from, and that is not a duplicate of the
-digest. Eight hex characters are 32 bits, so two backend files can meet on one name; the full path
-in the record is what catches it. A record naming another file, while its process is alive, is
-reported as `foreign state` and is never signalled, never cleared and never written over — `serve`
-and `stop` both refuse, naming both files. Once nothing is behind that pid the record describes
-nothing, and the next `serve` simply forgets it.
+The record names the backend file it was served from. A record naming another file, while its
+process is alive, is reported as `foreign state` and is never signalled, cleared or overwritten —
+`serve` and `stop` both refuse, naming both files. Once its process is gone, the next `serve`
+replaces it.
 
-The record holds the pid and the moment the system says that pid was born. That **pair** is the
-identity check, and it is what keeps `gko backend stop` from killing an innocent process: a pid alone can,
-after a reboot or enough process churn, name somebody else's. A record whose pid was recycled is
-reported as `stale state` and forgotten — never signalled. The birth is an epoch **second**, which
-is the resolution of the check: two processes sharing a pid and born inside the same second are
-indistinguishable to it. Reaching that needs the pid space to wrap within one second — a container
-with a small `pid_max` namespace, not a stock machine — and there is no finer token without
-`unsafe`.
-
-The executable is recorded too, but only so that whoever reads the file knows what was started. It
-is deliberately **not** compared: a `command` ending on `exec` — a wrapper script, a virtualenv or
-`uv`/`conda` shim — replaces the running image while keeping the pid and its birth, so comparing it
-would declare `gko`'s own child an impostor.
+The record also holds the pid and its start time, and `gko backend stop` signals the process only
+when both still match: a record whose pid now belongs to another process is reported as
+`stale state` and forgotten, never signalled. The executable is recorded for information only, so a
+`command` ending on `exec` (a wrapper script, a virtualenv or `uv`/`conda` shim) is stopped
+correctly.
 
 Changing a served backend's `[runtime]` family — or removing the table — leaves that record
-unreachable: `stop`, `status` and `logs` dispatch on what the files say **today**, and a backend
-that now declares Docker is asked about a container. Run `gko backend stop` before changing the family.
+unreachable: `stop`, `status` and `logs` follow what the files say now, and a backend that now
+declares Docker is asked about a container. Run `gko backend stop` before changing the family.
 The record is plain JSON and holds the pid, so a forgotten one is still recoverable by hand.
 
 > [!WARNING]
@@ -526,8 +478,8 @@ The record is plain JSON and holds the pid, so a forgotten one is still recovera
 > and waits instead (`sh -c "server | tee log"`, `conda run`, anything that does not `exec`) has
 > its wrapper signalled while the real server survives: `gko backend stop` reports success and deletes the
 > record, a failed `gko backend serve` terminates the wrapper and abandons the rest, and the orphan keeps
-> the port while every `gko` command reports the backend as never started. There is no process
-> group to signal instead without `unsafe`, so end your launcher on `exec`.
+> the port while every `gko` command reports the backend as never started. End your launcher on
+> `exec`.
 
 ---
 
@@ -579,41 +531,36 @@ chat_template_kwargs = { enable_thinking = false }
 | `temperature` | float |
 | `max_tokens` | integer |
 | `seed` | integer, forwarded as-is for deterministic sampling |
-| `top_p` | float, same no-binary-noise serialization as `temperature` |
-| `stop` | a non-empty list of non-empty strings — no upper bound (deliberately not the 1-4 entry limit some providers impose; that would tie `gko` to one provider) |
+| `top_p` | float |
+| `stop` | a non-empty list of non-empty strings, with no upper bound |
 | `[generation.extra]` | free-form table, forwarded **verbatim** at the top level of the request, after the typed keys above |
 
 A value is only included in the request when present — no `null` is ever serialized for an
 absent field.
 
-`[generation.extra]` is the one escape hatch for an engine-specific knob `gko` does not model
-itself (`chat_template_kwargs.enable_thinking = false` on Qwen3 is the motivating case). Its keys
-are copied TOML structure for TOML structure into JSON (tables become objects, arrays become
-arrays); this is the one place in the crate where "honoured" means "forwarded verbatim" rather
-than interpreted. Two things are rejected at load time, naming the file:
+`[generation.extra]` carries engine-specific settings `gko` has no key for (for example
+`chat_template_kwargs.enable_thinking = false` on Qwen3). Its keys are converted from TOML to JSON
+as they are (tables become objects, arrays become arrays). Two things are rejected at load time,
+naming the file:
 
 - a key of `extra` that collides with a typed key (`temperature`, `max_tokens`, `seed`, `top_p`,
   `stop`, and the keys `gko` itself controls: `model`, `messages`, `stream`,
-  `response_format`) — the typed form is the only spelling, a silent override would be a key
-  read and then ignored;
+  `response_format`) — use the typed key instead;
 - a TOML `Datetime` or a non-finite float (`nan`, `inf`, legal TOML float literals) anywhere
-  inside `extra`, including nested in a table or an array — JSON has no datetime type and would
-  silently drop a non-finite float. A plain **string** that merely looks like a date
+  inside `extra`, including nested in a table or an array, since JSON cannot represent either.
+  A plain **string** that merely looks like a date
   (`"2024-01-01"`) is unaffected: only a genuine TOML datetime *value* is rejected.
 
 #### Per-command override (the one field-by-field merge)
 
 A command's own frontmatter may declare its own `[generation]`, in the same shape (`extra`
-included). Unlike every other configuration key in this project, **this one merges instead of
-replacing**: each typed key the command sets overrides the model's; a key the command leaves
+included). Unlike every other configuration key, **this one merges instead of replacing**: each typed key the command sets overrides the model's; a key the command leaves
 unset keeps the model's value. `extra` merges the same way, key by key, at the top level only —
 a command setting `chat_template_kwargs` replaces the model's `chat_template_kwargs` wholesale,
 never merged one level deeper.
 
-This is a deliberate, explicit exception to "a more local scope replaces wholesale, never
-merges" (see [Merge semantics](#merge-semantics) above): a command legitimately wants the
-model's defaults plus one change, not a full generation table copy-pasted into every command
-file. When a model declares a `fallback`, the fallback uses **its own** base `[generation]`
+This is the one exception to [Merge semantics](#merge-semantics): a command gets the model's
+defaults plus its own changes. When a model declares a `fallback`, the fallback uses **its own** base `[generation]`
 merged with the **same** command override — the override describes the command being run, not
 which model answers it.
 
@@ -633,12 +580,11 @@ fallback = "qwen3-8b-gpu"
 When the request fails with exit code `3` (a backend failure: unreachable, or a non-2xx answer),
 the same rendered prompt is sent once to the fallback model, on its own backend. Nothing else is
 retried — a `2` (bad configuration) and a `4` (the answer violated the output contract) are
-returned as-is, because retrying elsewhere would only hide them.
+returned as-is.
 
-This exists for a concrete case: a model compiled for an Intel NPU has a static maximum prompt
-length, and OVMS refuses an over-long prompt with a clean `400 ... Input length exceeds the
-maximum allowed length` in milliseconds. That is an exact, cheap signal that the prompt belongs on
-a GPU-served model instead — no token counting on `gko`'s side, no guessed character threshold.
+The typical case: a model compiled for an Intel NPU has a static maximum prompt length, and OVMS
+refuses an over-long prompt at once with `400 ... Input length exceeds the maximum allowed length`.
+The fallback sends that prompt to a GPU-served model instead.
 
 Three properties worth knowing:
 
@@ -672,17 +618,15 @@ column so the routing is never invisible.
 
 ## When a broader scope is broken
 
-A broken file in `/etc/gekko` must not disable your project. `/etc` may belong to root and be out of
-your reach, which is exactly the case a local override is meant to solve. So a broadly-scoped
-entry that is **entirely shadowed** by a more local one does not break anything.
-
-The two paths are **deliberately asymmetric**, and unifying them would reintroduce a bug:
+A broken file in `/etc/gekko`, which may be out of your reach, does not disable your project: a
+broadly-scoped entry that is **entirely shadowed** by a more local one does not break anything.
+Backends and models differ from commands here:
 
 | | Where the key lives | Consequence |
 | --- | --- | --- |
-| Backends, models | the `id` field, **inside** the file | An unparseable file has no knowable identity, so there is no way to tell whether it is shadowed. **A parse error is always fatal.** Only semantic validation (`type`, `method`) is deferred until after the merge, and applies to survivors only. |
-| Commands | the **file path** | The winner is known before anything is read, so only winning files are parsed. A broken but shadowed command file is never opened. |
+| Backends, models | the `id` field, **inside** the file | An unparseable file cannot be matched to an `id`, so **a parse error is always fatal**. Validation of `type` and `method` applies only to the entries that win the merge. |
+| Commands | the **file path** | Only winning files are read: a broken but shadowed command file is ignored. |
 
-The same reasoning governs output schemas: a schema that is missing or malformed on a command
+Output schemas behave the same way: a schema that is missing or malformed on a command
 nobody invokes does not break `gko --help`. Checking every schema in every scope is the job of
 [`gko doctor`](cli.md#gko-doctor).

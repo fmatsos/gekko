@@ -5,11 +5,6 @@ Claude Code how to write and repair a `gko` configuration, and two that find
 and export a model for the host's NPU. They are documentation Claude loads
 only when it needs it — nothing runs at startup.
 
-An eighth, [`release`](../.claude/skills/release/SKILL.md), lives directly in
-`.claude/skills/` rather than here: it cuts a release of THIS repository and
-is useless in any other project, so it is not part of what this directory
-offers for installation.
-
 | Skill | Covers |
 | --- | --- |
 | [`gko-config`](gko-config/SKILL.md) | the `.gekko/` layout, scope precedence, merge semantics, bootstrapping a project |
@@ -26,8 +21,7 @@ whichever one owns the file that failed. `gko-discover` feeds a model id to
 
 ## Model and effort
 
-Each skill pins the effort its work actually needs, rather than inheriting a
-session level chosen for something else.
+Each skill pins the model and the effort its work needs.
 
 | Skill | `model` | `effort` | Why |
 | --- | --- | --- | --- |
@@ -39,15 +33,15 @@ session level chosen for something else.
 | `gko-discover` | `sonnet` | `medium` | judgement in choosing search terms and reading architecture-support docs, but no irreversible action |
 | `gko-export` | `sonnet` | `medium` | a fixed procedure plus one judgement call (reading the sanity-check output); external commands are sometimes slow but the steps themselves are not ambiguous |
 
-`gko-doctor` inherits deliberately — you picked the session model for the
-debugging you are already doing. Both fields are one line each in the skill's
+`gko-doctor` inherits the session model, the one you picked for the debugging
+you are already doing. Both fields are one line each in the skill's
 frontmatter if these defaults do not suit you.
 
 Every skill ends with a **Reference** section linking back to the repository
 documentation, which stays authoritative: a skill is a summary, and when the
 two disagree the binary and `docs/` win. For the keys themselves, `gko config
-schema backend|model|command|test` prints the JSON Schema derived from the
-parser, so a skill points at it rather than restating the full format.
+schema backend|model|command|test` prints the JSON Schema of each file
+format, so a skill points at it rather than restating the full format.
 
 ## Installing
 

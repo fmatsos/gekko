@@ -14,9 +14,9 @@
 
 ## Overview
 
-`gko` drives any OpenAI-compatible backend; it knows nothing about OpenVINO, NPUs or
-quantization. This guide covers the part outside `gko`'s scope: producing a model export that
-compiles and runs correctly on an Intel NPU through
+`gko` drives any OpenAI-compatible backend: running a command needs nothing NPU-specific. This
+guide covers what happens before that: producing a model export that compiles and runs correctly
+on an Intel NPU through
 [OpenVINO Model Server](https://github.com/openvinotoolkit/model_server) (OVMS), using
 [`optimum-intel`](https://github.com/huggingface/optimum-intel)'s `optimum-cli`.
 
@@ -96,10 +96,9 @@ chose; export your own when the NPU needs specific settings, which it usually do
 > compile faster or run faster than `128`, it is simply a much larger accuracy loss. `128` is
 > `optimum-intel`'s own documented default and the safe choice.
 >
-> This is not a hypothetical: exporting `Qwen2.5-Coder-3B-Instruct` with `--group-size -1` produced
-> a model that answered every prompt with `"2\n2\n2\n..."`, confirmed to be the model itself —
-> not `gko`, not OVMS — by running the export directly through `optimum-intel` on CPU, bypassing
-> both. Re-exporting with `--group-size 128` (same `--sym --ratio 1.0` otherwise) fixed it.
+> A typical symptom: `Qwen2.5-Coder-3B-Instruct` exported with `--group-size -1` answers every
+> prompt with `"2\n2\n2\n..."`, on CPU through `optimum-intel` as well as through OVMS.
+> Re-exporting with `--group-size 128` (same `--sym --ratio 1.0` otherwise) fixes it.
 
 ### Verifying an export before deploying it
 
@@ -173,8 +172,8 @@ docker run -d --name ovms -p 8000:8000 \
 
 | Flag | Why |
 | --- | --- |
-| `--model_name` + `--model_path` | the documented way to serve an already-prepared local directory. **Not `--source_model`**: on a directory exported locally by `optimum-cli` (no git metadata), it fails every time with `Unable to open file: .../graph.pbtxt` even when that file is present and readable — reproduced directly against OVMS, independently of `gko` |
-| no `--target_device` | deliberate: step 3a already baked it into `graph.pbtxt`. Passing it here is not how this serve path picks a device |
+| `--model_name` + `--model_path` | the documented way to serve an already-prepared local directory. **Not `--source_model`**: on a directory exported locally by `optimum-cli` (no git metadata), it fails every time with `Unable to open file: .../graph.pbtxt` even when that file is present and readable |
+| no `--target_device` | step 3a already baked it into `graph.pbtxt`. Passing it here is not how this serve path picks a device |
 | `--device /dev/accel` | exposes the NPU device node inside the container |
 | `--device /dev/dri` + `--group-add <render-gid>` | needed alongside `/dev/accel` on most setups for the accelerator to actually be detected — omitting them shows `Available devices: CPU` in the logs, not an error |
 | `--user <uid>:<gid>` | the container must run as a user with access to `/dev/accel`; running as root inside the container is not enough if the host device node is group-restricted |
@@ -208,12 +207,13 @@ rm -f ~/models/.ov_cache/*.blob ~/models/.ov_cache/*.cl_cache
 ## 5. Wiring it into `gko`
 
 None of the above is `gko`-specific — it is plain OVMS and Docker configuration, declared in a
-backend's `[docker]` table exactly as documented in
+backend's `[runtime]` table exactly as documented in
 [Starting a backend with Docker](configuration.md#starting-a-backend-with-docker):
 
 ```toml
 # backends/ovms.toml
-[docker]
+[runtime]
+type = "docker"
 image = "openvino/model_server:2026.4.0-gpu"
 options = [
     "-p", "8000:8000",
@@ -231,8 +231,8 @@ args = [
 ```
 
 `{{ args.model }}` resolves to the model's `model` field — the export directory name under
-`/models` — so `gko backend serve <model-id>` starts OVMS pointed at the right export without any
-NPU-specific logic in `gko` itself. A slow accelerator can also need more time than the client's
+`/models` — so `gko backend serve <model-id>` starts OVMS pointed at the right export. A slow
+accelerator can also need more time than the client's
 default request timeout; see `[timeouts]` in
 [Configuration](configuration.md#timeouts-optional).
 
@@ -303,7 +303,7 @@ The `gko-export` skill performs this whole section automatically.
 | Symptom | Likely stage | Check |
 | --- | --- | --- |
 | Coherent-looking startup, but every response is repetitive garbage | export | run the CPU verification in [§2](#verifying-an-export-before-deploying-it); if it reproduces there, the export is broken, not the deployment |
-| `curl` straight to OVMS reproduces the same garbage as through `gko` | not `gko` | the client did its job faithfully; look at the export and the OVMS logs, not `backend.rs` |
+| `curl` straight to OVMS reproduces the same garbage as through `gko` | not `gko` | `gko` forwarded the answer faithfully; look at the export and the OVMS logs |
 | OVMS logs show `Available devices: CPU` | deployment | `--device`/`--group-add`/`--user` are missing or wrong; the NPU was never reached |
 | `Cache directory /cache is not writable` | deployment | the container's `--user` cannot write the bind-mounted cache directory |
 | `Unable to open file: .../graph.pbtxt` right after `gko backend serve` starts | deployment | either [§3a](#3a-bake-the-device-into-the-export) was skipped, or the backend serves with `--source_model`, which fails this way on a local export whatever the file's state — use `--model_name`/`--model_path`. The same message when running `--configure` itself means it ran as the image's own user (uid 5000) and cannot *create* the file: re-run it with `--user "$(id -u):$(id -g)"` |

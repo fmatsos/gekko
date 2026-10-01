@@ -154,15 +154,14 @@ The behavior differs slightly with the terminal versus a pipe:
   on a truncated answer that is not accepted — the answer never reaches it, byte one included.
 - **a terminal, streaming**: tokens already reached the screen as they arrived, before `gko` could
   know the stream would end truncated. The exit code is still `4`; only the closing frame is
-  skipped. A calling agent reads the exit code and stderr, never the terminal's screen, so this is
-  not a contract violation — only a human-facing display detail.
+  skipped. A calling program reads the exit code and stderr, so it sees the failure either way.
 
 ---
 
 ## Reasoning models
 
-Some backends inline the model's reasoning into `content` itself, wrapped in `<think>...</think>`
-(a convention the `OpenAI`-compatible ecosystem converged on). Left as-is, that breaks
+Some backends inline the model's reasoning into `content` itself, wrapped in `<think>...</think>`.
+Left as-is, that breaks
 `format = "json"` (the reasoning is not valid JSON, or sits before the JSON body) and
 `max_lines = 1` (the reasoning adds lines the contract did not expect).
 
@@ -178,7 +177,7 @@ whitespace-tolerant before the opening tag, but the closing tag is required: an 
 treated as content, never guessed at. This runs **before** the rest of the pipeline (fence
 removal, JSON parsing, schema validation, or the text branch's trim/`max_lines`). A block found
 anywhere other than the very start — in particular, in the middle of the answer — is left
-untouched: only the leading occurrence is reasoning by construction.
+untouched.
 
 The removed text is logged at `info` by **length only**
 (`stripped 412 characters of reasoning`), never by content: reasoning can be long, and the
@@ -186,15 +185,13 @@ diagnostic stream is not a transcript.
 
 **Streaming is disabled when `strip_reasoning = true`**, even on a terminal that would otherwise
 stream a plain-text answer: printing tokens as they arrive would show the reasoning block before
-`gko` has a chance to strip it, which defeats the whole point. The answer then arrives in one
-piece, exactly as it already does for a JSON output contract. `gko describe` reports the key, so
+`gko` has a chance to strip it. The answer then arrives in one piece, as it does for a JSON output
+contract. `gko describe` reports the key, so
 the behavior is discoverable without reading the command file.
 
 A server that reports reasoning in a separate `reasoning_content` field rather than inlining it
-into `content` needs no handling here: only `content` is ever read, by design.
-`strip_reasoning` is for the inline `<think>` case specifically. The tag itself is not
-configurable — a configurable tag is a regex-shaped foot-gun better added the day a second real
-tag shows up, not speculatively.
+into `content` needs no handling here: only `content` is read. `strip_reasoning` is for the inline
+`<think>` case specifically, and the tag is not configurable.
 
 ---
 
@@ -280,15 +277,14 @@ Validation failures list **every** violation, not just the first one, so a promp
 one pass instead of one error at a time.
 
 A response that is not valid JSON, or that violates the schema, is an execution failure with exit
-code `4`. `gko` does not retry, does not reformulate, and does not ask the model again — the
-specification is explicit that invalid structured output is a failure. This matters most when the
-CLI is driven by another program, which needs a stable contract rather than a best effort.
+code `4`. `gko` does not retry, does not reformulate, and does not ask the model again: a program
+driving the CLI gets a stable contract rather than a best effort.
 
 ---
 
 ## Exit codes
 
-| Code | Variant | Meaning |
+| Code | Kind | Meaning |
 | ---: | --- | --- |
 | `0` | — | success |
 | `1` | I/O | unreadable file, broken pipe |
