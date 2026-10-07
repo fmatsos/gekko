@@ -240,7 +240,11 @@ jobs:
           set -euo pipefail
           version="${{ inputs.tag || github.ref_name }}"
           if [ "${{ steps.notes.outputs.generate }}" = "true" ]; then
-            gh release create "$version" dist/* --title "$version" --generate-notes
+            # GitHub's generated notes, without the owner's own name: no "by @owner", no "New Contributors" entry for them
+            notes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$version" --jq .body |
+              sed -E "s/ by @$GITHUB_REPOSITORY_OWNER in / in /; /^\* @$GITHUB_REPOSITORY_OWNER made their first contribution/d" |
+              perl -0pe 's/## New Contributors\n+(?=\*\*Full Changelog)//')
+            gh release create "$version" dist/* --title "$version" --notes "$notes"
           else
             gh release create "$version" dist/* --title "$version" --notes-file notes.md
           fi
