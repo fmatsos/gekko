@@ -25,6 +25,8 @@ allow = [
     # Pulled in by borrow-or-share, via jsonschema -> referencing -> fluent-uri.
     "MIT-0",
     "Zlib",
+    # This project's own license.
+    "Unlicense",
 ]
 confidence-threshold = 0.9
 

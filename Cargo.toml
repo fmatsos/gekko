@@ -3,7 +3,7 @@ name = "gekko"
 version = "0.8.0"
 edition = "2024"
 description = "Generic execution engine for local AI commands"
-license = "MIT"
+license = "Unlicense"
 publish = false
 
 # The project is Gekko; the executable it installs is `gko`, short enough to

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/fmatsos/gekko/actions/workflows/qa.yml"><img src="https://github.com/fmatsos/gekko/actions/workflows/qa.yml/badge.svg" alt="QA"></a>
   <a href="https://github.com/fmatsos/gekko/releases/latest"><img src="https://img.shields.io/github/v/release/fmatsos/gekko" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Unlicense-blue" alt="License: Unlicense"></a>
 </p>
 
 <p align="center">
@@ -194,4 +194,4 @@ duplicate crates. `unsafe` code is forbidden crate-wide.
 
 ## License
 
-[MIT](LICENSE)
+Public domain, see [LICENSE](LICENSE) ([Unlicense](https://unlicense.org)).
