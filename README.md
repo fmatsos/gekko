@@ -1,8 +1,8 @@
 <p align="center">
-  <img src=".github/assets/banner.webp" alt="Gekko, an orange gecko holding a terminal, next to an NPU, CPU and GPU circuit board in a desert" width="100%">
+  <img src=".github/assets/banner.webp" alt="gekko, an orange gecko holding a terminal, next to an NPU, CPU and GPU circuit board in a desert" width="100%">
 </p>
 
-<h1 align="center">Gekko</h1>
+<h1 align="center">gekko</h1>
 
 <p align="center">
   <strong>Your AI commands are configuration, not code.</strong>
@@ -21,7 +21,7 @@
   <a href="CHANGELOG.md"><b>Changelog</b></a>
 </p>
 
-Gekko (`gko` on the command line) is a generic CLI engine for running local AI commands, written
+gekko (`gko` on the command line) is a generic CLI engine for running local AI commands, written
 in Rust, against any OpenAI-compatible model server — OVMS on an Intel NPU, `llama-server` on
 Apple Silicon, or anything else that speaks the protocol.
 
