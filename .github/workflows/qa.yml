@@ -32,7 +32,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # No toolchain action: `rust-toolchain.toml` pins 1.98.1 with clippy and
       # rustfmt, and rustup installs it on the first cargo invocation. Naming
@@ -40,10 +40,10 @@ jobs:
       - name: Show the pinned toolchain
         run: rustc --version && cargo --version
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
 
       # `make audit` needs this binary; it is not part of the toolchain.
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2
         with:
           tool: cargo-deny
 
