@@ -137,6 +137,7 @@ jobs:
             dist/gko-${{ matrix.target }}
             dist/gko-${{ matrix.target }}.exe
           if-no-files-found: error
+          retention-days: 1 # only needed until the publish job runs
 
   publish:
     needs: build
